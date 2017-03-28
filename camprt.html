@@ -19,6 +19,24 @@
             margin: 0px;
         }
 
+        .navbar {
+            overflow: hidden;
+            background-color: #444;
+            position: fixed;
+            top: 0;
+            width: 100%;
+        }
+
+        .navbar a {
+            float: left;
+            display: block;
+            color: #f2f2f2;
+            text-align: center;
+            padding: 14px 16px;
+            text-decoration: none;
+            font-size: 17px;
+        }
+
         #info {
             position: absolute;
             top: 0px;
@@ -84,8 +102,9 @@
     <canvas id="c"></canvas>
 
     <div id="content">
-        <div id="dropMenu">
-            <select name="patientMenu" onchange="dropDown(this);">
+        <div class="navbar">
+            <div id="dropMenu">
+                <select name="patientMenu" onchange="dropDown(this);">
                 <option selected = "selected" value=1>Patient 1</option>
                 <option value = 2>Patient 2</option>
                 <option value = 3>Patient 3</option>
@@ -93,8 +112,11 @@
                 <option value = 5>Patient 5</option>
                 <option value = 6>Patient 6</option>
                 <option value = 7>Patient 7</option>
-            </select>
+                </select>
+            </div>
+
         </div>
+
     </div>
 
     <script src="build/three.js"></script>
