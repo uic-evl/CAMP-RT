@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>CAMP-RT</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+        * {
+            box-sizing: border-box;
+            -moz-box-sizing: border-box;
+        }
+
+        body {
+            color: #000;
+            font-family: sans-serif;
+            font-size: 13px;
+            background-color: #fff;
+            margin: 0px;
+        }
+
+        #info {
+            position: absolute;
+            top: 0px;
+            width: 100%;
+            padding: 5px;
+            text-align: center;
+        }
+
+        #content {
+            position: absolute;
+            top: 0px;
+            width: 100%;
+            z-index: 1;
+            padding: 3em 0 0 0;
+        }
+
+        a {
+            color: #0080ff;
+        }
+
+        #c {
+            position: fixed;
+            left: 0px;
+            width: 100%;
+            height: 100%;
+        }
+
+        .list-item {
+            position: relative;
+            display: inline-block;
+            margin: 1em;
+            padding: 1em;
+            box-shadow: 0px 0px 12px 1px rgba(0, 0, 0, 0.25);
+        }
+
+        .list-item .scene {
+            width: 350px;
+            height: 350px;
+        }
+
+        .list-item .description {
+            color: #444;
+            font-family: sans-serif;
+            font-size: large;
+            width: 150px;
+            margin-top: 0.5em;
+            float: left;
+        }
+
+        .list-item .pScore {
+            color: #888;
+            font-family: sans-serif;
+            font-size: large;
+            margin-top: 0.5em;
+            float: right;
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <canvas id="c"></canvas>
+
+    <div id="content">
+        <div id="dropMenu">
+            <select name="patientMenu" onchange="dropDown(this);">
+                <option selected = "selected" value=1>Patient 1</option>
+                <option value = 2>Patient 2</option>
+                <option value = 3>Patient 3</option>
+                <option value = 4>Patient 4</option>
+                <option value = 5>Patient 5</option>
+                <option value = 6>Patient 6</option>
+                <option value = 7>Patient 7</option>
+            </select>
+        </div>
+    </div>
+
+    <script src="build/three.js"></script>
+    <script src="js/controls/OrbitControls.js"></script>
+
+    <script src="js/Detector.js"></script>
+    <script src="js/renderers/Projector.js"></script>
+
+    <script src="js/d3/d3.min.js"></script>
+
+    <script src="js/THREEx.KeyboardState.js"></script>
+    <script src="js/loaders/OBJLoader.js"></script>
+
+    <script id="template" type="notjs">
+        <div class="scene"></div>
+        <div class="description">Patient $</div>
+        <div class="pScore">!</div>
+        <div style="clear: both;"></div>
+    </script>
+
+    <script type="text/javascript" src="camprt.js"></script>
+
+    <script>
+        window.dropDown = function(e) {
+            //console.log(e.value);
+            updateOrder(e.value);
+        }
+
+    </script>
+</body>
+
+</html>
