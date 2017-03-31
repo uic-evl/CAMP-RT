@@ -481,6 +481,9 @@ for (var i = 0, ref = arrayOfDivs.length = listItems.length; i < ref; i++) {
 document.addEventListener("mousedown", onMouseDown, false);
 document.addEventListener("mouseup", onMouseUp, false);
 
+document.addEventListener("touchstart", onTouchStart, false);
+document.addEventListener("touchend", onTouchEnd, false);
+
 updateOrder(selectedPatient); // update order in GUI
 animate(); // render
 
@@ -868,6 +871,28 @@ function syncAllCameras(cameraToCopy) {
 }
 
 function onMouseUp(event) {
+
+    clearInterval(syncCamerasInterval);
+}
+
+function onTouchStart(event) {
+
+    if (event.target) {
+
+        var targ = event.target,
+            cameraToCopy;
+
+        if (targ.className == "scene" && syncCameras == true) {
+
+            cameraToCopy = scenes[targ.parentNode.id - 1].userData.camera;
+
+            // 20 milliseconds interval => 50 FPS
+            syncCamerasInterval = setInterval(syncAllCameras, 20, cameraToCopy);
+        }
+    }
+}
+
+function onTouchEnd(event) {
 
     clearInterval(syncCamerasInterval);
 }
