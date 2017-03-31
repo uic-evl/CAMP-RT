@@ -4,6 +4,7 @@
 //      details on demand (organ/node name, radiation/volume data)
 //      update color scale/range
 //      dynamic dropdown
+//
 
 if (!Detector.webgl) {
     Detector.addGetWebGLMessage();
