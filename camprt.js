@@ -24,6 +24,13 @@ var selectedPatient = 1;
 var syncCameras = true,
     syncCamerasInterval;
 
+var raycaster;
+
+var mouse = new THREE.Vector2(),
+    INTERSECTED;
+
+var width, height;
+
 // 36 steps
 var color = d3.scaleLinear()
     .domain([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 55.0, 60.0, 70.0, 80.0, 90.0, 100.0, 110.0])
@@ -478,11 +485,15 @@ for (var i = 0, ref = arrayOfDivs.length = listItems.length; i < ref; i++) {
     arrayOfDivs[i] = listItems[i];
 }
 
+var currScene = scenes[0];
+
 document.addEventListener("mousedown", onMouseDown, false);
 document.addEventListener("mouseup", onMouseUp, false);
 
 document.addEventListener("touchstart", onTouchStart, false);
 document.addEventListener("touchend", onTouchEnd, false);
+
+document.addEventListener("mousemove", onDocumentMouseMove, false)
 
 updateOrder(selectedPatient); // update order in GUI
 animate(); // render
@@ -573,6 +584,10 @@ function init() {
 
     renderer.setClearColor(0xffffff, 1);
     renderer.setPixelRatio(window.devicePixelRatio);
+    //renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.sortObjects = false;
+
+    raycaster = new THREE.Raycaster();
 
     //
     var maxAnisotropy = renderer.getMaxAnisotropy();
@@ -631,7 +646,7 @@ function init() {
 
         parent.appendChild(element);
 
-        var camera = new THREE.OrthographicCamera(scene.userData.element.offsetWidth / -.8, scene.userData.element.offsetWidth / .8, scene.userData.element.offsetHeight / .8, scene.userData.element.offsetHeight / -.8, .001, 100000);
+        var camera = new THREE.OrthographicCamera(scene.userData.element.offsetWidth / -.8, scene.userData.element.offsetWidth / .8, scene.userData.element.offsetHeight / .8, scene.userData.element.offsetHeight / -.8, 1, 100000);
         camera.position.z = 2000;
 
         camera.updateProjectionMatrix();
@@ -826,14 +841,40 @@ function render() {
         renderer.setViewport(left, bottom, width, height);
         renderer.setScissor(left, bottom, width, height);
 
+        //controls.update();
+
         renderer.render(scene, camera);
     });
+
+    // raycaster
+
+    raycaster.setFromCamera(mouse, currScene.userData.camera);
+
+    var intersects = raycaster.intersectObjects(currScene.children);
+/*
+    if (intersects.length > 0) {
+        if (INTERSECTED != intersects[0].object) {
+            if (INTERSECTED) INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+            INTERSECTED = intersects[0].object;
+            console.log(INTERSECTED.name);
+            INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
+            INTERSECTED.material.color.setHex(0xff0000);
+        }
+    } else {
+        if (INTERSECTED) INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+        INTERSECTED = null;
+    }
+*/
+
+    //renderer.render( currScene, currScene.userData.camera );
+
+
 }
 
 function updateSize() {
 
-    var width = canvas.clientWidth;
-    var height = canvas.clientHeight;
+    width = canvas.clientWidth;
+    height = canvas.clientHeight;
 
     if (canvas.width !== width || canvas.height != height)
         renderer.setSize(width, height, false);
@@ -891,4 +932,27 @@ function onMouseUp(event) {
 function onTouchEnd(event) {
 
     clearInterval(syncCamerasInterval);
+}
+
+function onDocumentMouseMove(event) {
+
+    //event.preventDefault();
+
+    if (event.target) {
+
+        var targ = event.target;
+
+        if (targ.className == "scene") {
+
+            currScene = scenes[targ.parentNode.id - 1];
+        }
+    }
+
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    //mouse.x = (window.clientX / window.innerWidth) * 2 - 1;
+    //mouse.y = -(window.clientY / window.innerHeight) * 2 + 1;
+
+    //console.log(mouse.x + "   " + mouse.y);
 }
