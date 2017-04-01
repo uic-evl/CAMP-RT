@@ -843,16 +843,29 @@ function onMouseDown(event) {
 
     if (event.target) {
 
-        var targ = event.target,
-            cameraToCopy;
+        handleInputRotate(event);
+    }
+}
 
-        if (targ.className == "scene" && syncCameras == true) {
+function onTouchStart(event) {
 
-            cameraToCopy = scenes[targ.parentNode.id - 1].userData.camera;
+    if (event.target) {
 
-            // 20 milliseconds interval => 50 FPS
-            syncCamerasInterval = setInterval(syncAllCameras, 20, cameraToCopy);
-        }
+        handleInputRotate(event);
+    }
+}
+
+function handleInputRotate(event) {
+
+    var targ = event.target,
+        cameraToCopy;
+
+    if (targ.className == "scene" && syncCameras == true) {
+
+        cameraToCopy = scenes[targ.parentNode.id - 1].userData.camera;
+
+        // 20 milliseconds interval => 50 FPS
+        syncCamerasInterval = setInterval(syncAllCameras, 20, cameraToCopy);
     }
 }
 
@@ -873,23 +886,6 @@ function syncAllCameras(cameraToCopy) {
 function onMouseUp(event) {
 
     clearInterval(syncCamerasInterval);
-}
-
-function onTouchStart(event) {
-
-    if (event.target) {
-
-        var targ = event.target,
-            cameraToCopy;
-
-        if (targ.className == "scene" && syncCameras == true) {
-
-            cameraToCopy = scenes[targ.parentNode.id - 1].userData.camera;
-
-            // 20 milliseconds interval => 50 FPS
-            syncCamerasInterval = setInterval(syncAllCameras, 20, cameraToCopy);
-        }
-    }
 }
 
 function onTouchEnd(event) {
