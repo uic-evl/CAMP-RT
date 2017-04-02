@@ -867,12 +867,7 @@ function render() {
         renderer.render(scene, camera);
     });
 
-
-
-
     //renderer.render( currScene, currScene.userData.camera );
-
-
 }
 
 function updateSize() {
@@ -950,24 +945,8 @@ function onDocumentMouseMove(event) {
 
             currScene = scenes[targ.parentNode.id - 1];
 
-            //mouse.x = (event.clientX / targ.offsetWidth) * 2 - 1;
-            //mouse.y = -(event.clientY / targ.offsetHeight) * 2 + 1;
-
-            //mouse.x = (event.clientX / targ.offsetWidth) * 2 - 1;
-            //mouse.y = -(event.clientY / targ.offsetHeight) * 2 + 1;
-
-            //mouse.x = event.layerX - targ.offsetLeft;
-            //mouse.y = event.layerY - targ.offsetTop;
-
             mouse.x = ((event.layerX - targ.offsetLeft) / targ.offsetWidth) * 2 - 1;
             mouse.y = -((event.layerY - targ.offsetTop) / targ.offsetHeight) * 2 + 1;
-
-            console.log(mouse.x + "   " + mouse.y);
         }
     }
-
-    //mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    //mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-
 }
