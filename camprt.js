@@ -843,28 +843,32 @@ function render() {
 
         //controls.update();
 
+        // raycaster
+        //raycaster.setFromCamera(mouse, currScene.userData.camera);
+        raycaster.setFromCamera(mouse, camera);
+
+        //var intersects = raycaster.intersectObjects(currScene.children);
+        var intersects = raycaster.intersectObjects(scene.children);
+
+        if (intersects.length > 0) {
+            if (INTERSECTED != intersects[0].object) {
+                if (INTERSECTED) INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+                INTERSECTED = intersects[0].object;
+                console.log(INTERSECTED.name);
+                INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
+                INTERSECTED.material.color.setHex(0xff0000);
+            }
+        } else {
+            if (INTERSECTED) INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+            INTERSECTED = null;
+        }
+        //
+
         renderer.render(scene, camera);
     });
 
-    // raycaster
 
-    raycaster.setFromCamera(mouse, currScene.userData.camera);
 
-    var intersects = raycaster.intersectObjects(currScene.children);
-/*
-    if (intersects.length > 0) {
-        if (INTERSECTED != intersects[0].object) {
-            if (INTERSECTED) INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
-            INTERSECTED = intersects[0].object;
-            console.log(INTERSECTED.name);
-            INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
-            INTERSECTED.material.color.setHex(0xff0000);
-        }
-    } else {
-        if (INTERSECTED) INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
-        INTERSECTED = null;
-    }
-*/
 
     //renderer.render( currScene, currScene.userData.camera );
 
@@ -945,14 +949,25 @@ function onDocumentMouseMove(event) {
         if (targ.className == "scene") {
 
             currScene = scenes[targ.parentNode.id - 1];
+
+            //mouse.x = (event.clientX / targ.offsetWidth) * 2 - 1;
+            //mouse.y = -(event.clientY / targ.offsetHeight) * 2 + 1;
+
+            //mouse.x = (event.clientX / targ.offsetWidth) * 2 - 1;
+            //mouse.y = -(event.clientY / targ.offsetHeight) * 2 + 1;
+
+            //mouse.x = event.layerX - targ.offsetLeft;
+            //mouse.y = event.layerY - targ.offsetTop;
+
+            mouse.x = ((event.layerX - targ.offsetLeft) / targ.offsetWidth) * 2 - 1;
+            mouse.y = -((event.layerY - targ.offsetTop) / targ.offsetHeight) * 2 + 1;
+
+            console.log(mouse.x + "   " + mouse.y);
         }
     }
 
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    //mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    //mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    //mouse.x = (window.clientX / window.innerWidth) * 2 - 1;
-    //mouse.y = -(window.clientY / window.innerHeight) * 2 + 1;
 
-    //console.log(mouse.x + "   " + mouse.y);
 }
