@@ -27,7 +27,7 @@ var syncCameras = true,
 var raycaster;
 
 var mouse = new THREE.Vector2(),
-    INTERSECTED;
+    INTERSECTED, nodeHover;
 
 var width, height;
 
@@ -696,11 +696,13 @@ function init() {
         // node outline
         organs.forEach(function (organ, index) {
 
-            var outlineMesh = new THREE.Mesh(geometry, outlineMaterial);
+            var outlineMesh = new THREE.Mesh(geometry, outlineMaterial.clone());
 
             outlineMesh.position.x = (organ.x);
             outlineMesh.position.y = (organ.y);
             outlineMesh.position.z = (organ.z);
+
+            outlineMesh.name = "outline";
 
             outlineMesh.scale.multiplyScalar(1.1);
             scene.add(outlineMesh);
@@ -731,9 +733,7 @@ function init() {
             line.scale.x = line.scale.y = line.scale.z = 1;
             line.originalScale = 1;
 
-            // NOTE: Deactivated frustumCulled, otherwise it will not draw all lines (even though
-            // it looks like the lines are in the view frustum).
-            line.frustumCulled = false;
+            //line.frustumCulled = false;
 
             scene.add(line);
         });
@@ -850,16 +850,28 @@ function render() {
         //var intersects = raycaster.intersectObjects(currScene.children);
         var intersects = raycaster.intersectObjects(scene.children);
 
-        if (intersects.length > 0) {
-            if (INTERSECTED != intersects[0].object) {
-                if (INTERSECTED) INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
-                INTERSECTED = intersects[0].object;
-                console.log(INTERSECTED.name);
+        if (intersects.length > 1 && intersects[1].object.name == "outline") {
+
+            if (INTERSECTED != intersects[1].object) {
+
+                if (INTERSECTED)
+                    INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+
+                nodeHover = intersects[0].object;
+                INTERSECTED = intersects[1].object;
+
+                //console.log(nodeHover.name);
+                //console.log(intersects[1].object.geometry.type);
+
                 INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
-                INTERSECTED.material.color.setHex(0xff0000);
+                INTERSECTED.material.color.setHex(0x00e4ff);
             }
         } else {
-            if (INTERSECTED) INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+
+            if (INTERSECTED) {
+                INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+            }
+
             INTERSECTED = null;
         }
         //
