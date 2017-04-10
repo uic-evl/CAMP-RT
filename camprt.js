@@ -720,6 +720,8 @@ function init() {
             if (scene.children[index].name != organ.name)
                 console.log("Something isn't right");
 
+            scene.children[index].userData.dosePerVolume = pOrganData[index];
+
             var nodeColor = color(pOrganData[index]);
 
             scene.children[index].material.color.setStyle(nodeColor);
@@ -874,7 +876,8 @@ function render() {
                 nodeDetails.style.top = (mouseRaw.y + 10) + "px";
                 nodeDetails.style.left = (mouseRaw.x + 10) + "px";
 
-                nodeDetails.style.opacity = .95;
+                //nodeDetails.style.opacity = .95;
+                nodeDetails.style.display = "block";
 
                 //console.log(mouseRaw.x);
                 //console.log(mouseRaw.y);
@@ -888,7 +891,8 @@ function render() {
                 nodeDetails.style.top = -500 + "px";
                 nodeDetails.style.left = -500 + "px";
 
-                nodeDetails.style.opacity = 0.0;
+                //nodeDetails.style.opacity = 0.0;
+                nodeDetails.style.display = "none";
             }
 
             INTERSECTED = null;
