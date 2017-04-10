@@ -13,6 +13,7 @@ if (!Detector.webgl) {
 var canvas;
 
 var parent = document.getElementById("content");
+var nodeDetails = document.getElementById("details");
 
 var scenes = [],
     renderer;
@@ -25,6 +26,8 @@ var syncCameras = true,
     syncCamerasInterval;
 
 var raycaster;
+
+var mouseRaw = new THREE.Vector2();
 
 var mouse = new THREE.Vector2(),
     INTERSECTED, nodeHover;
@@ -861,19 +864,31 @@ function render() {
                 if (INTERSECTED)
                     INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
 
-                //INTERSECTED = intersects[1].object;
                 INTERSECTED = tempObject;
-
-                //console.log(nodeHover.name);
-                //console.log(intersects[1].object.geometry.type);
 
                 INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
                 INTERSECTED.material.color.setHex(0x00e4ff);
+
+                //details
+
+                nodeDetails.style.top = (mouseRaw.y + 10) + "px";
+                nodeDetails.style.left = (mouseRaw.x + 10) + "px";
+
+                nodeDetails.style.opacity = .95;
+
+                //console.log(mouseRaw.x);
+                //console.log(mouseRaw.y);
+
             }
         } else {
 
             if (INTERSECTED) {
                 INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+
+                nodeDetails.style.top = -500 + "px";
+                nodeDetails.style.left = -500 + "px";
+
+                nodeDetails.style.opacity = 0.0;
             }
 
             INTERSECTED = null;
@@ -960,6 +975,9 @@ function onDocumentMouseMove(event) {
         if (targ.className == "scene") {
 
             currScene = scenes[targ.parentNode.id - 1];
+
+            mouseRaw.x = event.x;
+            mouseRaw.y = event.y;
 
             mouse.x = ((event.layerX - targ.offsetLeft) / targ.offsetWidth) * 2 - 1;
             mouse.y = -((event.layerY - targ.offsetTop) / targ.offsetHeight) * 2 + 1;
