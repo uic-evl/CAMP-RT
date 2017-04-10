@@ -691,6 +691,7 @@ function init() {
             scene.children[index].position.z = (organ.z);
 
             scene.children[index].name = organ.name;
+            scene.children[index].userData.type = "node";
         });
 
         // node outline
@@ -702,7 +703,7 @@ function init() {
             outlineMesh.position.y = (organ.y);
             outlineMesh.position.z = (organ.z);
 
-            outlineMesh.name = "outline";
+            outlineMesh.name = organ.name + "_outline";
 
             outlineMesh.scale.multiplyScalar(1.1);
             scene.add(outlineMesh);
@@ -850,15 +851,18 @@ function render() {
         //var intersects = raycaster.intersectObjects(currScene.children);
         var intersects = raycaster.intersectObjects(scene.children);
 
-        if (intersects.length > 1 && intersects[1].object.name == "outline") {
+        if (intersects.length > 1 && intersects[0].object.userData.type == "node") {
 
-            if (INTERSECTED != intersects[1].object) {
+            nodeHover = intersects[0].object;
+            var tempObject = scene.getObjectByName(nodeHover.name + "_outline");
+
+            if (INTERSECTED != tempObject) {
 
                 if (INTERSECTED)
                     INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
 
-                nodeHover = intersects[0].object;
-                INTERSECTED = intersects[1].object;
+                //INTERSECTED = intersects[1].object;
+                INTERSECTED = tempObject;
 
                 //console.log(nodeHover.name);
                 //console.log(intersects[1].object.geometry.type);
