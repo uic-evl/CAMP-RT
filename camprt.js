@@ -513,9 +513,9 @@ function populateColorScale() {
     rangeColorScale.forEach(function (color, index) {
 
         var tempDiv = document.createElement("div");
+
         tempDiv.style.height = "100%";
         tempDiv.style.width = "9px";
-        //tempDiv.style.border = "1px solid red";
         tempDiv.style["backgroundColor"] = color;
         tempDiv.style.display = "inline-block";
         tempDiv.style.transition = "0.3s";
