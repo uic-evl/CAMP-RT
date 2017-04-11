@@ -887,8 +887,10 @@ function render() {
                 nodeDetails.style.top = (mouse.y + detailsOffsetY) + "px";
                 nodeDetails.style.left = (mouse.x + detailsOffsetX) + "px";
 
-                //nodeDetails.style.display = "block";
-                nodeDetails.style.opacity = .95;
+                nodeDetails.style.display = "block";
+                //nodeDetails.style.opacity = .95;
+
+                //nodeDetails.style["borderColor"] = "#" + nodeHover.material.color.getHexString();
 
                 // Organ name
                 var organName = document.getElementById("details_organName");
@@ -897,9 +899,6 @@ function render() {
                 // Dose Per Volume
                 var dosePerVolume = document.getElementById("details_dosePerVolume");
                 dosePerVolume.innerHTML = nodeHover.userData.dosePerVolume + " (GY/cc)";
-
-                //meanDoseVal.style.color = "#" + nodeHover.material.color.getHexString();
-                nodeDetails.style["borderColor"] = "#" + nodeHover.material.color.getHexString();
 
                 // line separator
                 var lineSeparator = document.getElementById("details_line");
@@ -933,8 +932,8 @@ function render() {
                 nodeDetails.style.top = -500 + "px";
                 nodeDetails.style.left = -500 + "px";
 
-                //nodeDetails.style.display = "none";
-                nodeDetails.style.opacity = .3;
+                nodeDetails.style.display = "none";
+                //nodeDetails.style.opacity = .3;
             }
 
             INTERSECTED = null;
