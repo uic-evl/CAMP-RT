@@ -27,9 +27,9 @@ var syncCameras = true,
 
 var raycaster;
 
-var mouseRaw = new THREE.Vector2();
+var mouse = new THREE.Vector2();
 
-var mouse = new THREE.Vector2(),
+var mouseNorm = new THREE.Vector2(),
     INTERSECTED, nodeHover;
 
 var width, height;
@@ -850,11 +850,11 @@ function render() {
         //controls.update();
 
         // raycaster
-        //raycaster.setFromCamera(mouse, currScene.userData.camera);
-        raycaster.setFromCamera(mouse, camera);
+        //raycaster.setFromCamera(mouseNorm, camera);
+        raycaster.setFromCamera(mouseNorm, currScene.userData.camera);
 
-        //var intersects = raycaster.intersectObjects(currScene.children);
-        var intersects = raycaster.intersectObjects(scene.children);
+        //var intersects = raycaster.intersectObjects(scene.children);
+        var intersects = raycaster.intersectObjects(currScene.children);
 
         if (intersects.length > 1 && intersects[0].object.userData.type == "node") {
 
@@ -871,16 +871,55 @@ function render() {
                 INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
                 INTERSECTED.material.color.setHex(0x00e4ff);
 
-                //details
+                // details
+                // mouse
 
-                nodeDetails.style.top = (mouseRaw.y + 10) + "px";
-                nodeDetails.style.left = (mouseRaw.x + 10) + "px";
+                var detailsOffsetX = 10;
+                var detailsOffsetY = 10;
 
-                //nodeDetails.style.opacity = .95;
-                nodeDetails.style.display = "block";
+                if (mouse.x + detailsOffsetX + nodeDetails.offsetWidth > canvas.clientWidth) {
 
-                //console.log(mouseRaw.x);
-                //console.log(mouseRaw.y);
+                    console.log("yay");
+                    // take out width style from #details when this is fixed
+
+                }
+
+                nodeDetails.style.top = (mouse.y + detailsOffsetY) + "px";
+                nodeDetails.style.left = (mouse.x + detailsOffsetX) + "px";
+
+                //nodeDetails.style.display = "block";
+                nodeDetails.style.opacity = .95;
+
+                // Organ name
+                var organName = document.getElementById("details_organName");
+                organName.innerHTML = nodeHover.name;
+
+                // Dose Per Volume
+                var dosePerVolume = document.getElementById("details_dosePerVolume");
+                dosePerVolume.innerHTML = nodeHover.userData.dosePerVolume + " (GY/cc)";
+
+                //meanDoseVal.style.color = "#" + nodeHover.material.color.getHexString();
+                nodeDetails.style["borderColor"] = "#" + nodeHover.material.color.getHexString();
+
+                // line separator
+                var lineSeparator = document.getElementById("details_line");
+                lineSeparator.style["borderColor"] = "#" + nodeHover.material.color.getHexString();
+
+
+                // Volume
+                var volumeVal = document.getElementById("details_volume_val");
+
+                // Mean Dose
+                var meanDoseVal = document.getElementById("details_meanDose_val");
+
+                // Min Dose
+                var minDoseVal = document.getElementById("details_minDose_val");
+
+                // Max Dose
+                var maxDoseVal = document.getElementById("details_maxDose_val");
+
+                //console.log(mouse.x);
+                //console.log(mouse.y);
 
             }
         } else {
@@ -888,11 +927,14 @@ function render() {
             if (INTERSECTED) {
                 INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
 
+                // details
+
+                // mouse
                 nodeDetails.style.top = -500 + "px";
                 nodeDetails.style.left = -500 + "px";
 
-                //nodeDetails.style.opacity = 0.0;
-                nodeDetails.style.display = "none";
+                //nodeDetails.style.display = "none";
+                nodeDetails.style.opacity = .3;
             }
 
             INTERSECTED = null;
@@ -980,11 +1022,11 @@ function onDocumentMouseMove(event) {
 
             currScene = scenes[targ.parentNode.id - 1];
 
-            mouseRaw.x = event.x;
-            mouseRaw.y = event.y;
+            mouse.x = event.x;
+            mouse.y = event.y;
 
-            mouse.x = ((event.layerX - targ.offsetLeft) / targ.offsetWidth) * 2 - 1;
-            mouse.y = -((event.layerY - targ.offsetTop) / targ.offsetHeight) * 2 + 1;
+            mouseNorm.x = ((event.layerX - targ.offsetLeft) / targ.offsetWidth) * 2 - 1;
+            mouseNorm.y = -((event.layerY - targ.offsetTop) / targ.offsetHeight) * 2 + 1;
         }
     }
 }
