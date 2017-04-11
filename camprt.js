@@ -35,9 +35,12 @@ var mouseNorm = new THREE.Vector2(),
 var width, height;
 
 // 36 steps
+
+var domainColorScale = [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 55.0, 60.0, 70.0, 80.0, 90.0, 100.0, 110.0];
+var rangeColorScale = ['#ffffe0', '#fff8d2', '#fff0c4', '#ffe9b8', '#ffe2ae', '#ffdaa3', '#ffd39a', '#ffcb91', '#ffc389', '#ffbb82', '#ffb27c', '#ffab77', '#ffa272', '#ff986e', '#fe906a', '#fb8768', '#f98065', '#f67762', '#f26f60', '#ee675d', '#eb5f5b', '#e75758', '#e25055', '#dd4852', '#d8404e', '#d3394a', '#cc3146', '#c62a41', '#c0223b', '#b91c35', '#b3152f', '#ab0e28', '#a40820', '#9b0317', '#93010e', '#8b0000'];
 var color = d3.scaleLinear()
-    .domain([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 55.0, 60.0, 70.0, 80.0, 90.0, 100.0, 110.0])
-    .range(['#ffffe0', '#fff8d2', '#fff0c4', '#ffe9b8', '#ffe2ae', '#ffdaa3', '#ffd39a', '#ffcb91', '#ffc389', '#ffbb82', '#ffb27c', '#ffab77', '#ffa272', '#ff986e', '#fe906a', '#fb8768', '#f98065', '#f67762', '#f26f60', '#ee675d', '#eb5f5b', '#e75758', '#e25055', '#dd4852', '#d8404e', '#d3394a', '#cc3146', '#c62a41', '#c0223b', '#b91c35', '#b3152f', '#ab0e28', '#a40820', '#9b0317', '#93010e', '#8b0000']);
+    .domain(domainColorScale)
+    .range(rangeColorScale);
 
 // data
 var organs = [
@@ -475,7 +478,7 @@ var patients = [
 var pRankingOrder = patients[selectedPatient - 1].similarity;
 var pScores = patients[selectedPatient - 1].scores;
 
-
+populateColorScale();
 flipGraph(); // fixes orientation of organs
 computeCenterOfGraph(); // compute center of graph
 shiftGraphToOrigin(); // center graph to origin
@@ -502,6 +505,26 @@ updateOrder(selectedPatient); // update order in GUI
 animate(); // render
 
 // ----------------------------------------------------------------
+
+function populateColorScale() {
+
+    var parentDiv = document.getElementById("colorScale");
+
+    rangeColorScale.forEach(function (color, index) {
+
+        var tempDiv = document.createElement("div");
+        tempDiv.style.height = "100%";
+        tempDiv.style.width = "9px";
+        //tempDiv.style.border = "1px solid red";
+        tempDiv.style["backgroundColor"] = color;
+        tempDiv.style.display = "inline-block";
+        tempDiv.style.transition = "0.3s";
+
+        parentDiv.appendChild(tempDiv);
+    });
+
+
+}
 
 function flipGraph() {
 
