@@ -1,10 +1,9 @@
 'use strict';
 
 // SOME QUICK, TEMPORARY NOTES:
-//      details on demand (organ/node name, radiation/volume data)
 //      update color scale/range
 //      dynamic dropdown
-//
+//      top navbar slide down to show extended view of selected patient
 
 if (!Detector.webgl) {
     Detector.addGetWebGLMessage();
