@@ -1043,11 +1043,11 @@ function onDocumentMouseMove(event) {
 
             currScene = scenes[targ.parentNode.id - 1];
 
-            mouse.x = event.x;
-            mouse.y = event.y;
+            mouse.x = event.clientX;
+            mouse.y = event.clientY;
 
-            mouseNorm.x = ((event.layerX - targ.offsetLeft) / targ.offsetWidth) * 2 - 1;
-            mouseNorm.y = -((event.layerY - targ.offsetTop) / targ.offsetHeight) * 2 + 1;
+            mouseNorm.x = (event.offsetX / targ.offsetWidth) * 2 - 1;
+            mouseNorm.y = -(event.offsetY / targ.offsetHeight) * 2 + 1;
         }
     }
 }
