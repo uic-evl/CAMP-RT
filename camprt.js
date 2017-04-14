@@ -532,8 +532,6 @@ function populateColorScale() {
 
         parentDiv.appendChild(tempDiv);
     });
-
-
 }
 
 function flipGraph() {
@@ -905,52 +903,7 @@ function render() {
                 INTERSECTED.material.color.setHex(0x00e4ff);
 
                 // details
-
-                // mouse
-                // check if details are offscreen, then shift appropriately
-                // X, add 10 pixels for buffer, since width is dynamic
-                if (mouse.x + detailsOffsetX + nodeDetails.offsetWidth + 10 > canvas.clientWidth) {
-                    nodeDetails.style.left = (mouse.x - detailsOffsetX - nodeDetails.offsetWidth) + "px";
-                } else {
-                    nodeDetails.style.left = (mouse.x + detailsOffsetX) + "px";
-                }
-
-                // Y
-                if (mouse.y + detailsOffsetY + nodeDetails.offsetHeight > canvas.clientHeight) {
-                    nodeDetails.style.top = (mouse.y - detailsOffsetY - nodeDetails.offsetHeight) + "px";
-                } else {
-                    nodeDetails.style.top = (mouse.y + detailsOffsetY) + "px";
-                }
-
-                nodeDetails.style.display = "block";
-                //nodeDetails.style.opacity = .95;
-
-                //nodeDetails.style["borderColor"] = "#" + nodeHover.material.color.getHexString();
-
-                // Organ name
-                organName.innerHTML = nodeHover.name;
-
-                // Dose Per Volume
-                dosePerVolume.innerHTML = nodeHover.userData.dosePerVolume + " (GY/cc)";
-
-                // line separator
-                lineSeparator.style["borderColor"] = "#" + nodeHover.material.color.getHexString();
-
-
-                // Volume
-                //volumeVal.innerHTML =
-
-                // Mean Dose
-                //meanDoseVal.innerHTML =
-
-                // Min Dose
-                //minDoseVal.innerHTML =
-
-                // Max Dose
-                //maxDoseVal.innerHTML =
-
-                //console.log(mouse.x);
-                //console.log(mouse.y);
+                populateAndPlaceDetails("SHOW");
 
             }
         } else {
@@ -959,14 +912,7 @@ function render() {
                 INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
 
                 // details
-
-                // mouse
-
-                nodeDetails.style.display = "none";
-                //nodeDetails.style.opacity = .3;
-
-                nodeDetails.style.top = -500 + "px";
-                nodeDetails.style.left = -500 + "px";
+                populateAndPlaceDetails("HIDE");
 
             }
 
@@ -987,6 +933,63 @@ function updateSize() {
 
     if (canvas.width !== width || canvas.height != height)
         renderer.setSize(width, height, false);
+}
+
+function populateAndPlaceDetails(state) {
+
+    if (state == "SHOW") {
+        // PLACEMENT
+        // check if details are offscreen, then shift appropriately
+        // X, add 10 pixels for buffer, since width is dynamic
+        if (mouse.x + detailsOffsetX + nodeDetails.offsetWidth + 10 > canvas.clientWidth) {
+            nodeDetails.style.left = (mouse.x - detailsOffsetX - nodeDetails.offsetWidth) + "px";
+        } else {
+            nodeDetails.style.left = (mouse.x + detailsOffsetX) + "px";
+        }
+
+        // Y
+        if (mouse.y + detailsOffsetY + nodeDetails.offsetHeight > canvas.clientHeight) {
+            nodeDetails.style.top = (mouse.y - detailsOffsetY - nodeDetails.offsetHeight) + "px";
+        } else {
+            nodeDetails.style.top = (mouse.y + detailsOffsetY) + "px";
+        }
+
+        nodeDetails.style.display = "block";
+        //nodeDetails.style.opacity = .95;
+
+        //nodeDetails.style["borderColor"] = "#" + nodeHover.material.color.getHexString();
+
+        // POPULATE
+
+        // Organ name
+        organName.innerHTML = nodeHover.name;
+
+        // Dose Per Volume
+        dosePerVolume.innerHTML = nodeHover.userData.dosePerVolume + " (GY/cc)";
+
+        // line separator
+        lineSeparator.style["borderColor"] = "#" + nodeHover.material.color.getHexString();
+
+        // Volume
+        //volumeVal.innerHTML =
+
+        // Mean Dose
+        //meanDoseVal.innerHTML =
+
+        // Min Dose
+        //minDoseVal.innerHTML =
+
+        // Max Dose
+        //maxDoseVal.innerHTML =
+
+    } else if (state == "HIDE") {
+
+        nodeDetails.style.display = "none";
+        //nodeDetails.style.opacity = .3;
+
+        nodeDetails.style.top = -500 + "px";
+        nodeDetails.style.left = -500 + "px";
+    }
 }
 
 function onMouseDown(event) {
