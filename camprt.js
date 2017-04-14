@@ -14,6 +14,17 @@ var canvas;
 var parent = document.getElementById("content");
 var nodeDetails = document.getElementById("details");
 
+var detailsOffsetX = 10;
+var detailsOffsetY = 10;
+
+var organName = document.getElementById("details_organName");
+var dosePerVolume = document.getElementById("details_dosePerVolume");
+var lineSeparator = document.getElementById("details_line");
+var volumeVal = document.getElementById("details_volume_val");
+var meanDoseVal = document.getElementById("details_meanDose_val");
+var minDoseVal = document.getElementById("details_minDose_val");
+var maxDoseVal = document.getElementById("details_maxDose_val");
+
 var scenes = [],
     renderer;
 
@@ -894,20 +905,22 @@ function render() {
                 INTERSECTED.material.color.setHex(0x00e4ff);
 
                 // details
+
                 // mouse
-
-                var detailsOffsetX = 10;
-                var detailsOffsetY = 10;
-
-                if (mouse.x + detailsOffsetX + nodeDetails.offsetWidth > canvas.clientWidth) {
-
-                    console.log("yay");
-                    // take out width style from #details when this is fixed
-
+                // check if details are offscreen, then shift appropriately
+                // X, add 10 pixels for buffer, since width is dynamic
+                if (mouse.x + detailsOffsetX + nodeDetails.offsetWidth + 10 > canvas.clientWidth) {
+                    nodeDetails.style.left = (mouse.x - detailsOffsetX - nodeDetails.offsetWidth) + "px";
+                } else {
+                    nodeDetails.style.left = (mouse.x + detailsOffsetX) + "px";
                 }
 
-                nodeDetails.style.top = (mouse.y + detailsOffsetY) + "px";
-                nodeDetails.style.left = (mouse.x + detailsOffsetX) + "px";
+                // Y
+                if (mouse.y + detailsOffsetY + nodeDetails.offsetHeight > canvas.clientHeight) {
+                    nodeDetails.style.top = (mouse.y - detailsOffsetY - nodeDetails.offsetHeight) + "px";
+                } else {
+                    nodeDetails.style.top = (mouse.y + detailsOffsetY) + "px";
+                }
 
                 nodeDetails.style.display = "block";
                 //nodeDetails.style.opacity = .95;
@@ -915,29 +928,26 @@ function render() {
                 //nodeDetails.style["borderColor"] = "#" + nodeHover.material.color.getHexString();
 
                 // Organ name
-                var organName = document.getElementById("details_organName");
                 organName.innerHTML = nodeHover.name;
 
                 // Dose Per Volume
-                var dosePerVolume = document.getElementById("details_dosePerVolume");
                 dosePerVolume.innerHTML = nodeHover.userData.dosePerVolume + " (GY/cc)";
 
                 // line separator
-                var lineSeparator = document.getElementById("details_line");
                 lineSeparator.style["borderColor"] = "#" + nodeHover.material.color.getHexString();
 
 
                 // Volume
-                var volumeVal = document.getElementById("details_volume_val");
+                //volumeVal.innerHTML =
 
                 // Mean Dose
-                var meanDoseVal = document.getElementById("details_meanDose_val");
+                //meanDoseVal.innerHTML =
 
                 // Min Dose
-                var minDoseVal = document.getElementById("details_minDose_val");
+                //minDoseVal.innerHTML =
 
                 // Max Dose
-                var maxDoseVal = document.getElementById("details_maxDose_val");
+                //maxDoseVal.innerHTML =
 
                 //console.log(mouse.x);
                 //console.log(mouse.y);
@@ -951,11 +961,13 @@ function render() {
                 // details
 
                 // mouse
-                nodeDetails.style.top = -500 + "px";
-                nodeDetails.style.left = -500 + "px";
 
                 nodeDetails.style.display = "none";
                 //nodeDetails.style.opacity = .3;
+
+                nodeDetails.style.top = -500 + "px";
+                nodeDetails.style.left = -500 + "px";
+
             }
 
             INTERSECTED = null;
