@@ -3,7 +3,7 @@
 // SOME QUICK, TEMPORARY NOTES:
 //      update color scale/range
 //      dynamic dropdown
-//      top navbar slide down to show extended view of selected patient
+//      top navbar slide down to show extended view of selected patient?
 
 if (!Detector.webgl) {
     Detector.addGetWebGLMessage();
@@ -488,6 +488,7 @@ var patients = [
 var pRankingOrder = patients[selectedPatient - 1].similarity;
 var pScores = patients[selectedPatient - 1].scores;
 
+populateDropDownMenu();
 populateColorScale();
 flipGraph(); // fixes orientation of organs
 computeCenterOfGraph(); // compute center of graph
@@ -531,6 +532,21 @@ function populateColorScale() {
         tempDiv.style.transition = "0.3s";
 
         parentDiv.appendChild(tempDiv);
+    });
+}
+
+function populateDropDownMenu() {
+
+    var menu = document.getElementById("patientMenu");
+
+    patients.forEach(function (patient, index) {
+
+         var tempOption = document.createElement("option");
+
+        tempOption.value = patient.id;
+        tempOption.innerHTML = "Patient " + patient.id;
+
+        menu.appendChild(tempOption);
     });
 }
 
