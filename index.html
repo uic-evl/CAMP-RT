@@ -360,16 +360,14 @@
 
         function handleSideNav() {
 
-            if (sideNavClosed) {
-                //document.getElementById("mySidenav").style.width = "350px";
-                document.getElementById("mySidenav").style.right = "0px";
-                sideNavClosed = !sideNavClosed;
-            } else {
-                //document.getElementById("mySidenav").style.width = "0";
-                document.getElementById("mySidenav").style.right = "-400px";
-                sideNavClosed = !sideNavClosed;
-            }
+            var sideNav = document.getElementById("mySidenav");
 
+            if (sideNavClosed)
+                sideNav.style.right = "0px";
+            else
+                sideNav.style.right = "-400px";
+
+            sideNavClosed = !sideNavClosed;
         }
 
     </script>
