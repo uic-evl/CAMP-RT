@@ -541,7 +541,7 @@ function populateDropDownMenu() {
 
     patients.forEach(function (patient, index) {
 
-         var tempOption = document.createElement("option");
+        var tempOption = document.createElement("option");
 
         tempOption.value = patient.id;
         tempOption.innerHTML = "Patient " + patient.id;
