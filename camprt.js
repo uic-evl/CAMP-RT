@@ -88,154 +88,9 @@ function loadData(data) {
 
 // put main functions in the d3 code!!!!!!
 
-console.log(test);
+//console.log(test);
 
-var organs = [
-    {
-        name: "Brainstem",
-        x: 480,
-        y: 210,
-        z: 0
-    },
-    {
-        name: "Cricopharyngeal_Muscle",
-        x: 410,
-        y: 700,
-        z: 0
-    },
-    {
-        name: "Esophagus",
-        x: 450,
-        y: 810,
-        z: 0
-    },
-    {
-        name: "Extended_Oral_Cavity",
-        x: 225,
-        y: 400,
-        z: 0
-    },
-    {
-        name: "Glottic_Area",
-        x: 340,
-        y: 715,
-        z: 0
-    },
-    {
-        name: "IPC",
-        x: 405,
-        y: 625,
-        z: 0
-    },
-    {
-        name: "Lower_Lip",
-        x: 65,
-        y: 445,
-        z: 0
-    },
-    {
-        name: "Lt_Anterior_Seg_Eyeball",
-        x: 140,
-        y: 75,
-        z: 65
-    },
-    {
-        name: "Lt_Parotid_Gland",
-        x: 400,
-        y: 340,
-        z: 135
-    },
-    {
-        name: "Lt_Posterior_Seg_Eyeball",
-        x: 190,
-        y: 75,
-        z: 65
-    },
-    {
-        name: "Lt_Submandibular_Gland",
-        x: 325,
-        y: 500,
-        z: 90
-    },
-    {
-        name: "Lt_thyroid_lobe",
-        x: 385,
-        y: 760,
-        z: 45
-    },
-    {
-        name: "MPC",
-        x: 400,
-        y: 560,
-        z: 0
-    },
-    {
-        name: "Pituitary_Gland",
-        x: 395,
-        y: 135,
-        z: 0
-    },
-    {
-        name: "Rt_Anterior_Seg_Eyeball",
-        x: 140,
-        y: 75,
-        z: -65
-    },
-    {
-        name: "Rt_Parotid_Gland",
-        x: 400,
-        y: 340,
-        z: -135
-    },
-    {
-        name: "Rt_Posterior_Seg_Eyeball",
-        x: 190,
-        y: 75,
-        z: -65
-    },
-    {
-        name: "Rt_Submandibular_Gland",
-        x: 325,
-        y: 500,
-        z: -90
-    },
-    {
-        name: "Rt_thyroid_lobe",
-        x: 385,
-        y: 760,
-        z: -45
-    },
-    {
-        name: "SPC",
-        x: 375,
-        y: 430,
-        z: 0
-    },
-    {
-        name: "Spinal_Cord",
-        x: 505,
-        y: 610,
-        z: 0
-    },
-    {
-        name: "Supraglottic_Larynx",
-        x: 310,
-        y: 590,
-        z: 0
-    },
-    {
-        name: "Thyroid_cartilage",
-        x: 345,
-        y: 655,
-        z: 0
-    },
-    {
-        name: "Upper_Lip",
-        x: 70,
-        y: 270,
-        z: 0
-    }
-];
+var organs;
 
 var links = [
     {
@@ -522,52 +377,53 @@ var patients = [
 ];
 
 
-//console.log(JSON.stringify(patients));
-
-
 var pRankingOrder = patients[selectedPatient - 1].similarity;
 var pScores = patients[selectedPatient - 1].scores;
 
-populateDropDownMenu();
-populateColorScale();
-flipGraph(); // fixes orientation of organs
-computeCenterOfGraph(); // compute center of graph
-shiftGraphToOrigin(); // center graph to origin
-init(); // initialize
+var listItems, arrayOfDivs = [],
+    currScene;
 
-var listItems = document.getElementsByClassName("list-item"),
-    arrayOfDivs = [];
+d3.queue()
+    .defer(d3.json, "data/organs.json")
+    .defer(d3.json, "data/links.json")
+    .defer(d3.json, "data/patients.json")
+    .await(start);
 
-for (var i = 0, ref = arrayOfDivs.length = listItems.length; i < ref; i++) {
-    arrayOfDivs[i] = listItems[i];
+function start(error, organsData, linksData, patientsData) {
+  if(error) { return console.warn(error); }
+
+    console.log(organsData);
+
+    organs = organsData;
+
+    populateDropDownMenu();
+    populateColorScale();
+    flipGraph(); // fixes orientation of organs
+    computeCenterOfGraph(); // compute center of graph
+    shiftGraphToOrigin(); // center graph to origin
+    init(); // initialize
+
+    listItems = document.getElementsByClassName("list-item");
+
+    for (var i = 0, ref = arrayOfDivs.length = listItems.length; i < ref; i++) {
+        arrayOfDivs[i] = listItems[i];
+    }
+
+    currScene = scenes[0];
+
+    document.addEventListener("mousedown", onMouseDown, false);
+    document.addEventListener("mouseup", onMouseUp, false);
+
+    document.addEventListener("touchstart", onTouchStart, false);
+    document.addEventListener("touchend", onTouchEnd, false);
+
+    document.addEventListener("mousemove", onDocumentMouseMove, false)
+
+    updateOrder(selectedPatient); // update order in GUI
+    animate(); // render
 }
-
-var currScene = scenes[0];
-
-document.addEventListener("mousedown", onMouseDown, false);
-document.addEventListener("mouseup", onMouseUp, false);
-
-document.addEventListener("touchstart", onTouchStart, false);
-document.addEventListener("touchend", onTouchEnd, false);
-
-document.addEventListener("mousemove", onDocumentMouseMove, false)
-
-updateOrder(selectedPatient); // update order in GUI
-animate(); // render
 
 // ----------------------------------------------------------------
-
-function readTextFile(file, callback) {
-    var rawFile = new XMLHttpRequest();
-    rawFile.overrideMimeType("application/json");
-    rawFile.open("GET", file, true);
-    rawFile.onreadystatechange = function () {
-        if (rawFile.readyState === 4 && rawFile.status == "200") {
-            callback(rawFile.responseText);
-        }
-    }
-    rawFile.send(null);
-}
 
 function populateColorScale() {
 
