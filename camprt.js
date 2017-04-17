@@ -55,6 +55,41 @@ var color = d3.scaleLinear()
     .range(rangeColorScale);
 
 // data
+
+//var test = JSON.parse();
+
+var test;
+
+//readTextFile("data/organs.json", function (text) {
+//    var data = JSON.parse(text);
+//    //console.log(test);
+//});
+
+/*
+d3.json("data/organs.json", function (error, json) {
+    if (error) return console.warn(error);
+
+    var data = json;
+
+    loadData(json);
+    //console.log(json);
+
+    // call function in here to set js list
+
+});
+
+function loadData(data) {
+
+    test = data;
+    console.log(test);
+
+}
+*/
+
+// put main functions in the d3 code!!!!!!
+
+console.log(test);
+
 var organs = [
     {
         name: "Brainstem",
@@ -487,7 +522,7 @@ var patients = [
 ];
 
 
-console.log(JSON.stringify(organs));
+//console.log(JSON.stringify(patients));
 
 
 var pRankingOrder = patients[selectedPatient - 1].similarity;
@@ -521,6 +556,18 @@ updateOrder(selectedPatient); // update order in GUI
 animate(); // render
 
 // ----------------------------------------------------------------
+
+function readTextFile(file, callback) {
+    var rawFile = new XMLHttpRequest();
+    rawFile.overrideMimeType("application/json");
+    rawFile.open("GET", file, true);
+    rawFile.onreadystatechange = function () {
+        if (rawFile.readyState === 4 && rawFile.status == "200") {
+            callback(rawFile.responseText);
+        }
+    }
+    rawFile.send(null);
+}
 
 function populateColorScale() {
 
