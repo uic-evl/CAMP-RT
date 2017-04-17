@@ -2,8 +2,10 @@
 
 // SOME QUICK, TEMPORARY NOTES:
 //      update color scale/range
-//      dynamic dropdown
-//      top navbar slide down to show extended view of selected patient?
+//      top navbar slides down to show extended view of selected patient?
+//          shows volume rendered detailed models of organs
+//          exploded view
+//      move data to json files
 
 if (!Detector.webgl) {
     Detector.addGetWebGLMessage();
@@ -485,6 +487,9 @@ var patients = [
 ];
 
 
+console.log(JSON.stringify(organs));
+
+
 var pRankingOrder = patients[selectedPatient - 1].similarity;
 var pScores = patients[selectedPatient - 1].scores;
 
@@ -644,12 +649,12 @@ function init() {
 
     var textureLoader = new THREE.TextureLoader();
 
-    var texture0 = textureLoader.load('data/anterior.png'); // xpos, Right
-    var texture1 = textureLoader.load('data/posterior.png'); // xneg, Left
-    var texture2 = textureLoader.load('data/superior.png'); // ypos, Top
-    var texture3 = textureLoader.load('data/inferior.png'); // yneg, Bottom
-    var texture4 = textureLoader.load('data/right.png'); // zpos, Back
-    var texture5 = textureLoader.load('data/left.png'); // zneg, Front
+    var texture0 = textureLoader.load('resources/anterior.png'); // xpos, Right
+    var texture1 = textureLoader.load('resources/posterior.png'); // xneg, Left
+    var texture2 = textureLoader.load('resources/superior.png'); // ypos, Top
+    var texture3 = textureLoader.load('resources/inferior.png'); // yneg, Bottom
+    var texture4 = textureLoader.load('resources/right.png'); // zpos, Back
+    var texture5 = textureLoader.load('resources/left.png'); // zneg, Front
 
     texture0.anisotropy = maxAnisotropy;
     texture1.anisotropy = maxAnisotropy;
