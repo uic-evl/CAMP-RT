@@ -5,7 +5,7 @@
 //      top navbar slides down to show extended view of selected patient?
 //          shows volume rendered detailed models of organs
 //          exploded view
-//      move data to json files
+//          on left show list of all organs, highlights organ when hovering over node
 
 if (!Detector.webgl) {
     Detector.addGetWebGLMessage();
@@ -30,7 +30,7 @@ var maxDoseVal = document.getElementById("details_maxDose_val");
 var scenes = [],
     renderer;
 
-var sceneCenter = [0, 0, 0];
+var sceneCenter = [0.0, 0.0, 0.0];
 
 var selectedPatient = 1;
 
@@ -54,41 +54,6 @@ var color = d3.scaleLinear()
     .domain(domainColorScale)
     .range(rangeColorScale);
 
-// data
-
-//var test = JSON.parse();
-
-var test;
-
-//readTextFile("data/organs.json", function (text) {
-//    var data = JSON.parse(text);
-//    //console.log(test);
-//});
-
-/*
-d3.json("data/organs.json", function (error, json) {
-    if (error) return console.warn(error);
-
-    var data = json;
-
-    loadData(json);
-    //console.log(json);
-
-    // call function in here to set js list
-
-});
-
-function loadData(data) {
-
-    test = data;
-    console.log(test);
-
-}
-*/
-
-// put main functions in the d3 code!!!!!!
-
-//console.log(test);
 
 // data
 var organs, links, patients;
@@ -180,9 +145,13 @@ function flipGraph() {
 
     organs.forEach(function (organ, index) {
 
-        organ.x = (organ.x * -1);
-        organ.y = (organ.y * -1);
-        organ.z = (organ.z * -1);
+        var tOrganX = (organ.x * -1);
+        var tOrganY = (organ.y * -1);
+        var tOrganZ = (organ.z * -1);
+
+        organ.x = tOrganY;
+        organ.y = tOrganZ;
+        organ.z = tOrganX;
     });
 }
 
@@ -194,10 +163,12 @@ function computeCenterOfGraph() {
     xyzMin = getMin();
     xyzMax = getMax();
 
+    //Math.round()
+
     sceneCenter = [
-        Math.round((xyzMin[0] + xyzMax[0]) / 2),
-        Math.round((xyzMin[1] + xyzMax[1]) / 2),
-        Math.round((xyzMin[2] + xyzMax[2]) / 2)
+        ((xyzMin[0] + xyzMax[0]) / 2),
+        ((xyzMin[1] + xyzMax[1]) / 2),
+        ((xyzMin[2] + xyzMax[2]) / 2)
     ];
 }
 
@@ -322,7 +293,9 @@ function init() {
 
         parent.appendChild(element);
 
-        var camera = new THREE.OrthographicCamera(scene.userData.element.offsetWidth / -.8, scene.userData.element.offsetWidth / .8, scene.userData.element.offsetHeight / .8, scene.userData.element.offsetHeight / -.8, 1, 100000);
+        var scalarVal = 4.5;
+
+        var camera = new THREE.OrthographicCamera(scene.userData.element.offsetWidth / -scalarVal, scene.userData.element.offsetWidth / scalarVal, scene.userData.element.offsetHeight / scalarVal, scene.userData.element.offsetHeight / -scalarVal, 1, 100000);
         camera.position.z = 2000;
 
         camera.updateProjectionMatrix();
@@ -336,7 +309,7 @@ function init() {
 
         scene.userData.controls = controls;
 
-        var geometry = new THREE.SphereGeometry(20, 16, 16);
+        var geometry = new THREE.SphereGeometry(4, 16, 16);
 
         var material = new THREE.MeshStandardMaterial({
 
@@ -369,6 +342,7 @@ function init() {
             scene.children[index].name = organ.name;
             scene.children[index].userData.type = "node";
         });
+
 
         // node outline
         organs.forEach(function (organ, index) {
@@ -422,11 +396,11 @@ function init() {
 
         // orientation marker, patient coordinate system
         var MovingCubeMat = new THREE.MultiMaterial(materialArray);
-        var MovingCubeGeom = new THREE.CubeGeometry(65, 65, 65, 1, 1, 1, materialArray);
+        var MovingCubeGeom = new THREE.CubeGeometry(15, 15, 15, 1, 1, 1, materialArray);
         var MovingCube = new THREE.Mesh(MovingCubeGeom, MovingCubeMat);
 
         camera.add(MovingCube);
-        MovingCube.position.set(365, -365, -1000);
+        MovingCube.position.set(65, -65, -1000);
 
         var light = new THREE.AmbientLight(0xffffff, 1.0); // white light
         scene.add(light);
@@ -434,6 +408,47 @@ function init() {
 
         scenes.push(scene);
     }
+
+    ///models
+    // Load STL model
+
+    var tempObject = scenes[0].getObjectByName("Upper_Lip");
+
+    console.log("loading model");
+    var loaderSTL = new THREE.STLLoader();
+    loaderSTL.load('resources/models/Upper_Lip.stl',
+        function (geometry) {
+            var material = new THREE.MeshPhongMaterial({
+                color: 0xF44336,
+                specular: 0x111111,
+                shininess: 200
+            });
+            var mesh = new THREE.Mesh(geometry, material);
+            // to LPS space
+            /*
+                        var RASToLPS = new THREE.Matrix4();
+                        RASToLPS.set(-1, 0, 0, 0,
+                            0, -1, 0, 0,
+                            0, 0, 1, 0,
+                            0, 0, 0, 1);
+                        mesh.applyMatrix(RASToLPS);
+            */
+
+            //mesh.position.x = organs[23].x;
+            //mesh.position.y = organs[23].y;
+            //mesh.position.z = organs[23].z;
+
+            //mesh.position.set(tempObject.position.x, tempObject.position.y, tempObject.position.z);
+
+            mesh.position.set(0, 0, 0);
+
+
+
+            //scenes[0].add(mesh);
+        });
+
+    ///
+
 
     //renderer.autoClear = false;
 }
