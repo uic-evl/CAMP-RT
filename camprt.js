@@ -39,10 +39,11 @@ var syncCameras = true,
 
 var raycaster;
 
-var mouse = new THREE.Vector2();
+var mouse = new THREE.Vector2(-500, -500);
 
-var mouseNorm = new THREE.Vector2(),
-    INTERSECTED, nodeHover;
+
+var mouseNorm = new THREE.Vector2(-1, -1),
+    INTERSECTED = null, nodeHover;
 
 var width, height;
 
@@ -402,6 +403,7 @@ function init() {
         camera.add(MovingCube);
         MovingCube.position.set(65, -65, -1000);
 
+        // light
         var light = new THREE.AmbientLight(0xffffff, 1.0); // white light
         scene.add(light);
 
