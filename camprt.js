@@ -42,7 +42,7 @@ var raycaster;
 var mouse = new THREE.Vector2(-500, -500);
 
 
-var mouseNorm = new THREE.Vector2(-1, -1),
+var mouseNorm = new THREE.Vector2(-500, -500),
     INTERSECTED = null, nodeHover;
 
 var width, height;
