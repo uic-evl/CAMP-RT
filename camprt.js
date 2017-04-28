@@ -35,15 +35,16 @@ var sceneCenter = [0.0, 0.0, 0.0];
 var selectedPatient = 1;
 
 var syncCameras = true,
-    syncCamerasInterval;
+    syncCamerasInterval,
+    detailsOnRotate = true;
 
 var raycaster;
 
 var mouse = new THREE.Vector2(-500, -500);
 
-
 var mouseNorm = new THREE.Vector2(-500, -500),
-    INTERSECTED = null, nodeHover;
+    INTERSECTED = null,
+    nodeHover;
 
 var width, height;
 
@@ -101,7 +102,7 @@ function start(error, organsData, linksData, patientsData) {
     document.addEventListener("touchstart", onTouchStart, false);
     document.addEventListener("touchend", onTouchEnd, false);
 
-    document.addEventListener("mousemove", onDocumentMouseMove, false)
+    document.addEventListener("mousemove", onDocumentMouseMove, false);
 
     updateOrder(selectedPatient); // update order in GUI
     animate(); // render
@@ -365,14 +366,28 @@ function init() {
 
         organs.forEach(function (organ, index) {
 
-            if (scene.children[index].name != organ.name)
+            if (scene.children[index].name != organ.name) {
                 console.log("Something isn't right");
 
-            scene.children[index].userData.dosePerVolume = pOrganData[index];
 
-            var nodeColor = color(pOrganData[index]);
+            } else {
 
-            scene.children[index].material.color.setStyle(nodeColor);
+                scene.children[index].userData.dosePerVolume = pOrganData[index];
+
+                var nodeColor;
+
+                if (index < pOrganData.length) {
+                    nodeColor = color(pOrganData[index]);
+                } else {
+                    nodeColor = "rgb(131, 131, 131)";
+                }
+
+                scene.children[index].material.color.setStyle(nodeColor);
+
+            }
+
+
+
         });
 
         // links
@@ -546,7 +561,7 @@ function render() {
         //var intersects = raycaster.intersectObjects(scene.children);
         var intersects = raycaster.intersectObjects(currScene.children);
 
-        if (intersects.length > 1 && intersects[0].object.userData.type == "node") {
+        if (intersects.length > 1 && intersects[0].object.userData.type == "node" && detailsOnRotate) {
 
             nodeHover = intersects[0].object;
             var tempObject = scene.getObjectByName(nodeHover.name + "_outline");
@@ -562,6 +577,7 @@ function render() {
                 INTERSECTED.material.color.setHex(0x00e4ff);
 
                 // details
+
                 populateAndPlaceDetails("SHOW");
 
             }
@@ -655,6 +671,7 @@ function onMouseDown(event) {
 
     if (event.target) {
 
+        detailsOnRotate = false;
         handleInputRotate(event);
     }
 }
@@ -663,6 +680,7 @@ function onTouchStart(event) {
 
     if (event.target) {
 
+        detailsOnRotate = false;
         handleInputRotate(event);
     }
 }
@@ -697,11 +715,13 @@ function syncAllCameras(cameraToCopy) {
 
 function onMouseUp(event) {
 
+    detailsOnRotate = true;
     clearInterval(syncCamerasInterval);
 }
 
 function onTouchEnd(event) {
 
+    detailsOnRotate = true;
     clearInterval(syncCamerasInterval);
 }
 
