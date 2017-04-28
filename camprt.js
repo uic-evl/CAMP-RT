@@ -295,7 +295,7 @@ function init() {
 
         parent.appendChild(element);
 
-        var scalarVal = 4.5;
+        var scalarVal = 4.1;
 
         var camera = new THREE.OrthographicCamera(scene.userData.element.offsetWidth / -scalarVal, scene.userData.element.offsetWidth / scalarVal, scene.userData.element.offsetHeight / scalarVal, scene.userData.element.offsetHeight / -scalarVal, 1, 100000);
         camera.position.z = 2000;
@@ -305,7 +305,7 @@ function init() {
 
         var controls = new THREE.OrbitControls(scene.userData.camera, scene.userData.element);
         controls.minDistance = 2;
-        controls.maxDistance = 1000;
+        controls.maxDistance = 5000;
         controls.enablePan = false;
         controls.enableZoom = false;
 
@@ -416,7 +416,7 @@ function init() {
         var MovingCube = new THREE.Mesh(MovingCubeGeom, MovingCubeMat);
 
         camera.add(MovingCube);
-        MovingCube.position.set(65, -65, -1000);
+        MovingCube.position.set(65, -65, -100);
 
         // light
         var light = new THREE.AmbientLight(0xffffff, 1.0); // white light
