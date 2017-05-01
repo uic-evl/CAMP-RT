@@ -60,7 +60,7 @@ var color = d3.scaleLinear()
 
 
 // data
-var organs, links, patients, patients2;
+var organs, links, patients;
 
 var pRankingOrder, pScores;
 
@@ -291,8 +291,8 @@ function init() {
         // make a list item
         var element = document.createElement("div");
         element.className = "list-item";
-        element.id = i + 1;
-        element.innerHTML = template.replace('$', i + 1);
+        element.id = patients[i].id;
+        element.innerHTML = template.replace('$', patients[i].name);
 
         // Look up the element that represents the area
         // we want to render the scene
@@ -337,7 +337,7 @@ function init() {
             linewidth: 1
         });
 
-        // nodes (scene.children from index 0 to 23), and color
+        // nodes, and color
         organs.forEach(function (organ, index) {
 
             scene.add(new THREE.Mesh(geometry, material.clone()));
@@ -395,36 +395,7 @@ function init() {
             scene.add(outlineMesh);
 
         });
-        /*
-                // color the nodes
-                var pOrganData = patients[i].organData;
 
-                organs.forEach(function (organ, index) {
-
-                    if (scene.children[index].name != organ.name) {
-                        console.log("Something isn't right");
-
-
-                    } else {
-
-                        scene.children[index].userData.dosePerVolume = pOrganData[index];
-
-                        var nodeColor;
-
-                        if (index < pOrganData.length) {
-                            nodeColor = color(pOrganData[index]);
-                        } else {
-                            nodeColor = "rgb(131, 131, 131)";
-                        }
-
-                        scene.children[index].material.color.setStyle(nodeColor);
-
-                    }
-
-
-
-                });
-        */
         // links
         links.forEach(function (link, index) {
 
@@ -524,20 +495,29 @@ function updateOrder(updatedPatient) {
     pRankingOrder = patients[selectedPatient - 1].similarity;
     pScores = patients[selectedPatient - 1].scores;
 
-    //insert last element from pRankingOrder in last place (before null)
-    parent.insertBefore(arrayOfDivs[(pRankingOrder[pRankingOrder.length - 1] - 1)], null);
+    var lastPatient = document.getElementById(pRankingOrder[pRankingOrder.length - 1]);
+    var firstPatient = document.getElementById(pRankingOrder[0]);
 
-    var pScoreElement = arrayOfDivs[(pRankingOrder[0] - 1)].querySelector(".pScore");
+    //insert last element from pRankingOrder in last place (before null)
+    ///parent.insertBefore(arrayOfDivs[(pRankingOrder[pRankingOrder.length - 1] - 1)], null);
+    parent.insertBefore(lastPatient, null);
+
+
+    ///var pScoreElement = arrayOfDivs[(pRankingOrder[0] - 1)].querySelector(".pScore");
+    var pScoreElement = firstPatient.querySelector(".pScore");
 
     // first patient always has score of 1, clear it
     pScoreElement.innerHTML = "";
 
     for (var i = (pRankingOrder.length - 2); i >= 0; i--) {
 
-        // order div elements
-        parent.insertBefore(arrayOfDivs[(pRankingOrder[i] - 1)], arrayOfDivs[(pRankingOrder[i + 1] - 1)]);
+        var first = document.getElementById(pRankingOrder[i]);
+        var second = document.getElementById(pRankingOrder[i + 1]);
 
-        pScoreElement = arrayOfDivs[(pRankingOrder[i + 1] - 1)].querySelector(".pScore");
+        // order div elements
+        parent.insertBefore(first, second);
+
+        pScoreElement = second.querySelector(".pScore");
 
         // update patient score
         pScoreElement.innerHTML = pScores[i + 1];
