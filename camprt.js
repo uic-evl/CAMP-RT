@@ -13,19 +13,21 @@ if (!Detector.webgl) {
 
 var canvas;
 
+console.log(JSON.stringify());
+
 var parent = document.getElementById("content");
 var nodeDetails = document.getElementById("details");
 
 var detailsOffsetX = 10;
 var detailsOffsetY = 10;
 
-var organName = document.getElementById("details_organName");
-var dosePerVolume = document.getElementById("details_dosePerVolume");
-var lineSeparator = document.getElementById("details_line");
-var volumeVal = document.getElementById("details_volume_val");
-var meanDoseVal = document.getElementById("details_meanDose_val");
-var minDoseVal = document.getElementById("details_minDose_val");
-var maxDoseVal = document.getElementById("details_maxDose_val");
+var organName = document.getElementById("details_organName"),
+    dosePerVolume = document.getElementById("details_dosePerVolume"),
+    lineSeparator = document.getElementById("details_line"),
+    volumeVal = document.getElementById("details_volume_val"),
+    meanDoseVal = document.getElementById("details_meanDose_val"),
+    minDoseVal = document.getElementById("details_minDose_val"),
+    maxDoseVal = document.getElementById("details_maxDose_val");
 
 var scenes = [],
     renderer;
@@ -58,7 +60,7 @@ var color = d3.scaleLinear()
 
 
 // data
-var organs, links, patients;
+var organs, links, patients, patients2;
 
 var pRankingOrder, pScores;
 
@@ -68,7 +70,7 @@ var listItems, arrayOfDivs = [],
 d3.queue()
     .defer(d3.json, "data/organs.json")
     .defer(d3.json, "data/links.json")
-    .defer(d3.json, "data/patients.json")
+    .defer(d3.json, "data/patients2.json")
     .await(start);
 
 function start(error, organsData, linksData, patientsData) {
@@ -137,7 +139,7 @@ function populateDropDownMenu() {
         var tempOption = document.createElement("option");
 
         tempOption.value = patient.id;
-        tempOption.innerHTML = "Patient " + patient.id;
+        tempOption.innerHTML = patient.name;
 
         menu.appendChild(tempOption);
     });
@@ -243,12 +245,12 @@ function init() {
 
     var textureLoader = new THREE.TextureLoader();
 
-    var texture0 = textureLoader.load('resources/anterior.png'); // xpos, Right
-    var texture1 = textureLoader.load('resources/posterior.png'); // xneg, Left
-    var texture2 = textureLoader.load('resources/superior.png'); // ypos, Top
-    var texture3 = textureLoader.load('resources/inferior.png'); // yneg, Bottom
-    var texture4 = textureLoader.load('resources/right.png'); // zpos, Back
-    var texture5 = textureLoader.load('resources/left.png'); // zneg, Front
+    var texture0 = textureLoader.load('resources/anterior.png'), // xpos, Right
+        texture1 = textureLoader.load('resources/posterior.png'), // xneg, Left
+        texture2 = textureLoader.load('resources/superior.png'), // ypos, Top
+        texture3 = textureLoader.load('resources/inferior.png'), // yneg, Bottom
+        texture4 = textureLoader.load('resources/right.png'), // zpos, Back
+        texture5 = textureLoader.load('resources/left.png'); // zneg, Front
 
     texture0.anisotropy = maxAnisotropy;
     texture1.anisotropy = maxAnisotropy;
@@ -282,6 +284,9 @@ function init() {
     for (var i = 0; i < patients.length; i++) {
 
         var scene = new THREE.Scene();
+
+        var patientOrganList = patients[i].organData;
+
 
         // make a list item
         var element = document.createElement("div");
@@ -332,7 +337,7 @@ function init() {
             linewidth: 1
         });
 
-        // nodes (scene.children from index 0 to 23)
+        // nodes (scene.children from index 0 to 23), and color
         organs.forEach(function (organ, index) {
 
             scene.add(new THREE.Mesh(geometry, material.clone()));
@@ -343,6 +348,35 @@ function init() {
 
             scene.children[index].name = organ.name;
             scene.children[index].userData.type = "node";
+
+
+            var nodeColor;
+
+
+            if (patientOrganList[organ.name] != null) {
+                //console.log(patientOrganList[organ.name]);
+
+                scene.children[index].userData.dosePerVolume = patientOrganList[organ.name];
+
+                nodeColor = color(scene.children[index].userData.dosePerVolume);
+                //} else {
+                //    nodeColor = "rgb(131, 131, 131)";
+                //}
+
+                scene.children[index].material.color.setStyle(nodeColor);
+
+            } else {
+                //console.log("no");
+
+
+                scene.children[index].userData.dosePerVolume = null;
+                nodeColor = "rgb(131, 131, 131)";
+                scene.children[index].material.color.setStyle(nodeColor);
+
+
+            }
+
+            //console.log(scene.children[index].userData.dosePerVolume);
         });
 
 
@@ -359,37 +393,38 @@ function init() {
 
             outlineMesh.scale.multiplyScalar(1.1);
             scene.add(outlineMesh);
-        });
-
-        // color the nodes
-        var pOrganData = patients[i].organData;
-
-        organs.forEach(function (organ, index) {
-
-            if (scene.children[index].name != organ.name) {
-                console.log("Something isn't right");
-
-
-            } else {
-
-                scene.children[index].userData.dosePerVolume = pOrganData[index];
-
-                var nodeColor;
-
-                if (index < pOrganData.length) {
-                    nodeColor = color(pOrganData[index]);
-                } else {
-                    nodeColor = "rgb(131, 131, 131)";
-                }
-
-                scene.children[index].material.color.setStyle(nodeColor);
-
-            }
-
-
 
         });
+        /*
+                // color the nodes
+                var pOrganData = patients[i].organData;
 
+                organs.forEach(function (organ, index) {
+
+                    if (scene.children[index].name != organ.name) {
+                        console.log("Something isn't right");
+
+
+                    } else {
+
+                        scene.children[index].userData.dosePerVolume = pOrganData[index];
+
+                        var nodeColor;
+
+                        if (index < pOrganData.length) {
+                            nodeColor = color(pOrganData[index]);
+                        } else {
+                            nodeColor = "rgb(131, 131, 131)";
+                        }
+
+                        scene.children[index].material.color.setStyle(nodeColor);
+
+                    }
+
+
+
+                });
+        */
         // links
         links.forEach(function (link, index) {
 
@@ -426,6 +461,19 @@ function init() {
         scenes.push(scene);
     }
 
+
+
+
+    ///
+
+
+
+
+
+
+
+    ///
+
     ///models
     // Load STL model
 
@@ -457,7 +505,7 @@ function init() {
 
             //mesh.position.set(tempObject.position.x, tempObject.position.y, tempObject.position.z);
 
-            mesh.position.set(0, 0, 0);
+            //mesh.position.set(0, 0, 0);
 
 
 
