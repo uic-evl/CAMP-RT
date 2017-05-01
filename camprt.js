@@ -499,11 +499,8 @@ function updateOrder(updatedPatient) {
     var firstPatient = document.getElementById(pRankingOrder[0]);
 
     //insert last element from pRankingOrder in last place (before null)
-    ///parent.insertBefore(arrayOfDivs[(pRankingOrder[pRankingOrder.length - 1] - 1)], null);
     parent.insertBefore(lastPatient, null);
 
-
-    ///var pScoreElement = arrayOfDivs[(pRankingOrder[0] - 1)].querySelector(".pScore");
     var pScoreElement = firstPatient.querySelector(".pScore");
 
     // first patient always has score of 1, clear it
