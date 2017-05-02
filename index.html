@@ -107,7 +107,7 @@
             height: 100%;
             width: 350px;
             position: fixed;
-            opacity: 0.95;
+            opacity: .97;
             top: 40px;
             right: -400px;
             background-color: #444;
@@ -133,7 +133,7 @@
         #masterList {
             width: 100%;
             height: auto;
-            border: 0px solid red;
+            border: 0px solid #333;
             font-family: sans-serif;
             text-decoration: none;
             font-size: small;
@@ -143,7 +143,8 @@
         }
 
         .checkboxContainer {
-            margin-bottom: 5px;
+            padding-top: 3px;
+            padding-bottom: 3px;
             padding-left: 10px;
         }
 
@@ -174,6 +175,7 @@
 
         #details {
             position: fixed;
+            display: none;
             opacity: 0.95;
             top: -500px;
             left: -500px;
@@ -305,6 +307,7 @@
             margin-top: 0.5em;
             float: right;
         }
+
     </style>
 </head>
 
@@ -328,7 +331,7 @@
             <div id="masterList"></div>
             <div style="height: 200px; width: 100%;"></div>
         </div>
-        <div id="details">
+        <div id="details" onmousemove="onHideDetails()">
             <div id="details_organName">name_of_organ</div>
             <div id="details_dosePerVolume">dose_per_volume</div>
             <div id="details_line"></div>
@@ -392,6 +395,14 @@
 
             sideNavClosed = !sideNavClosed;
         }
+
+
+        function onHideDetails() {
+
+
+
+        }
+
     </script>
 </body>
 

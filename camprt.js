@@ -18,8 +18,8 @@ var canvas;
 var parent = document.getElementById("content");
 var nodeDetails = document.getElementById("details");
 
-var detailsOffsetX = 10;
-var detailsOffsetY = 10;
+var detailsOffsetX = 15;
+var detailsOffsetY = 15;
 
 var organName = document.getElementById("details_organName"),
     dosePerVolume = document.getElementById("details_dosePerVolume"),
@@ -85,14 +85,15 @@ function start(error, organsData, linksData, patientsData) {
 
     populateDropDownMenu();
     populateColorScale();
-    populateOrganMasterList();
 
     flipGraph(); // fixes orientation of organs
     computeCenterOfGraph(); // compute center of graph
     shiftGraphToOrigin(); // center graph to origin
     init(); // initialize
 
-    checkOrganMasterList();
+    populateOrganMasterList();
+
+    formatOrganMasterList();
 
     listItems = document.getElementsByClassName("list-item");
 
@@ -173,7 +174,7 @@ function populateOrganMasterList() {
 
         var tempLabel = document.createElement("label");
 
-        tempLabel.setAttribute("for", organ.name + "_Master");
+        tempLabel.setAttribute("for", organ.name);
         tempLabel.innerHTML = organ.name;
 
         // ----------
@@ -185,6 +186,7 @@ function populateOrganMasterList() {
 
     });
 
+    checkOrganMasterList(); // to see which organs in the list should be checked initially
 
 }
 
@@ -215,8 +217,19 @@ function checkOrganMasterList() {
 
 }
 
-function handleCheckBox(event) {
+function formatOrganMasterList() {
+    var master = document.getElementById("masterList");
+    var organList = master.children;
 
+    for (var i = 0; i < organList.length; i++) {
+
+        if (i % 2 == 0)
+            organList[i].style["backgroundColor"] = "#333";
+    }
+
+}
+
+function handleCheckBox(event) {
 
     if (event.checked) {
 
@@ -739,6 +752,7 @@ function populateAndPlaceDetails(state) {
 
         nodeDetails.style.display = "block";
         //nodeDetails.style.opacity = .95;
+        //nodeDetails.style.opacity = "1.0";
 
         //nodeDetails.style["borderColor"] = "#" + nodeHover.material.color.getHexString();
 
@@ -769,6 +783,7 @@ function populateAndPlaceDetails(state) {
 
         nodeDetails.style.display = "none";
         //nodeDetails.style.opacity = .3;
+        //nodeDetails.style.opacity = "0.0";
 
         nodeDetails.style.top = -500 + "px";
         nodeDetails.style.left = -500 + "px";
