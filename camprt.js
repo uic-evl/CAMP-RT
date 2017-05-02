@@ -93,8 +93,6 @@ function start(error, organsData, linksData, patientsData) {
 
     populateOrganMasterList();
 
-    formatOrganMasterList();
-
     listItems = document.getElementsByClassName("list-item");
 
     for (var i = 0, ref = arrayOfDivs.length = listItems.length; i < ref; i++) {
@@ -187,7 +185,7 @@ function populateOrganMasterList() {
     });
 
     checkOrganMasterList(); // to see which organs in the list should be checked initially
-
+    formatOrganMasterList(); // alternate background color for better reading
 }
 
 function checkOrganMasterList() {
@@ -224,7 +222,10 @@ function formatOrganMasterList() {
     for (var i = 0; i < organList.length; i++) {
 
         if (i % 2 == 0)
-            organList[i].style["backgroundColor"] = "#333";
+            organList[i].style["backgroundColor"] = "#3a3a3a";
+        else
+            organList[i].style["backgroundColor"] = "#444444";
+
     }
 
 }
