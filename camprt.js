@@ -13,7 +13,7 @@ if (!Detector.webgl) {
 
 var canvas;
 
-console.log(JSON.stringify());
+//console.log(JSON.stringify());
 
 var parent = document.getElementById("content");
 var nodeDetails = document.getElementById("details");
@@ -69,7 +69,7 @@ var listItems, arrayOfDivs = [],
 
 d3.queue()
     .defer(d3.json, "data/organs.json")
-    .defer(d3.json, "data/links.json")
+    .defer(d3.json, "data/links2.json")
     .defer(d3.json, "data/patients2.json")
     .await(start);
 
@@ -85,10 +85,14 @@ function start(error, organsData, linksData, patientsData) {
 
     populateDropDownMenu();
     populateColorScale();
+    populateOrganMasterList();
+
     flipGraph(); // fixes orientation of organs
     computeCenterOfGraph(); // compute center of graph
     shiftGraphToOrigin(); // center graph to origin
     init(); // initialize
+
+    checkOrganMasterList();
 
     listItems = document.getElementsByClassName("list-item");
 
@@ -138,11 +142,100 @@ function populateDropDownMenu() {
 
         var tempOption = document.createElement("option");
 
-        tempOption.value = patient.id;
+        //tempOption.value = patient.id;
+        tempOption.value = index + 1;
         tempOption.innerHTML = patient.name;
 
         menu.appendChild(tempOption);
     });
+}
+
+function populateOrganMasterList() {
+
+    var master = document.getElementById("masterList");
+
+    organs.forEach(function (organ, index) {
+
+        var tempDiv = document.createElement("div");
+
+        tempDiv.setAttribute("class", "checkboxContainer");
+        tempDiv.setAttribute("id", organ.name + "_Master");
+
+
+        var tempInput = document.createElement("INPUT");
+
+        tempInput.setAttribute("type", "checkbox");
+        tempInput.setAttribute("id", organ.name);
+        tempInput.setAttribute("value", organ.name);
+        tempInput.setAttribute("name", "organMasterList");
+        tempInput.setAttribute("onchange", "handleCheckBox(this)");
+
+
+        var tempLabel = document.createElement("label");
+
+        tempLabel.setAttribute("for", organ.name + "_Master");
+        tempLabel.innerHTML = organ.name;
+
+        // ----------
+
+        tempDiv.appendChild(tempInput);
+        tempDiv.appendChild(tempLabel);
+
+        master.appendChild(tempDiv);
+
+    });
+
+
+}
+
+function checkOrganMasterList() {
+
+    //var master = document.getElementById("masterList");
+
+    //var organList = master.getElementsByClassName("list-item");
+    //var organList = master.children;
+
+    //console.log(organList.length);
+
+    organs.forEach(function (organ, index) {
+
+        var tempItem = document.getElementById(organ.name);
+
+        if (scenes[selectedPatient - 1].getObjectByName(organ.name).userData.dosePerVolume != null) {
+
+            if (tempItem.checked != true)
+                tempItem.setAttribute("checked", true);
+
+        } else {
+
+            if (tempItem.checked != false)
+                tempItem.setAttribute("checked", false);
+        }
+    });
+
+}
+
+function handleCheckBox(event) {
+
+
+    if (event.checked) {
+
+        scenes.forEach(function (scene, index) {
+
+            var node = scene.getObjectByName(event.value);
+
+            node.visible = true;
+        });
+
+    } else {
+
+        scenes.forEach(function (scene, index) {
+
+            var node = scene.getObjectByName(event.value);
+
+            node.visible = false;
+        });
+    }
 }
 
 function flipGraph() {
@@ -337,72 +430,62 @@ function init() {
             linewidth: 1
         });
 
-        // nodes, and color
+        // nodes, node outline, and color
         organs.forEach(function (organ, index) {
 
-            scene.add(new THREE.Mesh(geometry, material.clone()));
+            // node
+            var organSphere = new THREE.Mesh(geometry, material.clone());
 
-            scene.children[index].position.x = (organ.x);
-            scene.children[index].position.y = (organ.y);
-            scene.children[index].position.z = (organ.z);
+            organSphere.position.x = (organ.x);
+            organSphere.position.y = (organ.y);
+            organSphere.position.z = (organ.z);
 
-            scene.children[index].name = organ.name;
-            scene.children[index].userData.type = "node";
+            organSphere.name = organ.name;
+            organSphere.userData.type = "node";
 
-
-            var nodeColor;
-
-
-            if (patientOrganList[organ.name] != null) {
-                //console.log(patientOrganList[organ.name]);
-
-                scene.children[index].userData.dosePerVolume = patientOrganList[organ.name];
-
-                nodeColor = color(scene.children[index].userData.dosePerVolume);
-                //} else {
-                //    nodeColor = "rgb(131, 131, 131)";
-                //}
-
-                scene.children[index].material.color.setStyle(nodeColor);
-
-            } else {
-                //console.log("no");
-
-
-                scene.children[index].userData.dosePerVolume = null;
-                nodeColor = "rgb(131, 131, 131)";
-                scene.children[index].material.color.setStyle(nodeColor);
-
-
-            }
-
-            //console.log(scene.children[index].userData.dosePerVolume);
-        });
-
-
-        // node outline
-        organs.forEach(function (organ, index) {
-
+            // outline
             var outlineMesh = new THREE.Mesh(geometry, outlineMaterial.clone());
-
-            outlineMesh.position.x = (organ.x);
-            outlineMesh.position.y = (organ.y);
-            outlineMesh.position.z = (organ.z);
 
             outlineMesh.name = organ.name + "_outline";
 
             outlineMesh.scale.multiplyScalar(1.1);
-            scene.add(outlineMesh);
+
+            // color
+            var nodeColor;
+
+            if (patientOrganList[organ.name] != null) {
+                //console.log(patientOrganList[organ.name]);
+
+                organSphere.userData.dosePerVolume = patientOrganList[organ.name];
+                nodeColor = color(organSphere.userData.dosePerVolume);
+                organSphere.material.color.setStyle(nodeColor);
+
+            } else {
+                //console.log("no");
+
+                organSphere.userData.dosePerVolume = null;
+                nodeColor = "rgb(131, 131, 131)";
+                organSphere.material.color.setStyle(nodeColor);
+
+                organSphere.visible = false;
+            }
+
+            scene.add(organSphere);
+            organSphere.add(outlineMesh);
 
         });
+
 
         // links
         links.forEach(function (link, index) {
 
             var tmp_geo = new THREE.Geometry();
 
-            tmp_geo.vertices.push(scene.children[link.source].position);
-            tmp_geo.vertices.push(scene.children[link.target].position);
+            var source = scene.getObjectByName(link.source);
+            var target = scene.getObjectByName(link.target);
+
+            tmp_geo.vertices.push(source.position);
+            tmp_geo.vertices.push(target.position);
 
             var line = new THREE.LineSegments(tmp_geo, linkMaterial);
             line.scale.x = line.scale.y = line.scale.z = 1;
@@ -586,10 +669,11 @@ function render() {
         //var intersects = raycaster.intersectObjects(scene.children);
         var intersects = raycaster.intersectObjects(currScene.children);
 
-        if (intersects.length > 1 && intersects[0].object.userData.type == "node" && detailsOnRotate) {
+        if (intersects.length >= 1 && intersects[0].object.userData.type == "node" && detailsOnRotate) {
 
             nodeHover = intersects[0].object;
             var tempObject = scene.getObjectByName(nodeHover.name + "_outline");
+            //var tempObject = nodeHover.children[0]; // this breaks something with details?
 
             if (INTERSECTED != tempObject) {
 
@@ -618,7 +702,6 @@ function render() {
 
             INTERSECTED = null;
         }
-        //
 
         renderer.render(scene, camera);
     });

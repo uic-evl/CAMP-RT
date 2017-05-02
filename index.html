@@ -112,6 +112,7 @@
             right: -400px;
             background-color: #444;
             overflow-x: hidden;
+            overflow-y: auto;
             transition: 0.5s;
             padding-top: 20px;
             z-index: 10;
@@ -131,8 +132,23 @@
 
         #masterList {
             width: 100%;
-            height: 100%;
+            height: auto;
             border: 0px solid red;
+            font-family: sans-serif;
+            text-decoration: none;
+            font-size: small;
+            font-weight: lighter;
+            color: #eee;
+            margin: 0 auto;
+        }
+
+        .checkboxContainer {
+            margin-bottom: 5px;
+            padding-left: 10px;
+        }
+
+        label {
+            padding-left: 15px;
         }
 
         #colorScale {
@@ -309,7 +325,8 @@
             <!--<div class="navText">Color Scale</div>
             <div id="colorScale"></div> -->
             <div class="navText">Organs</div>
-            <div id="masterList" class="navText"></div>
+            <div id="masterList"></div>
+            <div style="height: 200px; width: 100%;"></div>
         </div>
         <div id="details">
             <div id="details_organName">name_of_organ</div>

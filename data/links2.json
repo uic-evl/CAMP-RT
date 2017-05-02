@@ -1,0 +1,142 @@
+[{
+    "source": "Esophagus",
+    "target": "Cricopharyngeal_Muscle"
+}, {
+    "source": "Glottic_Area",
+    "target": "Cricopharyngeal_Muscle"
+}, {
+    "source": "IPC",
+    "target": "Cricopharyngeal_Muscle"
+}, {
+    "source": "IPC",
+    "target": "Glottic_Area"
+}, {
+    "source": "Lower_Lip",
+    "target": "Extended_Oral_Cavity"
+}, {
+    "source": "Lt_Posterior_Seg_Eyeball",
+    "target": "Lt_Anterior_Seg_Eyeball"
+}, {
+    "source": "Lt_Submandibular_Gland",
+    "target": "Extended_Oral_Cavity"
+}, {
+    "source": "Lt_Submandibular_Gland",
+    "target": "Lt_Parotid_Gland"
+}, {
+    "source": "Lt_thyroid_lobe",
+    "target": "Cricopharyngeal_Muscle"
+}, {
+    "source": "Lt_thyroid_lobe",
+    "target": "Esophagus"
+}, {
+    "source": "Lt_thyroid_lobe",
+    "target": "Glottic_Area"
+}, {
+    "source": "MPC",
+    "target": "IPC"
+}, {
+    "source": "Pituitary_Gland",
+    "target": "Brainstem"
+}, {
+    "source": "Pituitary_Gland",
+    "target": "Lt_Posterior_Seg_Eyeball"
+}, {
+    "source": "Rt_Posterior_Seg_Eyeball",
+    "target": "Lt_Posterior_Seg_Eyeball"
+}, {
+    "source": "Rt_Posterior_Seg_Eyeball",
+    "target": "Pituitary_Gland"
+}, {
+    "source": "Rt_Posterior_Seg_Eyeball",
+    "target": "Rt_Anterior_Seg_Eyeball"
+}, {
+    "source": "Rt_Submandibular_Gland",
+    "target": "Extended_Oral_Cavity"
+}, {
+    "source": "Rt_Submandibular_Gland",
+    "target": "Rt_Parotid_Gland"
+}, {
+    "source": "Rt_thyroid_lobe",
+    "target": "Cricopharyngeal_Muscle"
+}, {
+    "source": "Rt_thyroid_lobe",
+    "target": "Esophagus"
+}, {
+    "source": "Rt_thyroid_lobe",
+    "target": "Glottic_Area"
+}, {
+    "source": "SPC",
+    "target": "Extended_Oral_Cavity"
+}, {
+    "source": "SPC",
+    "target": "Lt_Parotid_Gland"
+}, {
+    "source": "SPC",
+    "target": "Lt_Submandibular_Gland"
+}, {
+    "source": "SPC",
+    "target": "MPC"
+}, {
+    "source": "SPC",
+    "target": "Rt_Parotid_Gland"
+}, {
+    "source": "SPC",
+    "target": "Rt_Submandibular_Gland"
+}, {
+    "source": "Spinal_Cord",
+    "target": "Brainstem"
+}, {
+    "source": "Spinal_Cord",
+    "target": "Cricopharyngeal_Muscle"
+}, {
+    "source": "Spinal_Cord",
+    "target": "Esophagus"
+}, {
+    "source": "Spinal_Cord",
+    "target": "IPC"
+}, {
+    "source": "Spinal_Cord",
+    "target": "MPC"
+}, {
+    "source": "Spinal_Cord",
+    "target": "SPC"
+}, {
+    "source": "Supraglottic_Larynx",
+    "target": "Extended_Oral_Cavity"
+}, {
+    "source": "Supraglottic_Larynx",
+    "target": "IPC"
+}, {
+    "source": "Supraglottic_Larynx",
+    "target": "Lt_Submandibular_Gland"
+}, {
+    "source": "Supraglottic_Larynx",
+    "target": "MPC"
+}, {
+    "source": "Supraglottic_Larynx",
+    "target": "Rt_Submandibular_Gland"
+}, {
+    "source": "Thyroid_cartilage",
+    "target": "Cricopharyngeal_Muscle"
+}, {
+    "source": "Thyroid_cartilage",
+    "target": "Glottic_Area"
+}, {
+    "source": "Thyroid_cartilage",
+    "target": "IPC"
+}, {
+    "source": "Thyroid_cartilage",
+    "target": "Lt_thyroid_lobe"
+}, {
+    "source": "Thyroid_cartilage",
+    "target": "Rt_thyroid_lobe"
+}, {
+    "source": "Thyroid_cartilage",
+    "target": "Supraglottic_Larynx"
+}, {
+    "source": "Upper_Lip",
+    "target": "Extended_Oral_Cavity"
+}, {
+    "source": "Upper_Lip",
+    "target": "Lower_Lip"
+}]
