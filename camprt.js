@@ -69,8 +69,8 @@ var listItems, arrayOfDivs = [],
 
 d3.queue()
     .defer(d3.json, "data/organs.json")
-    .defer(d3.json, "data/links2.json")
-    .defer(d3.json, "data/patients2.json")
+    .defer(d3.json, "data/links.json")
+    .defer(d3.json, "data/patients.json")
     .await(start);
 
 function start(error, organsData, linksData, patientsData) {
