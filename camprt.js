@@ -124,14 +124,53 @@ function populateColorScale() {
         var tempDiv = document.createElement("div");
 
         tempDiv.style.height = "100%";
-        tempDiv.style.width = "9px";
+        tempDiv.style.width = "10px";
         tempDiv.style["backgroundColor"] = color;
         tempDiv.style.display = "inline-block";
         tempDiv.style.transition = "0.3s";
 
+        tempDiv.value = domainColorScale[index];
+        tempDiv.className = "colorScaleEntry";
+
         parentDiv.appendChild(tempDiv);
     });
+
+
+
+    var colorScaleEntries = document.getElementsByClassName("colorScaleEntry");
+
+    for (var i = 0, ref = colorScaleEntries.length; i < ref; i++) {
+        colorScaleEntries[i].addEventListener('mouseover', showColorScaleLabel, false);
+        colorScaleEntries[i].addEventListener('mouseout', hideColorScaleLabel, false);
+    }
 }
+
+function showColorScaleLabel(event) {
+
+    //console.log(event.target.value);
+
+    var details = document.getElementById("colorScaleDetails");
+
+
+    details.style.left = event.target.offsetLeft + "px";
+    details.innerHTML = "" + event.target.value;
+
+
+    details.style.display = "block";
+
+}
+
+function hideColorScaleLabel(event) {
+
+    //console.log(event.target.value);
+
+    var details = document.getElementById("colorScaleDetails");
+
+    details.style.display = "none";
+
+}
+
+
 
 function populateDropDownMenu() {
 
