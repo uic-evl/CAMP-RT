@@ -1,0 +1,2626 @@
+[{
+    "id": 1,
+    "name": "Patient 1",
+    "organData": {
+            "Brainstem": {
+                    "volume": 26.568,
+                    "meanDose": 14.8374,
+                    "minDose": 1.82336,
+                    "maxDose": 39.2479,
+                    "dosePerVolume": 0.558468835
+            },
+            "Cricopharyngeal_Muscle": {
+                    "volume": 2,
+                    "meanDose": 11.4323,
+                    "minDose": 5.55954,
+                    "maxDose": 46.3538,
+                    "dosePerVolume": 5.71615
+            },
+            "Esophagus": {
+                    "volume": 7.064,
+                    "meanDose": 33.8255,
+                    "minDose": 5.63062,
+                    "maxDose": 43.0086,
+                    "dosePerVolume": 4.788434315
+            },
+            "Extended_Oral_Cavity": {
+                    "volume": 155.656,
+                    "meanDose": 66.9469,
+                    "minDose": 37.7613,
+                    "maxDose": 78.2921,
+                    "dosePerVolume": 0.43009521
+            },
+            "Glottic_Area": {
+                    "volume": 0.392,
+                    "meanDose": 40.4576,
+                    "minDose": 14.8824,
+                    "maxDose": 62.0515,
+                    "dosePerVolume": 103.2081633
+            },
+            "IPC": {
+                    "volume": 2.184,
+                    "meanDose": 50.289,
+                    "minDose": 32.9462,
+                    "maxDose": 70.755,
+                    "dosePerVolume": 23.0260989
+            },
+            "Lower_Lip": {
+                    "volume": 4.16,
+                    "meanDose": 33.062,
+                    "minDose": 22.1697,
+                    "maxDose": 44.0036,
+                    "dosePerVolume": 7.947596154
+            },
+            "Lt_Anterior_Seg_Eyeball": {
+                    "volume": 0.224,
+                    "meanDose": 0.958014,
+                    "minDose": 0.874109,
+                    "maxDose": 1.06843,
+                    "dosePerVolume": 4.276848214
+            },
+            "Lt_Parotid_Gland": {
+                    "volume": 19.816,
+                    "meanDose": 27.6332,
+                    "minDose": 6.75872,
+                    "maxDose": 65.4652,
+                    "dosePerVolume": 1.394489302
+            },
+            "Lt_Posterior_Seg_Eyeball": {
+                    "volume": 7.096,
+                    "meanDose": 1.131,
+                    "minDose": 0.752475,
+                    "maxDose": 2.05858,
+                    "dosePerVolume": 0.159385569
+            },
+            "Lt_Submandibular_Gland": {
+                    "volume": 6.168,
+                    "meanDose": 64.3312,
+                    "minDose": 56.5119,
+                    "maxDose": 70.6549,
+                    "dosePerVolume": 10.42983139
+            },
+            "Lt_thyroid_lobe": {
+                    "volume": 5,
+                    "meanDose": 41.4774,
+                    "minDose": 8.74768,
+                    "maxDose": 53.3287,
+                    "dosePerVolume": 8.29548
+            },
+            "MPC": {
+                    "volume": 1.288,
+                    "meanDose": 69.9821,
+                    "minDose": 65.4769,
+                    "maxDose": 72.0159,
+                    "dosePerVolume": 54.33392857
+            },
+            "Pituitary_Gland": {
+                    "volume": 0.264,
+                    "meanDose": 3.66464,
+                    "minDose": 3.27668,
+                    "maxDose": 4.1969,
+                    "dosePerVolume": 13.88121212
+            },
+            "Rt_Anterior_Seg_Eyeball": {
+                    "volume": 0.24,
+                    "meanDose": 1.08952,
+                    "minDose": 0.953692,
+                    "maxDose": 1.27762,
+                    "dosePerVolume": 4.539666667
+            },
+            "Rt_Parotid_Gland": {
+                    "volume": 24.064,
+                    "meanDose": 35.8278,
+                    "minDose": 7.43498,
+                    "maxDose": 73.1618,
+                    "dosePerVolume": 1.488854721
+            },
+            "Rt_Posterior_Seg_Eyeball": {
+                    "volume": 7.344,
+                    "meanDose": 1.50401,
+                    "minDose": 0.865224,
+                    "maxDose": 2.83794,
+                    "dosePerVolume": 0.20479439
+            },
+            "Rt_Submandibular_Gland": {
+                    "volume": 9.968,
+                    "meanDose": 71.4021,
+                    "minDose": 68.2396,
+                    "maxDose": 73.7273,
+                    "dosePerVolume": 7.163132022
+            },
+            "Rt_thyroid_lobe": {
+                    "volume": 6.104,
+                    "meanDose": 54.9649,
+                    "minDose": 11.8696,
+                    "maxDose": 63.7452,
+                    "dosePerVolume": 9.0047346
+            },
+            "SPC": {
+                    "volume": 12.472,
+                    "meanDose": 70.9766,
+                    "minDose": 65.6312,
+                    "maxDose": 73.51,
+                    "dosePerVolume": 5.690875561
+            },
+            "Spinal_Cord": {
+                    "volume": 21.12,
+                    "meanDose": 24.4353,
+                    "minDose": 5.84861,
+                    "maxDose": 40.4765,
+                    "dosePerVolume": 1.156974432
+            },
+            "Supraglottic_Larynx": {
+                    "volume": 13.448,
+                    "meanDose": 66.4997,
+                    "minDose": 32.0927,
+                    "maxDose": 74.7228,
+                    "dosePerVolume": 4.944950922
+            },
+            "Thyroid_cartilage": {
+                    "volume": 8.256,
+                    "meanDose": 49.8683,
+                    "minDose": 8.96123,
+                    "maxDose": 73.3606,
+                    "dosePerVolume": 6.040249516
+            },
+            "Upper_Lip": {
+                    "volume": 5.32,
+                    "meanDose": 30.1019,
+                    "minDose": 14.8215,
+                    "maxDose": 40.8792,
+                    "dosePerVolume": 5.65825188
+            }
+    },
+    "similarity": [1, 6, 9, 10, 15, 11, 13, 5, 7, 8, 3, 14, 12, 2, 4],
+    "scores": [1, 0.98852, 0.97781, 0.95906, 0.85954, 0.82487, 0.81777, 0.79799, 0.72638, 0.72515, 0.67101, 0.66705, 0.65221, 0.64747, 0.63087]
+}, {
+    "id": 2,
+    "name": "Patient 2",
+    "organData": {
+            "Brainstem": {
+                    "volume": 30.256,
+                    "meanDose": 8.48444,
+                    "minDose": 1.32675,
+                    "maxDose": 32.5961,
+                    "dosePerVolume": 0.280421735
+            },
+            "Cricopharyngeal_Muscle": {
+                    "volume": 2.568,
+                    "meanDose": 22.1521,
+                    "minDose": 6.29072,
+                    "maxDose": 43.8175,
+                    "dosePerVolume": 8.626207165
+            },
+            "Esophagus": {
+                    "volume": 7.304,
+                    "meanDose": 37.2111,
+                    "minDose": 26.5384,
+                    "maxDose": 43.3869,
+                    "dosePerVolume": 5.094619387
+            },
+            "Extended_Oral_Cavity": {
+                    "volume": 110.2,
+                    "meanDose": 59.9367,
+                    "minDose": 10.4749,
+                    "maxDose": 77.3383,
+                    "dosePerVolume": 0.5438902
+            },
+            "Glottic_Area": {
+                    "volume": 0.832,
+                    "meanDose": 7.84189,
+                    "minDose": 5.20196,
+                    "maxDose": 13.7789,
+                    "dosePerVolume": 9.425348558
+            },
+            "IPC": {
+                    "volume": 2.224,
+                    "meanDose": 18.7674,
+                    "minDose": 6.29463,
+                    "maxDose": 48.6229,
+                    "dosePerVolume": 8.438579137
+            },
+            "Lower_Lip": {
+                    "volume": 4.168,
+                    "meanDose": 31.8818,
+                    "minDose": 23.5247,
+                    "maxDose": 48.4911,
+                    "dosePerVolume": 7.649184261
+            },
+            "Lt_Anterior_Seg_Eyeball": {
+                    "volume": 0.296,
+                    "meanDose": 0.788309,
+                    "minDose": 0.736305,
+                    "maxDose": 0.852366,
+                    "dosePerVolume": 2.663206081
+            },
+            "Lt_Parotid_Gland": {
+                    "volume": 38.528,
+                    "meanDose": 25.6635,
+                    "minDose": 3.02329,
+                    "maxDose": 64.7844,
+                    "dosePerVolume": 0.666099979
+            },
+            "Lt_Posterior_Seg_Eyeball": {
+                    "volume": 7.816,
+                    "meanDose": 0.841359,
+                    "minDose": 0.630829,
+                    "maxDose": 1.08989,
+                    "dosePerVolume": 0.107645727
+            },
+            "Lt_Submandibular_Gland": {
+                    "volume": 7.832,
+                    "meanDose": 64.9792,
+                    "minDose": 59.8679,
+                    "maxDose": 74.7934,
+                    "dosePerVolume": 8.296629213
+            },
+            "Lt_thyroid_lobe": {
+                    "volume": 6.24,
+                    "meanDose": 49.103,
+                    "minDose": 43.3642,
+                    "maxDose": 54.8866,
+                    "dosePerVolume": 7.869070513
+            },
+            "MPC": {
+                    "volume": 1.208,
+                    "meanDose": 58.7741,
+                    "minDose": 41.1439,
+                    "maxDose": 72.7217,
+                    "dosePerVolume": 48.65405629
+            },
+            "Pituitary_Gland": {
+                    "volume": 0.416,
+                    "meanDose": 1.92417,
+                    "minDose": 1.67726,
+                    "maxDose": 2.21665,
+                    "dosePerVolume": 4.625408654
+            },
+            "Rt_Anterior_Seg_Eyeball": {
+                    "volume": 0.296,
+                    "meanDose": 0.728264,
+                    "minDose": 0.670767,
+                    "maxDose": 0.795987,
+                    "dosePerVolume": 2.460351351
+            },
+            "Rt_Parotid_Gland": {
+                    "volume": 38.648,
+                    "meanDose": 30.2644,
+                    "minDose": 3.92371,
+                    "maxDose": 73.7041,
+                    "dosePerVolume": 0.783078038
+            },
+            "Rt_Posterior_Seg_Eyeball": {
+                    "volume": 7.528,
+                    "meanDose": 0.809291,
+                    "minDose": 0.59577,
+                    "maxDose": 1.10896,
+                    "dosePerVolume": 0.107504118
+            },
+            "Rt_Submandibular_Gland": {
+                    "volume": 10.664,
+                    "meanDose": 71.5025,
+                    "minDose": 70.2564,
+                    "maxDose": 73.3586,
+                    "dosePerVolume": 6.705035634
+            },
+            "Rt_thyroid_lobe": {
+                    "volume": 7.608,
+                    "meanDose": 61.8261,
+                    "minDose": 40.1171,
+                    "maxDose": 74.9986,
+                    "dosePerVolume": 8.126458991
+            },
+            "SPC": {
+                    "volume": 12.736,
+                    "meanDose": 67.8705,
+                    "minDose": 57.9231,
+                    "maxDose": 73.4207,
+                    "dosePerVolume": 5.329027952
+            },
+            "Spinal_Cord": {
+                    "volume": 17.72,
+                    "meanDose": 27.4009,
+                    "minDose": 6.33246,
+                    "maxDose": 38.9733,
+                    "dosePerVolume": 1.546326185
+            },
+            "Supraglottic_Larynx": {
+                    "volume": 14.76,
+                    "meanDose": 55.4327,
+                    "minDose": 7.93164,
+                    "maxDose": 73.8183,
+                    "dosePerVolume": 3.755602981
+            },
+            "Thyroid_cartilage": {
+                    "volume": 12.512,
+                    "meanDose": 33.8713,
+                    "minDose": 4.6703,
+                    "maxDose": 73.0835,
+                    "dosePerVolume": 2.707105179
+            },
+            "Upper_Lip": {
+                    "volume": 5.424,
+                    "meanDose": 7.68519,
+                    "minDose": 0.639162,
+                    "maxDose": 20.3354,
+                    "dosePerVolume": 1.416886062
+            }
+    },
+    "similarity": [2, 12, 14, 3, 4, 7, 8, 5, 11, 13, 10, 1, 6, 9, 15],
+    "scores": [1, 0.99271, 0.9846, 0.98368, 0.981, 0.97851, 0.97527, 0.96433, 0.93783, 0.92883, 0.8219, 0.64747, 0.61675, 0.54321, 0.53921]
+}, {
+    "id": 3,
+    "name": "Patient 3",
+    "organData": {
+            "Brainstem": {
+                    "volume": 24.496,
+                    "meanDose": 18.066,
+                    "minDose": 2.06467,
+                    "maxDose": 40.7672,
+                    "dosePerVolume": 0.737508165
+            },
+            "Cricopharyngeal_Muscle": {
+                    "volume": 2.984,
+                    "meanDose": 12.4776,
+                    "minDose": 5.4225,
+                    "maxDose": 40.8881,
+                    "dosePerVolume": 4.18150134
+            },
+            "Esophagus": {
+                    "volume": 7.2,
+                    "meanDose": 27.1338,
+                    "minDose": 1.27428,
+                    "maxDose": 40.7458,
+                    "dosePerVolume": 3.768583333
+            },
+            "Extended_Oral_Cavity": {
+                    "volume": 122.536,
+                    "meanDose": 54.0008,
+                    "minDose": 7.90079,
+                    "maxDose": 74.0228,
+                    "dosePerVolume": 0.440693347
+            },
+            "Glottic_Area": {
+                    "volume": 0.816,
+                    "meanDose": 6.37742,
+                    "minDose": 4.4925,
+                    "maxDose": 11.1281,
+                    "dosePerVolume": 7.815465686
+            },
+            "IPC": {
+                    "volume": 3.736,
+                    "meanDose": 28.6796,
+                    "minDose": 5.77663,
+                    "maxDose": 69.6195,
+                    "dosePerVolume": 7.676552463
+            },
+            "Lower_Lip": {
+                    "volume": 4.248,
+                    "meanDose": 15.5418,
+                    "minDose": 8.31502,
+                    "maxDose": 39.3556,
+                    "dosePerVolume": 3.658615819
+            },
+            "Lt_Anterior_Seg_Eyeball": {
+                    "volume": 0.368,
+                    "meanDose": 0.929116,
+                    "minDose": 0.869676,
+                    "maxDose": 1.02124,
+                    "dosePerVolume": 2.524771739
+            },
+            "Lt_Parotid_Gland": {
+                    "volume": 37.272,
+                    "meanDose": 27.1711,
+                    "minDose": 6.07697,
+                    "maxDose": 65.2839,
+                    "dosePerVolume": 0.728994956
+            },
+            "Lt_Posterior_Seg_Eyeball": {
+                    "volume": 8.368,
+                    "meanDose": 1.07688,
+                    "minDose": 0.758954,
+                    "maxDose": 1.64277,
+                    "dosePerVolume": 0.128690249
+            },
+            "Lt_Submandibular_Gland": {
+                    "volume": 10.04,
+                    "meanDose": 53.211,
+                    "minDose": 35.4549,
+                    "maxDose": 63.2799,
+                    "dosePerVolume": 5.299900398
+            },
+            "Lt_thyroid_lobe": {
+                    "volume": 5.872,
+                    "meanDose": 43.0557,
+                    "minDose": 20.7871,
+                    "maxDose": 50.7676,
+                    "dosePerVolume": 7.332373978
+            },
+            "MPC": {
+                    "volume": 1.904,
+                    "meanDose": 62.5985,
+                    "minDose": 56.7971,
+                    "maxDose": 73.1647,
+                    "dosePerVolume": 32.87736345
+            },
+            "Pituitary_Gland": {
+                    "volume": 0.44,
+                    "meanDose": 3.13917,
+                    "minDose": 2.51779,
+                    "maxDose": 3.90812,
+                    "dosePerVolume": 7.134477273
+            },
+            "Rt_Anterior_Seg_Eyeball": {
+                    "volume": 0.36,
+                    "meanDose": 0.872668,
+                    "minDose": 0.762715,
+                    "maxDose": 0.987167,
+                    "dosePerVolume": 2.424077778
+            },
+            "Rt_Parotid_Gland": {
+                    "volume": 35.968,
+                    "meanDose": 39.2154,
+                    "minDose": 6.45901,
+                    "maxDose": 74.1479,
+                    "dosePerVolume": 1.09028581
+            },
+            "Rt_Posterior_Seg_Eyeball": {
+                    "volume": 8.352,
+                    "meanDose": 0.970728,
+                    "minDose": 0.67674,
+                    "maxDose": 1.56657,
+                    "dosePerVolume": 0.116227011
+            },
+            "Rt_Submandibular_Gland": {
+                    "volume": 9.744,
+                    "meanDose": 71.8495,
+                    "minDose": 70.5125,
+                    "maxDose": 73.3596,
+                    "dosePerVolume": 7.373717159
+            },
+            "Rt_thyroid_lobe": {
+                    "volume": 7.592,
+                    "meanDose": 55.2665,
+                    "minDose": 43.9148,
+                    "maxDose": 62.6989,
+                    "dosePerVolume": 7.279570601
+            },
+            "SPC": {
+                    "volume": 13.696,
+                    "meanDose": 68.0149,
+                    "minDose": 59.9905,
+                    "maxDose": 73.8958,
+                    "dosePerVolume": 4.96604118
+            },
+            "Spinal_Cord": {
+                    "volume": 16.496,
+                    "meanDose": 22.8336,
+                    "minDose": 5.838,
+                    "maxDose": 42.3223,
+                    "dosePerVolume": 1.384190107
+            },
+            "Supraglottic_Larynx": {
+                    "volume": 17.816,
+                    "meanDose": 60.6974,
+                    "minDose": 9.98194,
+                    "maxDose": 73.6054,
+                    "dosePerVolume": 3.406903907
+            },
+            "Thyroid_cartilage": {
+                    "volume": 14.76,
+                    "meanDose": 38.8146,
+                    "minDose": 3.76055,
+                    "maxDose": 73.6893,
+                    "dosePerVolume": 2.629715447
+            },
+            "Upper_Lip": {
+                    "volume": 7.336,
+                    "meanDose": 12.0783,
+                    "minDose": 1.35596,
+                    "maxDose": 29.8874,
+                    "dosePerVolume": 1.646442203
+            }
+    },
+    "similarity": [3, 12, 8, 2, 14, 4, 7, 5, 13, 11, 10, 1, 6, 15, 9],
+    "scores": [1, 0.99154, 0.9884, 0.98368, 0.98304, 0.98197, 0.96642, 0.96392, 0.95597, 0.9329, 0.83861, 0.67101, 0.62817, 0.56578, 0.56431]
+}, {
+    "id": 4,
+    "name": "Patient 4",
+    "organData": {
+            "Brainstem": {
+                    "volume": 24.2797,
+                    "meanDose": 15.0593,
+                    "minDose": 1.705,
+                    "maxDose": 37.9865,
+                    "dosePerVolume": 0.620242425
+            },
+            "Cricopharyngeal_Muscle": {
+                    "volume": 2.87887,
+                    "meanDose": 28.9011,
+                    "minDose": 6.41565,
+                    "maxDose": 53.3201,
+                    "dosePerVolume": 10.0390431
+            },
+            "Esophagus": {
+                    "volume": 8.49488,
+                    "meanDose": 39.122,
+                    "minDose": 3.34117,
+                    "maxDose": 46.049,
+                    "dosePerVolume": 4.605362289
+            },
+            "Extended_Oral_Cavity": {
+                    "volume": 145.689,
+                    "meanDose": 46.2207,
+                    "minDose": 18.128,
+                    "maxDose": 75.3143,
+                    "dosePerVolume": 0.317255936
+            },
+            "Glottic_Area": {
+                    "volume": 0.813375,
+                    "meanDose": 6.49,
+                    "minDose": 5.25895,
+                    "maxDose": 9.19183,
+                    "dosePerVolume": 7.979099431
+            },
+            "IPC": {
+                    "volume": 2.52787,
+                    "meanDose": 17.6693,
+                    "minDose": 6.32875,
+                    "maxDose": 56.2741,
+                    "dosePerVolume": 6.989797735
+            },
+            "Lower_Lip": {
+                    "volume": 4.509,
+                    "meanDose": 23.12,
+                    "minDose": 15.0046,
+                    "maxDose": 34.6259,
+                    "dosePerVolume": 5.127522732
+            },
+            "Lt_Anterior_Seg_Eyeball": {
+                    "volume": 0.293625,
+                    "meanDose": 0,
+                    "minDose": 0,
+                    "maxDose": 0,
+                    "dosePerVolume": 5
+            },
+            "Lt_Parotid_Gland": {
+                    "volume": 31.4314,
+                    "meanDose": 36.3824,
+                    "minDose": 5.4246,
+                    "maxDose": 70.8806,
+                    "dosePerVolume": 1.157517642
+            },
+            "Lt_Posterior_Seg_Eyeball": {
+                    "volume": 6.96263,
+                    "meanDose": 0.0614765,
+                    "minDose": 0,
+                    "maxDose": 0,
+                    "dosePerVolume": 0.008829494
+            },
+            "Lt_Submandibular_Gland": {
+                    "volume": 8.2755,
+                    "meanDose": 66.5253,
+                    "minDose": 60.8823,
+                    "maxDose": 70.0251,
+                    "dosePerVolume": 8.038825449
+            },
+            "Lt_thyroid_lobe": {
+                    "volume": 5.346,
+                    "meanDose": 57.1577,
+                    "minDose": 47.1819,
+                    "maxDose": 67.7888,
+                    "dosePerVolume": 10.69167602
+            },
+            "MPC": {
+                    "volume": 1.09688,
+                    "meanDose": 48.6916,
+                    "minDose": 37.7138,
+                    "maxDose": 65.9321,
+                    "dosePerVolume": 44.39099993
+            },
+            "Pituitary_Gland": {
+                    "volume": 0.27,
+                    "meanDose": 3.15798,
+                    "minDose": 2.67325,
+                    "maxDose": 3.87497,
+                    "dosePerVolume": 11.69622222
+            },
+            "Rt_Anterior_Seg_Eyeball": {
+                    "volume": 0.345938,
+                    "meanDose": 0,
+                    "minDose": 0,
+                    "maxDose": 0,
+                    "dosePerVolume": 3.5
+            },
+            "Rt_Parotid_Gland": {
+                    "volume": 31.887,
+                    "meanDose": 13.0949,
+                    "minDose": 3.722,
+                    "maxDose": 57.1944,
+                    "dosePerVolume": 0.410665789
+            },
+            "Rt_Posterior_Seg_Eyeball": {
+                    "volume": 6.84112,
+                    "meanDose": 0.116876,
+                    "minDose": 0,
+                    "maxDose": 0,
+                    "dosePerVolume": 0.017084337
+            },
+            "Rt_Submandibular_Gland": {
+                    "volume": 8.3835,
+                    "meanDose": 46.102,
+                    "minDose": 28.1918,
+                    "maxDose": 58.6854,
+                    "dosePerVolume": 5.499135206
+            },
+            "Rt_thyroid_lobe": {
+                    "volume": 6.40575,
+                    "meanDose": 49.8316,
+                    "minDose": 36.3975,
+                    "maxDose": 54.4746,
+                    "dosePerVolume": 7.779198376
+            },
+            "SPC": {
+                    "volume": 10.881,
+                    "meanDose": 59.2046,
+                    "minDose": 42.1651,
+                    "maxDose": 70.7167,
+                    "dosePerVolume": 5.441099164
+            },
+            "Spinal_Cord": {
+                    "volume": 12.8317,
+                    "meanDose": 28.8579,
+                    "minDose": 6.54713,
+                    "maxDose": 40.3216,
+                    "dosePerVolume": 2.248953763
+            },
+            "Supraglottic_Larynx": {
+                    "volume": 17.3374,
+                    "meanDose": 41.9769,
+                    "minDose": 6.83232,
+                    "maxDose": 68.7211,
+                    "dosePerVolume": 2.421176186
+            },
+            "Thyroid_cartilage": {
+                    "volume": 12.5246,
+                    "meanDose": 30.3238,
+                    "minDose": 4.86384,
+                    "maxDose": 64.5058,
+                    "dosePerVolume": 2.421139198
+            },
+            "Upper_Lip": {
+                    "volume": 6.70275,
+                    "meanDose": 18.7097,
+                    "minDose": 2.34706,
+                    "maxDose": 33.3427,
+                    "dosePerVolume": 2.791346835
+            }
+    },
+    "similarity": [4, 3, 2, 12, 8, 14, 7, 5, 13, 11, 10, 1, 6, 15, 9],
+    "scores": [1, 0.98197, 0.981, 0.98075, 0.97407, 0.96526, 0.95264, 0.95057, 0.92991, 0.90908, 0.80366, 0.63087, 0.59485, 0.55144, 0.53177]
+}, {
+    "id": 5,
+    "name": "Patient 5",
+    "organData": {
+            "Brainstem": {
+                    "volume": 27.1384,
+                    "meanDose": 17.7843,
+                    "minDose": 1.77443,
+                    "maxDose": 43.0989,
+                    "dosePerVolume": 0.655318663
+            },
+            "Cricopharyngeal_Muscle": {
+                    "volume": 1.65375,
+                    "meanDose": 10.6869,
+                    "minDose": 6.41449,
+                    "maxDose": 45.0938,
+                    "dosePerVolume": 6.462222222
+            },
+            "Esophagus": {
+                    "volume": 8.04937,
+                    "meanDose": 31.2147,
+                    "minDose": 2.79914,
+                    "maxDose": 43.2122,
+                    "dosePerVolume": 3.877905973
+            },
+            "Extended_Oral_Cavity": {
+                    "volume": 92.7248,
+                    "meanDose": 54.7055,
+                    "minDose": 19.3173,
+                    "maxDose": 75.7108,
+                    "dosePerVolume": 0.589977007
+            },
+            "Glottic_Area": {
+                    "volume": 0.698625,
+                    "meanDose": 21.3092,
+                    "minDose": 7.59759,
+                    "maxDose": 50.3079,
+                    "dosePerVolume": 30.5016282
+            },
+            "IPC": {
+                    "volume": 2.35575,
+                    "meanDose": 36.7836,
+                    "minDose": 6.87224,
+                    "maxDose": 63.3441,
+                    "dosePerVolume": 15.61439032
+            },
+            "Lower_Lip": {
+                    "volume": 2.41312,
+                    "meanDose": 20.166,
+                    "minDose": 12.1783,
+                    "maxDose": 31.4321,
+                    "dosePerVolume": 8.356816072
+            },
+            "Lt_Anterior_Seg_Eyeball": {
+                    "volume": 0.381375,
+                    "meanDose": 0.936109,
+                    "minDose": 0.832236,
+                    "maxDose": 1.08521,
+                    "dosePerVolume": 2.454563094
+            },
+            "Lt_Parotid_Gland": {
+                    "volume": 31.5293,
+                    "meanDose": 23.3731,
+                    "minDose": 4.73195,
+                    "maxDose": 59.7593,
+                    "dosePerVolume": 0.741313635
+            },
+            "Lt_Posterior_Seg_Eyeball": {
+                    "volume": 6.92213,
+                    "meanDose": 1.00509,
+                    "minDose": 0.688482,
+                    "maxDose": 1.60134,
+                    "dosePerVolume": 0.145199527
+            },
+            "Lt_Submandibular_Gland": {
+                    "volume": 8.28225,
+                    "meanDose": 53.3232,
+                    "minDose": 40.0757,
+                    "maxDose": 67.5144,
+                    "dosePerVolume": 6.438250475
+            },
+            "Lt_thyroid_lobe": {
+                    "volume": 4.374,
+                    "meanDose": 44.534,
+                    "minDose": 12.8308,
+                    "maxDose": 53.9739,
+                    "dosePerVolume": 10.18152721
+            },
+            "MPC": {
+                    "volume": 0.85725,
+                    "meanDose": 59.5503,
+                    "minDose": 46.7693,
+                    "maxDose": 73.1281,
+                    "dosePerVolume": 69.46666667
+            },
+            "Pituitary_Gland": {
+                    "volume": 0.232875,
+                    "meanDose": 3.06303,
+                    "minDose": 2.70308,
+                    "maxDose": 3.49457,
+                    "dosePerVolume": 13.15310789
+            },
+            "Rt_Anterior_Seg_Eyeball": {
+                    "volume": 0.394875,
+                    "meanDose": 0.941747,
+                    "minDose": 0.787976,
+                    "maxDose": 1.16174,
+                    "dosePerVolume": 2.384924343
+            },
+            "Rt_Parotid_Gland": {
+                    "volume": 31.2424,
+                    "meanDose": 22.7832,
+                    "minDose": 4.52543,
+                    "maxDose": 72.4228,
+                    "dosePerVolume": 0.729239751
+            },
+            "Rt_Posterior_Seg_Eyeball": {
+                    "volume": 7.19888,
+                    "meanDose": 1.06683,
+                    "minDose": 0.644515,
+                    "maxDose": 1.96376,
+                    "dosePerVolume": 0.148193886
+            },
+            "Rt_Submandibular_Gland": {
+                    "volume": 8.35313,
+                    "meanDose": 70.9434,
+                    "minDose": 61.627,
+                    "maxDose": 73.5388,
+                    "dosePerVolume": 8.493031953
+            },
+            "Rt_thyroid_lobe": {
+                    "volume": 6.69263,
+                    "meanDose": 59.0314,
+                    "minDose": 31.564,
+                    "maxDose": 69.5354,
+                    "dosePerVolume": 8.820359111
+            },
+            "SPC": {
+                    "volume": 8.84925,
+                    "meanDose": 66.4095,
+                    "minDose": 54.355,
+                    "maxDose": 74.5485,
+                    "dosePerVolume": 7.504534283
+            },
+            "Spinal_Cord": {
+                    "volume": 20.1487,
+                    "meanDose": 25.8673,
+                    "minDose": 5.59938,
+                    "maxDose": 39.7971,
+                    "dosePerVolume": 1.2838198
+            },
+            "Supraglottic_Larynx": {
+                    "volume": 13.8139,
+                    "meanDose": 52.0664,
+                    "minDose": 5.937,
+                    "maxDose": 74.431,
+                    "dosePerVolume": 3.769131093
+            },
+            "Thyroid_cartilage": {
+                    "volume": 9.90563,
+                    "meanDose": 37.8397,
+                    "minDose": 3.84002,
+                    "maxDose": 73.8505,
+                    "dosePerVolume": 3.820019524
+            },
+            "Upper_Lip": {
+                    "volume": 4.13438,
+                    "meanDose": 19.1674,
+                    "minDose": 2.32223,
+                    "maxDose": 27.6136,
+                    "dosePerVolume": 4.636100213
+            }
+    },
+    "similarity": [5, 11, 7, 8, 14, 12, 13, 2, 3, 4, 10, 1, 6, 9, 15],
+    "scores": [1, 0.98795, 0.98563, 0.97639, 0.97226, 0.97034, 0.96867, 0.96433, 0.96392, 0.95057, 0.91762, 0.79799, 0.7638, 0.70176, 0.64824]
+}, {
+    "id": 6,
+    "name": "Patient 6",
+    "organData": {
+            "Brainstem": {
+                    "volume": 27.744,
+                    "meanDose": 9.53164,
+                    "minDose": 1.4124,
+                    "maxDose": 50.1704,
+                    "dosePerVolume": 0.343556805
+            },
+            "Cricopharyngeal_Muscle": {
+                    "volume": 2.32,
+                    "meanDose": 47.1916,
+                    "minDose": 38.0372,
+                    "maxDose": 59.2709,
+                    "dosePerVolume": 20.3412069
+            },
+            "Esophagus": {
+                    "volume": 9.68,
+                    "meanDose": 32.3458,
+                    "minDose": 1.74992,
+                    "maxDose": 53.7408,
+                    "dosePerVolume": 3.341508264
+            },
+            "Extended_Oral_Cavity": {
+                    "volume": 209.416,
+                    "meanDose": 58.2063,
+                    "minDose": 13.0772,
+                    "maxDose": 75.9184,
+                    "dosePerVolume": 0.277945811
+            },
+            "Glottic_Area": {
+                    "volume": 0.552,
+                    "meanDose": 63.3263,
+                    "minDose": 59.8418,
+                    "maxDose": 65.8787,
+                    "dosePerVolume": 114.721558
+            },
+            "IPC": {
+                    "volume": 2.552,
+                    "meanDose": 58.8736,
+                    "minDose": 47.4898,
+                    "maxDose": 70.1869,
+                    "dosePerVolume": 23.06959248
+            },
+            "Lower_Lip": {
+                    "volume": 6.584,
+                    "meanDose": 27.4658,
+                    "minDose": 17.7352,
+                    "maxDose": 39.0817,
+                    "dosePerVolume": 4.171597813
+            },
+            "Lt_Anterior_Seg_Eyeball": {
+                    "volume": 0.304,
+                    "meanDose": 1.05595,
+                    "minDose": 0.92723,
+                    "maxDose": 1.24941,
+                    "dosePerVolume": 3.473519737
+            },
+            "Lt_Parotid_Gland": {
+                    "volume": 36.728,
+                    "meanDose": 24.9557,
+                    "minDose": 5.48974,
+                    "maxDose": 59.8986,
+                    "dosePerVolume": 0.679473426
+            },
+            "Lt_Posterior_Seg_Eyeball": {
+                    "volume": 8.32,
+                    "meanDose": 1.18659,
+                    "minDose": 0.767821,
+                    "maxDose": 1.96514,
+                    "dosePerVolume": 0.14261899
+            },
+            "Lt_Submandibular_Gland": {
+                    "volume": 11.496,
+                    "meanDose": 67.2751,
+                    "minDose": 57.9622,
+                    "maxDose": 73.4929,
+                    "dosePerVolume": 5.852044189
+            },
+            "Lt_thyroid_lobe": {
+                    "volume": 6.832,
+                    "meanDose": 56.2129,
+                    "minDose": 45.5732,
+                    "maxDose": 60.8572,
+                    "dosePerVolume": 8.227883489
+            },
+            "MPC": {
+                    "volume": 1.224,
+                    "meanDose": 68.3492,
+                    "minDose": 63.3866,
+                    "maxDose": 73.2532,
+                    "dosePerVolume": 55.84084967
+            },
+            "Pituitary_Gland": {
+                    "volume": 0.352,
+                    "meanDose": 2.14174,
+                    "minDose": 1.77337,
+                    "maxDose": 2.61768,
+                    "dosePerVolume": 6.084488636
+            },
+            "Rt_Anterior_Seg_Eyeball": {
+                    "volume": 0.304,
+                    "meanDose": 1.02509,
+                    "minDose": 0.879013,
+                    "maxDose": 1.1868,
+                    "dosePerVolume": 3.372006579
+            },
+            "Rt_Parotid_Gland": {
+                    "volume": 41.248,
+                    "meanDose": 29.5677,
+                    "minDose": 6.03883,
+                    "maxDose": 74.3133,
+                    "dosePerVolume": 0.716827483
+            },
+            "Rt_Posterior_Seg_Eyeball": {
+                    "volume": 8.032,
+                    "meanDose": 1.13538,
+                    "minDose": 0.743713,
+                    "maxDose": 1.82151,
+                    "dosePerVolume": 0.141357072
+            },
+            "Rt_Submandibular_Gland": {
+                    "volume": 11.608,
+                    "meanDose": 71.5831,
+                    "minDose": 64.802,
+                    "maxDose": 74.031,
+                    "dosePerVolume": 6.166703997
+            },
+            "Rt_thyroid_lobe": {
+                    "volume": 9.328,
+                    "meanDose": 56.8665,
+                    "minDose": 39.8561,
+                    "maxDose": 66.1454,
+                    "dosePerVolume": 6.096322899
+            },
+            "SPC": {
+                    "volume": 15.792,
+                    "meanDose": 64.7967,
+                    "minDose": 50.0605,
+                    "maxDose": 72.9307,
+                    "dosePerVolume": 4.103134498
+            },
+            "Spinal_Cord": {
+                    "volume": 18.512,
+                    "meanDose": 35.5263,
+                    "minDose": 16.5281,
+                    "maxDose": 43.4661,
+                    "dosePerVolume": 1.919095722
+            },
+            "Supraglottic_Larynx": {
+                    "volume": 13.656,
+                    "meanDose": 69.7232,
+                    "minDose": 54.0776,
+                    "maxDose": 75.5604,
+                    "dosePerVolume": 5.105682484
+            },
+            "Thyroid_cartilage": {
+                    "volume": 10.88,
+                    "meanDose": 64.1933,
+                    "minDose": 56.9126,
+                    "maxDose": 72.0913,
+                    "dosePerVolume": 5.900119485
+            },
+            "Upper_Lip": {
+                    "volume": 9.768,
+                    "meanDose": 16.8408,
+                    "minDose": 0,
+                    "maxDose": 39.801,
+                    "dosePerVolume": 1.724078624
+            }
+    },
+    "similarity": [6, 1, 9, 10, 15, 11, 13, 5, 7, 8, 3, 14, 12, 2, 4],
+    "scores": [1, 0.98852, 0.9877, 0.94409, 0.86195, 0.79693, 0.77674, 0.7638, 0.69279, 0.68934, 0.62817, 0.62793, 0.61798, 0.61675, 0.59485]
+}, {
+    "id": 7,
+    "name": "Patient 7",
+    "organData": {
+            "Brainstem": {
+                    "volume": 21.8531,
+                    "meanDose": 8.59904,
+                    "minDose": 1.25693,
+                    "maxDose": 30.8022,
+                    "dosePerVolume": 0.393492914
+            },
+            "Cricopharyngeal_Muscle": {
+                    "volume": 2.64938,
+                    "meanDose": 11.0991,
+                    "minDose": 6.47126,
+                    "maxDose": 49.152,
+                    "dosePerVolume": 4.189319765
+            },
+            "Esophagus": {
+                    "volume": 7.82662,
+                    "meanDose": 26.4761,
+                    "minDose": 1.88789,
+                    "maxDose": 42.2033,
+                    "dosePerVolume": 3.382826814
+            },
+            "Extended_Oral_Cavity": {
+                    "volume": 154.923,
+                    "meanDose": 43.9144,
+                    "minDose": 0,
+                    "maxDose": 75.1806,
+                    "dosePerVolume": 0.283459525
+            },
+            "Glottic_Area": {
+                    "volume": 0.597375,
+                    "meanDose": 13.1484,
+                    "minDose": 7.15628,
+                    "maxDose": 29.3358,
+                    "dosePerVolume": 22.01029504
+            },
+            "IPC": {
+                    "volume": 2.22412,
+                    "meanDose": 34.9525,
+                    "minDose": 8.18359,
+                    "maxDose": 61.6929,
+                    "dosePerVolume": 15.71520422
+            },
+            "Lower_Lip": {
+                    "volume": 5.13338,
+                    "meanDose": 25.3856,
+                    "minDose": 16.1274,
+                    "maxDose": 42.7474,
+                    "dosePerVolume": 4.945201797
+            },
+            "Lt_Anterior_Seg_Eyeball": {
+                    "volume": 0.2295,
+                    "meanDose": 0.748858,
+                    "minDose": 0.68885,
+                    "maxDose": 0.837158,
+                    "dosePerVolume": 3.262997821
+            },
+            "Lt_Parotid_Gland": {
+                    "volume": 34.9177,
+                    "meanDose": 29.1735,
+                    "minDose": 6.34384,
+                    "maxDose": 73.2597,
+                    "dosePerVolume": 0.835493174
+            },
+            "Lt_Posterior_Seg_Eyeball": {
+                    "volume": 7.03012,
+                    "meanDose": 0.784832,
+                    "minDose": 0.493925,
+                    "maxDose": 1.2205,
+                    "dosePerVolume": 0.111638493
+            },
+            "Lt_Submandibular_Gland": {
+                    "volume": 6.4125,
+                    "meanDose": 71.9814,
+                    "minDose": 65.9718,
+                    "maxDose": 73.9351,
+                    "dosePerVolume": 11.22516959
+            },
+            "Lt_thyroid_lobe": {
+                    "volume": 6.32137,
+                    "meanDose": 55.0731,
+                    "minDose": 36.196,
+                    "maxDose": 67.8539,
+                    "dosePerVolume": 8.712209537
+            },
+            "MPC": {
+                    "volume": 0.880875,
+                    "meanDose": 63.2563,
+                    "minDose": 55.4493,
+                    "maxDose": 72.187,
+                    "dosePerVolume": 71.81075635
+            },
+            "Pituitary_Gland": {
+                    "volume": 0.320625,
+                    "meanDose": 2.14984,
+                    "minDose": 1.7682,
+                    "maxDose": 2.47187,
+                    "dosePerVolume": 6.705153996
+            },
+            "Rt_Anterior_Seg_Eyeball": {
+                    "volume": 0.334125,
+                    "meanDose": 0.787279,
+                    "minDose": 0.718338,
+                    "maxDose": 0.879872,
+                    "dosePerVolume": 2.356240928
+            },
+            "Rt_Parotid_Gland": {
+                    "volume": 33.4192,
+                    "meanDose": 25.3328,
+                    "minDose": 6.6479,
+                    "maxDose": 74.5724,
+                    "dosePerVolume": 0.758031311
+            },
+            "Rt_Posterior_Seg_Eyeball": {
+                    "volume": 7.00312,
+                    "meanDose": 0.895838,
+                    "minDose": 0.662542,
+                    "maxDose": 1.33123,
+                    "dosePerVolume": 0.127919841
+            },
+            "Rt_Submandibular_Gland": {
+                    "volume": 7.08413,
+                    "meanDose": 68.1393,
+                    "minDose": 60.7355,
+                    "maxDose": 73.445,
+                    "dosePerVolume": 9.618584075
+            },
+            "Rt_thyroid_lobe": {
+                    "volume": 8.18775,
+                    "meanDose": 47.9343,
+                    "minDose": 9.31628,
+                    "maxDose": 64.6199,
+                    "dosePerVolume": 5.854392232
+            },
+            "SPC": {
+                    "volume": 12.1196,
+                    "meanDose": 64.1078,
+                    "minDose": 38.8028,
+                    "maxDose": 73.7383,
+                    "dosePerVolume": 5.289597016
+            },
+            "Spinal_Cord": {
+                    "volume": 15.9638,
+                    "meanDose": 20.7877,
+                    "minDose": 6.2334,
+                    "maxDose": 38.3381,
+                    "dosePerVolume": 1.302177426
+            },
+            "Supraglottic_Larynx": {
+                    "volume": 14.5159,
+                    "meanDose": 61.7823,
+                    "minDose": 11.4521,
+                    "maxDose": 74.1568,
+                    "dosePerVolume": 4.256181153
+            },
+            "Thyroid_cartilage": {
+                    "volume": 10.4659,
+                    "meanDose": 41.9613,
+                    "minDose": 5.10021,
+                    "maxDose": 72.1987,
+                    "dosePerVolume": 4.009335079
+            },
+            "Upper_Lip": {
+                    "volume": 7.09088,
+                    "meanDose": 6.73114,
+                    "minDose": 0,
+                    "maxDose": 26.1687,
+                    "dosePerVolume": 0.949267228
+            }
+    },
+    "similarity": [7, 14, 5, 11, 12, 2, 8, 3, 4, 13, 10, 1, 6, 9, 15],
+    "scores": [1, 0.98704, 0.98563, 0.98273, 0.98172, 0.97851, 0.97288, 0.96642, 0.95264, 0.94067, 0.87093, 0.72638, 0.69279, 0.61334, 0.58484]
+}, {
+    "id": 8,
+    "name": "Patient 8",
+    "organData": {
+            "Brainstem": {
+                    "volume": 26.3115,
+                    "meanDose": 9.62201,
+                    "minDose": 1.56005,
+                    "maxDose": 32.7992,
+                    "dosePerVolume": 0.365695988
+            },
+            "Cricopharyngeal_Muscle": {
+                    "volume": 2.376,
+                    "meanDose": 15.522,
+                    "minDose": 6.21254,
+                    "maxDose": 41.1069,
+                    "dosePerVolume": 6.532828283
+            },
+            "Esophagus": {
+                    "volume": 9.00113,
+                    "meanDose": 34.3061,
+                    "minDose": 2.67502,
+                    "maxDose": 42.6751,
+                    "dosePerVolume": 3.811310358
+            },
+            "Extended_Oral_Cavity": {
+                    "volume": 178.335,
+                    "meanDose": 48.2737,
+                    "minDose": 10.7484,
+                    "maxDose": 74.2185,
+                    "dosePerVolume": 0.270691115
+            },
+            "Glottic_Area": {
+                    "volume": 0.604125,
+                    "meanDose": 7.32211,
+                    "minDose": 5.25211,
+                    "maxDose": 17.2149,
+                    "dosePerVolume": 12.12019036
+            },
+            "IPC": {
+                    "volume": 2.268,
+                    "meanDose": 28.6688,
+                    "minDose": 6.75773,
+                    "maxDose": 66.1865,
+                    "dosePerVolume": 12.64056437
+            },
+            "Lower_Lip": {
+                    "volume": 4.33688,
+                    "meanDose": 15.5517,
+                    "minDose": 8.88298,
+                    "maxDose": 24.5973,
+                    "dosePerVolume": 3.585918909
+            },
+            "Lt_Anterior_Seg_Eyeball": {
+                    "volume": 0.300375,
+                    "meanDose": 1.16522,
+                    "minDose": 0.994338,
+                    "maxDose": 1.34497,
+                    "dosePerVolume": 3.879217645
+            },
+            "Lt_Parotid_Gland": {
+                    "volume": 31.4415,
+                    "meanDose": 14.913,
+                    "minDose": 4.35811,
+                    "maxDose": 58.3055,
+                    "dosePerVolume": 0.474309432
+            },
+            "Lt_Posterior_Seg_Eyeball": {
+                    "volume": 7.2495,
+                    "meanDose": 1.28565,
+                    "minDose": 0.832956,
+                    "maxDose": 2.15384,
+                    "dosePerVolume": 0.177343265
+            },
+            "Lt_Submandibular_Gland": {
+                    "volume": 9.96975,
+                    "meanDose": 53.5512,
+                    "minDose": 33.3602,
+                    "maxDose": 61.7313,
+                    "dosePerVolume": 5.371368389
+            },
+            "Lt_thyroid_lobe": {
+                    "volume": 7.79962,
+                    "meanDose": 50.1957,
+                    "minDose": 42.4025,
+                    "maxDose": 54.8533,
+                    "dosePerVolume": 6.435659686
+            },
+            "MPC": {
+                    "volume": 1.62338,
+                    "meanDose": 61.9355,
+                    "minDose": 53.8882,
+                    "maxDose": 72.5834,
+                    "dosePerVolume": 38.15218864
+            },
+            "Pituitary_Gland": {
+                    "volume": 0.347625,
+                    "meanDose": 3.08508,
+                    "minDose": 2.50105,
+                    "maxDose": 3.60577,
+                    "dosePerVolume": 8.874735707
+            },
+            "Rt_Anterior_Seg_Eyeball": {
+                    "volume": 0.26325,
+                    "meanDose": 1.31737,
+                    "minDose": 1.05276,
+                    "maxDose": 1.59352,
+                    "dosePerVolume": 5.004254511
+            },
+            "Rt_Parotid_Gland": {
+                    "volume": 33.6251,
+                    "meanDose": 31.1496,
+                    "minDose": 5.54329,
+                    "maxDose": 73.8424,
+                    "dosePerVolume": 0.926379401
+            },
+            "Rt_Posterior_Seg_Eyeball": {
+                    "volume": 7.05037,
+                    "meanDose": 1.42276,
+                    "minDose": 0.828009,
+                    "maxDose": 2.5498,
+                    "dosePerVolume": 0.201799338
+            },
+            "Rt_Submandibular_Gland": {
+                    "volume": 10.9181,
+                    "meanDose": 71.3049,
+                    "minDose": 64.115,
+                    "maxDose": 73.3993,
+                    "dosePerVolume": 6.530889074
+            },
+            "Rt_thyroid_lobe": {
+                    "volume": 8.61637,
+                    "meanDose": 57.2745,
+                    "minDose": 43.1483,
+                    "maxDose": 65.6039,
+                    "dosePerVolume": 6.647172765
+            },
+            "SPC": {
+                    "volume": 13.7464,
+                    "meanDose": 64.1249,
+                    "minDose": 50.7676,
+                    "maxDose": 73.972,
+                    "dosePerVolume": 4.664850434
+            },
+            "Spinal_Cord": {
+                    "volume": 19.1025,
+                    "meanDose": 25.8927,
+                    "minDose": 6.21952,
+                    "maxDose": 37.2369,
+                    "dosePerVolume": 1.355461327
+            },
+            "Supraglottic_Larynx": {
+                    "volume": 16.119,
+                    "meanDose": 52.1636,
+                    "minDose": 5.67775,
+                    "maxDose": 73.5947,
+                    "dosePerVolume": 3.236156089
+            },
+            "Thyroid_cartilage": {
+                    "volume": 12.0319,
+                    "meanDose": 35.1167,
+                    "minDose": 4.15583,
+                    "maxDose": 67.4053,
+                    "dosePerVolume": 2.918632967
+            },
+            "Upper_Lip": {
+                    "volume": 7.76925,
+                    "meanDose": 11.0565,
+                    "minDose": 0,
+                    "maxDose": 22.3004,
+                    "dosePerVolume": 1.423110339
+            }
+    },
+    "similarity": [8, 3, 14, 12, 5, 2, 4, 7, 13, 11, 10, 1, 6, 15, 9],
+    "scores": [1, 0.9884, 0.98479, 0.98459, 0.97639, 0.97527, 0.97407, 0.97288, 0.9652, 0.95848, 0.87998, 0.72515, 0.68934, 0.63871, 0.6315]
+}, {
+    "id": 9,
+    "name": "Patient 9",
+    "organData": {
+            "Brainstem": {
+                    "volume": 26.3925,
+                    "meanDose": 15.6513,
+                    "minDose": 2.56118,
+                    "maxDose": 41.8768,
+                    "dosePerVolume": 0.593020745
+            },
+            "Cricopharyngeal_Muscle": {
+                    "volume": 1.95075,
+                    "meanDose": 58.521,
+                    "minDose": 53.9373,
+                    "maxDose": 68.9184,
+                    "dosePerVolume": 29.99923106
+            },
+            "Esophagus": {
+                    "volume": 9.153,
+                    "meanDose": 31.184,
+                    "minDose": 1.57099,
+                    "maxDose": 55.3886,
+                    "dosePerVolume": 3.406970392
+            },
+            "Extended_Oral_Cavity": {
+                    "volume": 106.802,
+                    "meanDose": 68.5471,
+                    "minDose": 27.3771,
+                    "maxDose": 73.9556,
+                    "dosePerVolume": 0.64181476
+            },
+            "Glottic_Area": {
+                    "volume": 0.486,
+                    "meanDose": 70.795,
+                    "minDose": 68.2375,
+                    "maxDose": 74.2778,
+                    "dosePerVolume": 145.6687243
+            },
+            "IPC": {
+                    "volume": 2.00813,
+                    "meanDose": 69.9789,
+                    "minDose": 65.3824,
+                    "maxDose": 72.9811,
+                    "dosePerVolume": 34.84779372
+            },
+            "Lower_Lip": {
+                    "volume": 3.7395,
+                    "meanDose": 53.2006,
+                    "minDose": 36.0408,
+                    "maxDose": 64.5181,
+                    "dosePerVolume": 14.22666132
+            },
+            "Lt_Anterior_Seg_Eyeball": {
+                    "volume": 0.381375,
+                    "meanDose": 1.2282,
+                    "minDose": 0.999952,
+                    "maxDose": 1.47437,
+                    "dosePerVolume": 3.220452311
+            },
+            "Lt_Parotid_Gland": {
+                    "volume": 28.2386,
+                    "meanDose": 41.5849,
+                    "minDose": 9.01888,
+                    "maxDose": 74.3873,
+                    "dosePerVolume": 1.472626122
+            },
+            "Lt_Posterior_Seg_Eyeball": {
+                    "volume": 8.30925,
+                    "meanDose": 1.63765,
+                    "minDose": 0.748492,
+                    "maxDose": 3.29496,
+                    "dosePerVolume": 0.197087583
+            },
+            "Lt_Submandibular_Gland": {
+                    "volume": 9.33525,
+                    "meanDose": 70.9047,
+                    "minDose": 68.6448,
+                    "maxDose": 74.0898,
+                    "dosePerVolume": 7.595372379
+            },
+            "Lt_thyroid_lobe": {
+                    "volume": 5.66662,
+                    "meanDose": 60.9861,
+                    "minDose": 54.3559,
+                    "maxDose": 67.8215,
+                    "dosePerVolume": 10.76234157
+            },
+            "MPC": {
+                    "volume": 1.4175,
+                    "meanDose": 71.4372,
+                    "minDose": 69.5911,
+                    "maxDose": 72.9067,
+                    "dosePerVolume": 50.39661376
+            },
+            "Pituitary_Gland": {
+                    "volume": 0.39825,
+                    "meanDose": 6.27994,
+                    "minDose": 5.55881,
+                    "maxDose": 7.22464,
+                    "dosePerVolume": 15.76883867
+            },
+            "Rt_Anterior_Seg_Eyeball": {
+                    "volume": 0.320625,
+                    "meanDose": 1.96825,
+                    "minDose": 1.55585,
+                    "maxDose": 2.45947,
+                    "dosePerVolume": 6.138791423
+            },
+            "Rt_Parotid_Gland": {
+                    "volume": 27.9079,
+                    "meanDose": 53.9824,
+                    "minDose": 21.5487,
+                    "maxDose": 74.024,
+                    "dosePerVolume": 1.93430534
+            },
+            "Rt_Posterior_Seg_Eyeball": {
+                    "volume": 8.33287,
+                    "meanDose": 2.27293,
+                    "minDose": 1.28099,
+                    "maxDose": 3.98603,
+                    "dosePerVolume": 0.272766766
+            },
+            "Rt_Submandibular_Gland": {
+                    "volume": 9.45337,
+                    "meanDose": 71.159,
+                    "minDose": 69.3594,
+                    "maxDose": 72.9631,
+                    "dosePerVolume": 7.527368547
+            },
+            "Rt_thyroid_lobe": {
+                    "volume": 6.40913,
+                    "meanDose": 62.8108,
+                    "minDose": 57.1849,
+                    "maxDose": 70.3175,
+                    "dosePerVolume": 9.800206892
+            },
+            "SPC": {
+                    "volume": 12.0994,
+                    "meanDose": 70.8497,
+                    "minDose": 66.805,
+                    "maxDose": 73.6144,
+                    "dosePerVolume": 5.85563747
+            },
+            "Spinal_Cord": {
+                    "volume": 16.1426,
+                    "meanDose": 35.2565,
+                    "minDose": 19.735,
+                    "maxDose": 41.6551,
+                    "dosePerVolume": 2.184065764
+            },
+            "Supraglottic_Larynx": {
+                    "volume": 14.6171,
+                    "meanDose": 71.1998,
+                    "minDose": 65.6695,
+                    "maxDose": 74.6345,
+                    "dosePerVolume": 4.870993562
+            },
+            "Thyroid_cartilage": {
+                    "volume": 10.422,
+                    "meanDose": 69.963,
+                    "minDose": 62.6678,
+                    "maxDose": 73.9749,
+                    "dosePerVolume": 6.713010938
+            },
+            "Upper_Lip": {
+                    "volume": 2.6325,
+                    "meanDose": 25.7208,
+                    "minDose": 0,
+                    "maxDose": 47.4256,
+                    "dosePerVolume": 9.77048433
+            }
+    },
+    "similarity": [9, 6, 1, 10, 15, 13, 11, 5, 8, 7, 3, 14, 12, 2, 4],
+    "scores": [1, 0.9877, 0.97781, 0.9149, 0.86564, 0.7409, 0.72949, 0.70176, 0.6315, 0.61334, 0.56431, 0.55797, 0.54463, 0.54321, 0.53177]
+}, {
+    "id": 10,
+    "name": "Patient 10",
+    "organData": {
+            "Brainstem": {
+                    "volume": 24.6004,
+                    "meanDose": 12.3695,
+                    "minDose": 1.6322,
+                    "maxDose": 34.3414,
+                    "dosePerVolume": 0.502817027
+            },
+            "Cricopharyngeal_Muscle": {
+                    "volume": 1.64025,
+                    "meanDose": 14.1946,
+                    "minDose": 5.71933,
+                    "maxDose": 39.8256,
+                    "dosePerVolume": 8.653924707
+            },
+            "Esophagus": {
+                    "volume": 8.64675,
+                    "meanDose": 26.704,
+                    "minDose": 1.42817,
+                    "maxDose": 41.414,
+                    "dosePerVolume": 3.088327985
+            },
+            "Extended_Oral_Cavity": {
+                    "volume": 158.304,
+                    "meanDose": 57.8999,
+                    "minDose": 15.0286,
+                    "maxDose": 76.0574,
+                    "dosePerVolume": 0.365751339
+            },
+            "Glottic_Area": {
+                    "volume": 0.351,
+                    "meanDose": 15.9933,
+                    "minDose": 6.09869,
+                    "maxDose": 34.5145,
+                    "dosePerVolume": 45.56495726
+            },
+            "IPC": {
+                    "volume": 2.12962,
+                    "meanDose": 38.5946,
+                    "minDose": 8.34835,
+                    "maxDose": 58.4891,
+                    "dosePerVolume": 18.12276369
+            },
+            "Lower_Lip": {
+                    "volume": 6.10875,
+                    "meanDose": 27.365,
+                    "minDose": 16.6419,
+                    "maxDose": 54.0909,
+                    "dosePerVolume": 4.479639861
+            },
+            "Lt_Anterior_Seg_Eyeball": {
+                    "volume": 0.340875,
+                    "meanDose": 0.770208,
+                    "minDose": 0.65256,
+                    "maxDose": 0.92918,
+                    "dosePerVolume": 2.25950275
+            },
+            "Lt_Parotid_Gland": {
+                    "volume": 26.1292,
+                    "meanDose": 33.5618,
+                    "minDose": 5.69581,
+                    "maxDose": 74.3795,
+                    "dosePerVolume": 1.284455705
+            },
+            "Lt_Posterior_Seg_Eyeball": {
+                    "volume": 8.84925,
+                    "meanDose": 0.837116,
+                    "minDose": 0.505548,
+                    "maxDose": 1.48919,
+                    "dosePerVolume": 0.094597395
+            },
+            "Lt_Submandibular_Gland": {
+                    "volume": 8.46787,
+                    "meanDose": 71.517,
+                    "minDose": 69.7415,
+                    "maxDose": 74.089,
+                    "dosePerVolume": 8.445689412
+            },
+            "Lt_thyroid_lobe": {
+                    "volume": 7.13813,
+                    "meanDose": 48.6475,
+                    "minDose": 36.1072,
+                    "maxDose": 53.5207,
+                    "dosePerVolume": 6.815160273
+            },
+            "MPC": {
+                    "volume": 1.46475,
+                    "meanDose": 60.7794,
+                    "minDose": 54.4055,
+                    "maxDose": 67.5633,
+                    "dosePerVolume": 41.49472606
+            },
+            "Pituitary_Gland": {
+                    "volume": 0.35775,
+                    "meanDose": 2.58578,
+                    "minDose": 2.21158,
+                    "maxDose": 3.00271,
+                    "dosePerVolume": 7.227896576
+            },
+            "Rt_Anterior_Seg_Eyeball": {
+                    "volume": 0.39825,
+                    "meanDose": 0.822764,
+                    "minDose": 0.711321,
+                    "maxDose": 0.946146,
+                    "dosePerVolume": 2.065948525
+            },
+            "Rt_Parotid_Gland": {
+                    "volume": 23.166,
+                    "meanDose": 37.8358,
+                    "minDose": 4.20778,
+                    "maxDose": 61.5947,
+                    "dosePerVolume": 1.633247
+            },
+            "Rt_Posterior_Seg_Eyeball": {
+                    "volume": 8.8965,
+                    "meanDose": 0.862011,
+                    "minDose": 0.565401,
+                    "maxDose": 1.34932,
+                    "dosePerVolume": 0.096893273
+            },
+            "Rt_Submandibular_Gland": {
+                    "volume": 10.2263,
+                    "meanDose": 61.2385,
+                    "minDose": 56.2517,
+                    "maxDose": 69.7147,
+                    "dosePerVolume": 5.988334002
+            },
+            "Rt_thyroid_lobe": {
+                    "volume": 5.92988,
+                    "meanDose": 50.4893,
+                    "minDose": 43.5274,
+                    "maxDose": 53.5299,
+                    "dosePerVolume": 8.51438815
+            },
+            "SPC": {
+                    "volume": 13.6451,
+                    "meanDose": 67.3658,
+                    "minDose": 51.8958,
+                    "maxDose": 74.175,
+                    "dosePerVolume": 4.936995698
+            },
+            "Spinal_Cord": {
+                    "volume": 12.9499,
+                    "meanDose": 24.0935,
+                    "minDose": 5.74365,
+                    "maxDose": 37.262,
+                    "dosePerVolume": 1.860516297
+            },
+            "Supraglottic_Larynx": {
+                    "volume": 15.5723,
+                    "meanDose": 62.3286,
+                    "minDose": 9.85174,
+                    "maxDose": 73.8876,
+                    "dosePerVolume": 4.002530134
+            },
+            "Thyroid_cartilage": {
+                    "volume": 9.45,
+                    "meanDose": 43.8748,
+                    "minDose": 4.09834,
+                    "maxDose": 65.0587,
+                    "dosePerVolume": 4.642835979
+            },
+            "Upper_Lip": {
+                    "volume": 5.40675,
+                    "meanDose": 14.9515,
+                    "minDose": 0,
+                    "maxDose": 35.7208,
+                    "dosePerVolume": 2.765339622
+            }
+    },
+    "similarity": [10, 1, 6, 11, 13, 5, 9, 8, 7, 3, 14, 12, 2, 15, 4],
+    "scores": [1, 0.95906, 0.94409, 0.9331, 0.93257, 0.91762, 0.9149, 0.87998, 0.87093, 0.83861, 0.83795, 0.82705, 0.8219, 0.81726, 0.80366]
+}, {
+    "id": 11,
+    "name": "Patient 11",
+    "organData": {
+            "Brainstem": {
+                    "volume": 27.594,
+                    "meanDose": 7.64252,
+                    "minDose": 1.20817,
+                    "maxDose": 32.8828,
+                    "dosePerVolume": 0.276963108
+            },
+            "Cricopharyngeal_Muscle": {
+                    "volume": 2.32875,
+                    "meanDose": 8.5672,
+                    "minDose": 5.43136,
+                    "maxDose": 21.9445,
+                    "dosePerVolume": 3.678883521
+            },
+            "Esophagus": {
+                    "volume": 10.7966,
+                    "meanDose": 15.2641,
+                    "minDose": 1.38965,
+                    "maxDose": 37.0433,
+                    "dosePerVolume": 1.413787674
+            },
+            "Extended_Oral_Cavity": {
+                    "volume": 141.247,
+                    "meanDose": 56.2104,
+                    "minDose": 14.5574,
+                    "maxDose": 74.9754,
+                    "dosePerVolume": 0.397958187
+            },
+            "Glottic_Area": {
+                    "volume": 0.38475,
+                    "meanDose": 14.5673,
+                    "minDose": 8.23149,
+                    "maxDose": 27.7431,
+                    "dosePerVolume": 37.8617284
+            },
+            "IPC": {
+                    "volume": 2.24438,
+                    "meanDose": 52.391,
+                    "minDose": 25.3397,
+                    "maxDose": 63.9527,
+                    "dosePerVolume": 23.343195
+            },
+            "Lower_Lip": {
+                    "volume": 5.22112,
+                    "meanDose": 24.6565,
+                    "minDose": 17.2835,
+                    "maxDose": 34.7576,
+                    "dosePerVolume": 4.722454186
+            },
+            "Lt_Anterior_Seg_Eyeball": {
+                    "volume": 0.313875,
+                    "meanDose": 0.983773,
+                    "minDose": 0.871173,
+                    "maxDose": 1.14614,
+                    "dosePerVolume": 3.134282756
+            },
+            "Lt_Parotid_Gland": {
+                    "volume": 35.5725,
+                    "meanDose": 26.074,
+                    "minDose": 4.24835,
+                    "maxDose": 74.346,
+                    "dosePerVolume": 0.732981938
+            },
+            "Lt_Posterior_Seg_Eyeball": {
+                    "volume": 8.30588,
+                    "meanDose": 1.08006,
+                    "minDose": 0.712397,
+                    "maxDose": 1.7537,
+                    "dosePerVolume": 0.130035589
+            },
+            "Lt_Submandibular_Gland": {
+                    "volume": 9.234,
+                    "meanDose": 70.6277,
+                    "minDose": 63.1667,
+                    "maxDose": 73.0833,
+                    "dosePerVolume": 7.648657137
+            },
+            "Lt_thyroid_lobe": {
+                    "volume": 5.29537,
+                    "meanDose": 40.7369,
+                    "minDose": 11.7827,
+                    "maxDose": 51.338,
+                    "dosePerVolume": 7.692927973
+            },
+            "MPC": {
+                    "volume": 0.867375,
+                    "meanDose": 65.7972,
+                    "minDose": 59.6372,
+                    "maxDose": 71.4301,
+                    "dosePerVolume": 75.85784695
+            },
+            "Pituitary_Gland": {
+                    "volume": 0.293625,
+                    "meanDose": 2.23187,
+                    "minDose": 1.82817,
+                    "maxDose": 2.54049,
+                    "dosePerVolume": 7.601089825
+            },
+            "Rt_Anterior_Seg_Eyeball": {
+                    "volume": 0.388125,
+                    "meanDose": 0.965587,
+                    "minDose": 0.84471,
+                    "maxDose": 1.13833,
+                    "dosePerVolume": 2.487824799
+            },
+            "Rt_Parotid_Gland": {
+                    "volume": 37.4355,
+                    "meanDose": 24.3103,
+                    "minDose": 4.32239,
+                    "maxDose": 72.5499,
+                    "dosePerVolume": 0.64939162
+            },
+            "Rt_Posterior_Seg_Eyeball": {
+                    "volume": 8.25863,
+                    "meanDose": 1.10329,
+                    "minDose": 0.749415,
+                    "maxDose": 1.86215,
+                    "dosePerVolume": 0.133592375
+            },
+            "Rt_Submandibular_Gland": {
+                    "volume": 8.90325,
+                    "meanDose": 71.2993,
+                    "minDose": 69.1712,
+                    "maxDose": 73.061,
+                    "dosePerVolume": 8.008232949
+            },
+            "Rt_thyroid_lobe": {
+                    "volume": 7.3035,
+                    "meanDose": 41.1743,
+                    "minDose": 8.7173,
+                    "maxDose": 52.6494,
+                    "dosePerVolume": 5.637612104
+            },
+            "SPC": {
+                    "volume": 12.9195,
+                    "meanDose": 66.4645,
+                    "minDose": 47.8549,
+                    "maxDose": 73.7812,
+                    "dosePerVolume": 5.144510236
+            },
+            "Spinal_Cord": {
+                    "volume": 18.981,
+                    "meanDose": 20.0566,
+                    "minDose": 4.98106,
+                    "maxDose": 32.5008,
+                    "dosePerVolume": 1.056667194
+            },
+            "Supraglottic_Larynx": {
+                    "volume": 14.4787,
+                    "meanDose": 64.8522,
+                    "minDose": 18.8795,
+                    "maxDose": 73.5399,
+                    "dosePerVolume": 4.479145227
+            },
+            "Thyroid_cartilage": {
+                    "volume": 7.53638,
+                    "meanDose": 41.1445,
+                    "minDose": 4.32282,
+                    "maxDose": 66.0601,
+                    "dosePerVolume": 5.459451355
+            },
+            "Upper_Lip": {
+                    "volume": 7.209,
+                    "meanDose": 16.163,
+                    "minDose": 2.33631,
+                    "maxDose": 32.7707,
+                    "dosePerVolume": 2.242058538
+            }
+    },
+    "similarity": [11, 5, 7, 14, 8, 13, 12, 2, 10, 3, 4, 1, 6, 9, 15],
+    "scores": [1, 0.98795, 0.98273, 0.96009, 0.95848, 0.94964, 0.94628, 0.93783, 0.9331, 0.9329, 0.90908, 0.82487, 0.79693, 0.72949, 0.66962]
+}, {
+    "id": 12,
+    "name": "Patient 12",
+    "organData": {
+            "Brainstem": {
+                    "volume": 22.059,
+                    "meanDose": 9.45802,
+                    "minDose": 1.40386,
+                    "maxDose": 36.0873,
+                    "dosePerVolume": 0.428760143
+            },
+            "Cricopharyngeal_Muscle": {
+                    "volume": 2.81813,
+                    "meanDose": 19.5043,
+                    "minDose": 6.05607,
+                    "maxDose": 44.2016,
+                    "dosePerVolume": 6.921007902
+            },
+            "Esophagus": {
+                    "volume": 8.24175,
+                    "meanDose": 34.4662,
+                    "minDose": 2.46667,
+                    "maxDose": 43.0326,
+                    "dosePerVolume": 4.181903115
+            },
+            "Extended_Oral_Cavity": {
+                    "volume": 108.523,
+                    "meanDose": 51.4336,
+                    "minDose": 16.6621,
+                    "maxDose": 75.2101,
+                    "dosePerVolume": 0.473941929
+            },
+            "Glottic_Area": {
+                    "volume": 0.678375,
+                    "meanDose": 6.32534,
+                    "minDose": 4.80357,
+                    "maxDose": 9.52194,
+                    "dosePerVolume": 9.32425281
+            },
+            "IPC": {
+                    "volume": 2.511,
+                    "meanDose": 26.8503,
+                    "minDose": 6.54201,
+                    "maxDose": 70.6177,
+                    "dosePerVolume": 10.69307049
+            },
+            "Lower_Lip": {
+                    "volume": 4.14787,
+                    "meanDose": 15.5531,
+                    "minDose": 11.4355,
+                    "maxDose": 26.2837,
+                    "dosePerVolume": 3.749659464
+            },
+            "Lt_Anterior_Seg_Eyeball": {
+                    "volume": 0.394875,
+                    "meanDose": 0.894719,
+                    "minDose": 0.776102,
+                    "maxDose": 1.04342,
+                    "dosePerVolume": 2.265828427
+            },
+            "Lt_Parotid_Gland": {
+                    "volume": 27.6547,
+                    "meanDose": 16.7178,
+                    "minDose": 4.97505,
+                    "maxDose": 54.9256,
+                    "dosePerVolume": 0.604519304
+            },
+            "Lt_Posterior_Seg_Eyeball": {
+                    "volume": 7.11787,
+                    "meanDose": 1.11424,
+                    "minDose": 0.750546,
+                    "maxDose": 1.71693,
+                    "dosePerVolume": 0.156541212
+            },
+            "Lt_Submandibular_Gland": {
+                    "volume": 7.695,
+                    "meanDose": 44.1647,
+                    "minDose": 30.8955,
+                    "maxDose": 61.5405,
+                    "dosePerVolume": 5.739402209
+            },
+            "Lt_thyroid_lobe": {
+                    "volume": 6.05138,
+                    "meanDose": 50.3507,
+                    "minDose": 39.3521,
+                    "maxDose": 54.4558,
+                    "dosePerVolume": 8.320531846
+            },
+            "MPC": {
+                    "volume": 1.2555,
+                    "meanDose": 60.5202,
+                    "minDose": 52.3654,
+                    "maxDose": 72.803,
+                    "dosePerVolume": 48.20406213
+            },
+            "Pituitary_Gland": {
+                    "volume": 0.435375,
+                    "meanDose": 2.9711,
+                    "minDose": 2.505,
+                    "maxDose": 3.67481,
+                    "dosePerVolume": 6.824231984
+            },
+            "Rt_Anterior_Seg_Eyeball": {
+                    "volume": 0.46575,
+                    "meanDose": 1.03758,
+                    "minDose": 0.893605,
+                    "maxDose": 1.23664,
+                    "dosePerVolume": 2.227761675
+            },
+            "Rt_Parotid_Gland": {
+                    "volume": 31.2052,
+                    "meanDose": 34.6304,
+                    "minDose": 5.68278,
+                    "maxDose": 73.0633,
+                    "dosePerVolume": 1.109763757
+            },
+            "Rt_Posterior_Seg_Eyeball": {
+                    "volume": 6.28087,
+                    "meanDose": 1.25825,
+                    "minDose": 0.856004,
+                    "maxDose": 2.01751,
+                    "dosePerVolume": 0.200330527
+            },
+            "Rt_Submandibular_Gland": {
+                    "volume": 7.78275,
+                    "meanDose": 71.0881,
+                    "minDose": 64.2995,
+                    "maxDose": 74.039,
+                    "dosePerVolume": 9.134059298
+            },
+            "Rt_thyroid_lobe": {
+                    "volume": 6.37875,
+                    "meanDose": 54.3386,
+                    "minDose": 43.5498,
+                    "maxDose": 63.6555,
+                    "dosePerVolume": 8.518690966
+            },
+            "SPC": {
+                    "volume": 12.2918,
+                    "meanDose": 67.8872,
+                    "minDose": 53.8425,
+                    "maxDose": 73.7335,
+                    "dosePerVolume": 5.522966531
+            },
+            "Spinal_Cord": {
+                    "volume": 20.0003,
+                    "meanDose": 30.1313,
+                    "minDose": 6.13354,
+                    "maxDose": 42.7718,
+                    "dosePerVolume": 1.506542402
+            },
+            "Supraglottic_Larynx": {
+                    "volume": 15.8524,
+                    "meanDose": 47.3769,
+                    "minDose": 6.17695,
+                    "maxDose": 71.5506,
+                    "dosePerVolume": 2.988626328
+            },
+            "Thyroid_cartilage": {
+                    "volume": 12.717,
+                    "meanDose": 34.9137,
+                    "minDose": 4.11559,
+                    "maxDose": 73.411,
+                    "dosePerVolume": 2.745435244
+            },
+            "Upper_Lip": {
+                    "volume": 6.3045,
+                    "meanDose": 14.9226,
+                    "minDose": 0,
+                    "maxDose": 28.931,
+                    "dosePerVolume": 2.36697597
+            }
+    },
+    "similarity": [12, 2, 14, 3, 8, 7, 4, 5, 11, 13, 10, 1, 6, 9, 15],
+    "scores": [1, 0.99271, 0.99234, 0.99154, 0.98459, 0.98172, 0.98075, 0.97034, 0.94628, 0.93967, 0.82705, 0.65221, 0.61798, 0.54463, 0.5356]
+}, {
+    "id": 13,
+    "name": "Patient 13",
+    "organData": {
+            "Brainstem": {
+                    "volume": 24.3878,
+                    "meanDose": 23.8398,
+                    "minDose": 3.1514,
+                    "maxDose": 49.3889,
+                    "dosePerVolume": 0.977529748
+            },
+            "Cricopharyngeal_Muscle": {
+                    "volume": 1.971,
+                    "meanDose": 12.1291,
+                    "minDose": 5.73969,
+                    "maxDose": 41.7519,
+                    "dosePerVolume": 6.153779807
+            },
+            "Esophagus": {
+                    "volume": 8.90663,
+                    "meanDose": 37.689,
+                    "minDose": 6.72584,
+                    "maxDose": 44.8797,
+                    "dosePerVolume": 4.231566822
+            },
+            "Extended_Oral_Cavity": {
+                    "volume": 106.343,
+                    "meanDose": 59.6504,
+                    "minDose": 22.3712,
+                    "maxDose": 74.4043,
+                    "dosePerVolume": 0.560924555
+            },
+            "Glottic_Area": {
+                    "volume": 0.41175,
+                    "meanDose": 8.77526,
+                    "minDose": 6.03532,
+                    "maxDose": 14.1819,
+                    "dosePerVolume": 21.31210686
+            },
+            "IPC": {
+                    "volume": 1.96762,
+                    "meanDose": 28.5329,
+                    "minDose": 6.17307,
+                    "maxDose": 68.935,
+                    "dosePerVolume": 14.50122483
+            },
+            "Lower_Lip": {
+                    "volume": 3.51,
+                    "meanDose": 23.0321,
+                    "minDose": 16.5199,
+                    "maxDose": 35.9327,
+                    "dosePerVolume": 6.561851852
+            },
+            "Lt_Anterior_Seg_Eyeball": {
+                    "volume": 0.284766,
+                    "meanDose": 0,
+                    "minDose": 0,
+                    "maxDose": 0,
+                    "dosePerVolume": 0
+            },
+            "Lt_Parotid_Gland": {
+                    "volume": 22.4674,
+                    "meanDose": 44.7408,
+                    "minDose": 7.64921,
+                    "maxDose": 74.297,
+                    "dosePerVolume": 1.991365267
+            },
+            "Lt_Posterior_Seg_Eyeball": {
+                    "volume": 6.78713,
+                    "meanDose": 0,
+                    "minDose": 0,
+                    "maxDose": 0,
+                    "dosePerVolume": 0
+            },
+            "Lt_Submandibular_Gland": {
+                    "volume": 8.08313,
+                    "meanDose": 71.3786,
+                    "minDose": 66.8111,
+                    "maxDose": 73.5056,
+                    "dosePerVolume": 8.830564398
+            },
+            "Lt_thyroid_lobe": {
+                    "volume": 5.96025,
+                    "meanDose": 58.1892,
+                    "minDose": 30.5115,
+                    "maxDose": 67.7562,
+                    "dosePerVolume": 9.762879074
+            },
+            "MPC": {
+                    "volume": 1.37025,
+                    "meanDose": 51.88,
+                    "minDose": 40.7456,
+                    "maxDose": 69.1589,
+                    "dosePerVolume": 37.86170407
+            },
+            "Pituitary_Gland": {
+                    "volume": 0.367875,
+                    "meanDose": 4.64813,
+                    "minDose": 4.12945,
+                    "maxDose": 5.46502,
+                    "dosePerVolume": 12.63507985
+            },
+            "Rt_Anterior_Seg_Eyeball": {
+                    "volume": 0.213047,
+                    "meanDose": 0,
+                    "minDose": 0,
+                    "maxDose": 0,
+                    "dosePerVolume": 0
+            },
+            "Rt_Parotid_Gland": {
+                    "volume": 24.6442,
+                    "meanDose": 27.3472,
+                    "minDose": 5.6249,
+                    "maxDose": 72.4662,
+                    "dosePerVolume": 1.10968098
+            },
+            "Rt_Posterior_Seg_Eyeball": {
+                    "volume": 6.81075,
+                    "meanDose": 0,
+                    "minDose": 0,
+                    "maxDose": 0,
+                    "dosePerVolume": 0
+            },
+            "Rt_Submandibular_Gland": {
+                    "volume": 6.83438,
+                    "meanDose": 66.2305,
+                    "minDose": 63.1175,
+                    "maxDose": 72.634,
+                    "dosePerVolume": 9.690783948
+            },
+            "Rt_thyroid_lobe": {
+                    "volume": 6.91538,
+                    "meanDose": 41.2859,
+                    "minDose": 8.51566,
+                    "maxDose": 60.6325,
+                    "dosePerVolume": 5.970156376
+            },
+            "SPC": {
+                    "volume": 10.4254,
+                    "meanDose": 71.0367,
+                    "minDose": 52.2657,
+                    "maxDose": 73.8183,
+                    "dosePerVolume": 6.813810501
+            },
+            "Spinal_Cord": {
+                    "volume": 20.3411,
+                    "meanDose": 24.3088,
+                    "minDose": 6.08815,
+                    "maxDose": 41.9171,
+                    "dosePerVolume": 1.195058281
+            },
+            "Supraglottic_Larynx": {
+                    "volume": 13.3549,
+                    "meanDose": 58.3432,
+                    "minDose": 7.44237,
+                    "maxDose": 73.3206,
+                    "dosePerVolume": 4.36867367
+            },
+            "Thyroid_cartilage": {
+                    "volume": 8.83575,
+                    "meanDose": 34.3504,
+                    "minDose": 4.25709,
+                    "maxDose": 73.356,
+                    "dosePerVolume": 3.887660923
+            },
+            "Upper_Lip": {
+                    "volume": 4.54612,
+                    "meanDose": 22.4562,
+                    "minDose": 2.207,
+                    "maxDose": 38.5006,
+                    "dosePerVolume": 4.939640837
+            }
+    },
+    "similarity": [13, 5, 8, 3, 11, 14, 7, 12, 10, 4, 2, 1, 6, 9, 15],
+    "scores": [1, 0.96867, 0.9652, 0.95597, 0.94964, 0.9462, 0.94067, 0.93967, 0.93257, 0.92991, 0.92883, 0.81777, 0.77674, 0.7409, 0.65807]
+}, {
+    "id": 14,
+    "name": "Patient 14",
+    "organData": {
+            "Brainstem": {
+                    "volume": 30.7766,
+                    "meanDose": 10.0226,
+                    "minDose": 1.44427,
+                    "maxDose": 39.7527,
+                    "dosePerVolume": 0.325656505
+            },
+            "Cricopharyngeal_Muscle": {
+                    "volume": 3.24,
+                    "meanDose": 14.6616,
+                    "minDose": 6.48493,
+                    "maxDose": 41.537,
+                    "dosePerVolume": 4.525185185
+            },
+            "Esophagus": {
+                    "volume": 9.018,
+                    "meanDose": 26.8976,
+                    "minDose": 1.17982,
+                    "maxDose": 41.0019,
+                    "dosePerVolume": 2.982656908
+            },
+            "Extended_Oral_Cavity": {
+                    "volume": 144.528,
+                    "meanDose": 54.2876,
+                    "minDose": 18.348,
+                    "maxDose": 74.3586,
+                    "dosePerVolume": 0.375619949
+            },
+            "Glottic_Area": {
+                    "volume": 0.820125,
+                    "meanDose": 8.71944,
+                    "minDose": 5.5989,
+                    "maxDose": 20.5492,
+                    "dosePerVolume": 10.63184271
+            },
+            "IPC": {
+                    "volume": 2.55488,
+                    "meanDose": 41.7771,
+                    "minDose": 11.4847,
+                    "maxDose": 67.122,
+                    "dosePerVolume": 16.35188345
+            },
+            "Lower_Lip": {
+                    "volume": 4.05675,
+                    "meanDose": 24.1787,
+                    "minDose": 18.5886,
+                    "maxDose": 32.5976,
+                    "dosePerVolume": 5.960115856
+            },
+            "Lt_Anterior_Seg_Eyeball": {
+                    "volume": 0.4455,
+                    "meanDose": 0.88215,
+                    "minDose": 0.762272,
+                    "maxDose": 1.04905,
+                    "dosePerVolume": 1.98013468
+            },
+            "Lt_Parotid_Gland": {
+                    "volume": 30.7969,
+                    "meanDose": 20.5049,
+                    "minDose": 5.16012,
+                    "maxDose": 59.863,
+                    "dosePerVolume": 0.66581052
+            },
+            "Lt_Posterior_Seg_Eyeball": {
+                    "volume": 7.21575,
+                    "meanDose": 0.881774,
+                    "minDose": 0.680981,
+                    "maxDose": 1.25914,
+                    "dosePerVolume": 0.122201296
+            },
+            "Lt_Submandibular_Gland": {
+                    "volume": 7.749,
+                    "meanDose": 56.1059,
+                    "minDose": 47.6903,
+                    "maxDose": 61.3617,
+                    "dosePerVolume": 7.240405214
+            },
+            "Lt_thyroid_lobe": {
+                    "volume": 5.88938,
+                    "meanDose": 48.4684,
+                    "minDose": 39.4533,
+                    "maxDose": 53.2481,
+                    "dosePerVolume": 8.229796685
+            },
+            "MPC": {
+                    "volume": 1.19813,
+                    "meanDose": 61.4536,
+                    "minDose": 52.8178,
+                    "maxDose": 72.6485,
+                    "dosePerVolume": 51.29126222
+            },
+            "Pituitary_Gland": {
+                    "volume": 0.324,
+                    "meanDose": 2.18723,
+                    "minDose": 1.99478,
+                    "maxDose": 2.36804,
+                    "dosePerVolume": 6.750709877
+            },
+            "Rt_Anterior_Seg_Eyeball": {
+                    "volume": 0.3105,
+                    "meanDose": 0.789282,
+                    "minDose": 0.699881,
+                    "maxDose": 0.904861,
+                    "dosePerVolume": 2.541971014
+            },
+            "Rt_Parotid_Gland": {
+                    "volume": 31.1006,
+                    "meanDose": 31.9959,
+                    "minDose": 4.98432,
+                    "maxDose": 73.6029,
+                    "dosePerVolume": 1.028787226
+            },
+            "Rt_Posterior_Seg_Eyeball": {
+                    "volume": 7.21575,
+                    "meanDose": 0.825755,
+                    "minDose": 0.616692,
+                    "maxDose": 1.19522,
+                    "dosePerVolume": 0.114437862
+            },
+            "Rt_Submandibular_Gland": {
+                    "volume": 7.93463,
+                    "meanDose": 72.0532,
+                    "minDose": 69.2773,
+                    "maxDose": 73.8875,
+                    "dosePerVolume": 9.080851911
+            },
+            "Rt_thyroid_lobe": {
+                    "volume": 8.04937,
+                    "meanDose": 49.2757,
+                    "minDose": 35.5842,
+                    "maxDose": 53.0583,
+                    "dosePerVolume": 6.121684057
+            },
+            "SPC": {
+                    "volume": 12.7406,
+                    "meanDose": 65.3157,
+                    "minDose": 51.5155,
+                    "maxDose": 73.9419,
+                    "dosePerVolume": 5.126579596
+            },
+            "Spinal_Cord": {
+                    "volume": 16.1325,
+                    "meanDose": 25.8232,
+                    "minDose": 6.42437,
+                    "maxDose": 34.6175,
+                    "dosePerVolume": 1.600694251
+            },
+            "Supraglottic_Larynx": {
+                    "volume": 16.0616,
+                    "meanDose": 63.9782,
+                    "minDose": 14.0861,
+                    "maxDose": 74.3667,
+                    "dosePerVolume": 3.983301788
+            },
+            "Thyroid_cartilage": {
+                    "volume": 14.4146,
+                    "meanDose": 41.1867,
+                    "minDose": 4.7314,
+                    "maxDose": 73.1824,
+                    "dosePerVolume": 2.857290525
+            },
+            "Upper_Lip": {
+                    "volume": 7.128,
+                    "meanDose": 15.6828,
+                    "minDose": 0,
+                    "maxDose": 29.3075,
+                    "dosePerVolume": 2.20016835
+            }
+    },
+    "similarity": [14, 12, 7, 8, 2, 3, 5, 4, 11, 13, 10, 1, 6, 9, 15],
+    "scores": [1, 0.99234, 0.98704, 0.98479, 0.9846, 0.98304, 0.97226, 0.96526, 0.96009, 0.9462, 0.83795, 0.66705, 0.62793, 0.55797, 0.53908]
+}, {
+    "id": 15,
+    "name": "Patient 15",
+    "organData": {
+            "Brainstem": {
+                    "volume": 23.6992,
+                    "meanDose": 7.96361,
+                    "minDose": 1.44721,
+                    "maxDose": 41.6703,
+                    "dosePerVolume": 0.336028642
+            },
+            "Cricopharyngeal_Muscle": {
+                    "volume": 3.186,
+                    "meanDose": 70.6593,
+                    "minDose": 62.7847,
+                    "maxDose": 72.9626,
+                    "dosePerVolume": 22.17806026
+            },
+            "Esophagus": {
+                    "volume": 12.6124,
+                    "meanDose": 38.9917,
+                    "minDose": 1.85167,
+                    "maxDose": 67.9543,
+                    "dosePerVolume": 3.0915369
+            },
+            "Extended_Oral_Cavity": {
+                    "volume": 126.215,
+                    "meanDose": 60.0704,
+                    "minDose": 24.0039,
+                    "maxDose": 75.0647,
+                    "dosePerVolume": 0.475937091
+            },
+            "Glottic_Area": {
+                    "volume": 0.766125,
+                    "meanDose": 71.4486,
+                    "minDose": 69.5238,
+                    "maxDose": 73.3579,
+                    "dosePerVolume": 93.2597161
+            },
+            "IPC": {
+                    "volume": 3.84075,
+                    "meanDose": 71.1886,
+                    "minDose": 69.5665,
+                    "maxDose": 72.7063,
+                    "dosePerVolume": 18.53507778
+            },
+            "Lower_Lip": {
+                    "volume": 3.76987,
+                    "meanDose": 22.4803,
+                    "minDose": 18.1736,
+                    "maxDose": 30.3141,
+                    "dosePerVolume": 5.963149923
+            },
+            "Lt_Anterior_Seg_Eyeball": {
+                    "volume": 0.037125,
+                    "meanDose": 1.55746,
+                    "minDose": 1.46026,
+                    "maxDose": 1.67523,
+                    "dosePerVolume": 41.95178451
+            },
+            "Lt_Parotid_Gland": {
+                    "volume": 26.8448,
+                    "meanDose": 27.6859,
+                    "minDose": 6.33461,
+                    "maxDose": 74.0866,
+                    "dosePerVolume": 1.031331953
+            },
+            "Lt_Posterior_Seg_Eyeball": {
+                    "volume": 7.05375,
+                    "meanDose": 1.94729,
+                    "minDose": 1.19031,
+                    "maxDose": 4.36244,
+                    "dosePerVolume": 0.276064505
+            },
+            "Lt_Submandibular_Gland": {
+                    "volume": 7.08075,
+                    "meanDose": 69.0403,
+                    "minDose": 63.1573,
+                    "maxDose": 72.9323,
+                    "dosePerVolume": 9.750421919
+            },
+            "Lt_thyroid_lobe": {
+                    "volume": 6.01762,
+                    "meanDose": 61.9886,
+                    "minDose": 60.1639,
+                    "maxDose": 68.8121,
+                    "dosePerVolume": 10.30118219
+            },
+            "MPC": {
+                    "volume": 1.83262,
+                    "meanDose": 70.8078,
+                    "minDose": 68.7025,
+                    "maxDose": 72.4063,
+                    "dosePerVolume": 38.63746985
+            },
+            "Pituitary_Gland": {
+                    "volume": 0.448875,
+                    "meanDose": 3.42137,
+                    "minDose": 2.94904,
+                    "maxDose": 3.86678,
+                    "dosePerVolume": 7.622099694
+            },
+            "Rt_Anterior_Seg_Eyeball": {
+                    "volume": 0.03375,
+                    "meanDose": 1.73331,
+                    "minDose": 1.65201,
+                    "maxDose": 1.86291,
+                    "dosePerVolume": 51.35733333
+            },
+            "Rt_Parotid_Gland": {
+                    "volume": 27.6919,
+                    "meanDose": 33.7966,
+                    "minDose": 6.15178,
+                    "maxDose": 73.3411,
+                    "dosePerVolume": 1.220450746
+            },
+            "Rt_Posterior_Seg_Eyeball": {
+                    "volume": 7.0065,
+                    "meanDose": 2.06164,
+                    "minDose": 1.3505,
+                    "maxDose": 3.70217,
+                    "dosePerVolume": 0.294246771
+            },
+            "Rt_Submandibular_Gland": {
+                    "volume": 7.803,
+                    "meanDose": 71.7128,
+                    "minDose": 69.4625,
+                    "maxDose": 73.8269,
+                    "dosePerVolume": 9.190413943
+            },
+            "Rt_thyroid_lobe": {
+                    "volume": 7.24613,
+                    "meanDose": 65.5713,
+                    "minDose": 59.9329,
+                    "maxDose": 72.4127,
+                    "dosePerVolume": 9.049147614
+            },
+            "SPC": {
+                    "volume": 14.5631,
+                    "meanDose": 67.9494,
+                    "minDose": 55.0887,
+                    "maxDose": 73.9724,
+                    "dosePerVolume": 4.665860977
+            },
+            "Spinal_Cord": {
+                    "volume": 16.4936,
+                    "meanDose": 28.7136,
+                    "minDose": 14.33,
+                    "maxDose": 39.985,
+                    "dosePerVolume": 1.740893437
+            },
+            "Supraglottic_Larynx": {
+                    "volume": 22.5281,
+                    "meanDose": 71.1329,
+                    "minDose": 69.3909,
+                    "maxDose": 73.9983,
+                    "dosePerVolume": 3.157518832
+            },
+            "Thyroid_cartilage": {
+                    "volume": 12.0758,
+                    "meanDose": 71.3986,
+                    "minDose": 67.3538,
+                    "maxDose": 74.038,
+                    "dosePerVolume": 5.912535815
+            },
+            "Upper_Lip": {
+                    "volume": 5.30888,
+                    "meanDose": 27.9753,
+                    "minDose": 12.3668,
+                    "maxDose": 38.9498,
+                    "dosePerVolume": 5.269529543
+            }
+    },
+    "similarity": [15, 9, 6, 1, 10, 11, 13, 5, 8, 7, 3, 4, 2, 14, 12],
+    "scores": [1, 0.86564, 0.86195, 0.85954, 0.81726, 0.66962, 0.65807, 0.64824, 0.63871, 0.58484, 0.56578, 0.55144, 0.53921, 0.53908, 0.5356]
+}]
