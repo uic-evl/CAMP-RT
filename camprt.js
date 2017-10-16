@@ -70,7 +70,7 @@ var listItems, arrayOfDivs = [],
 d3.queue()
     .defer(d3.json, "data/organs.json")
     .defer(d3.json, "data/links.json")
-    .defer(d3.json, "data/patients.json")
+    .defer(d3.json, "data/patients_V2.json")
     .await(start);
 
 function start(error, organsData, linksData, patientsData) {
@@ -110,6 +110,9 @@ function start(error, organsData, linksData, patientsData) {
     document.addEventListener("mousemove", onDocumentMouseMove, false);
 
     updateOrder(selectedPatient); // update order in GUI
+
+    document.getElementById("loadScreen").style.display = "none";
+
     animate(); // render
 }
 
@@ -509,7 +512,12 @@ function init() {
             if (patientOrganList[organ.name] != null) {
                 //console.log(patientOrganList[organ.name]);
 
-                organSphere.userData.dosePerVolume = patientOrganList[organ.name];
+                organSphere.userData.volume = patientOrganList[organ.name].volume;
+                organSphere.userData.minDose = patientOrganList[organ.name].minDose;
+                organSphere.userData.meanDose = patientOrganList[organ.name].meanDose;
+                organSphere.userData.maxDose = patientOrganList[organ.name].maxDose;
+                organSphere.userData.dosePerVolume = patientOrganList[organ.name].dosePerVolume;
+
                 nodeColor = color(organSphere.userData.dosePerVolume);
                 organSphere.material.color.setStyle(nodeColor);
 
@@ -808,16 +816,16 @@ function populateAndPlaceDetails(state) {
         lineSeparator.style["borderColor"] = "#" + nodeHover.material.color.getHexString();
 
         // Volume
-        //volumeVal.innerHTML =
+        volumeVal.innerHTML = nodeHover.userData.volume;
 
         // Mean Dose
-        //meanDoseVal.innerHTML =
+        meanDoseVal.innerHTML = nodeHover.userData.meanDose;
 
         // Min Dose
-        //minDoseVal.innerHTML =
+        minDoseVal.innerHTML = nodeHover.userData.minDose;
 
         // Max Dose
-        //maxDoseVal.innerHTML =
+        maxDoseVal.innerHTML = nodeHover.userData.maxDose;
 
     } else if (state == "HIDE") {
 
