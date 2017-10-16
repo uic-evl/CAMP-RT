@@ -22,7 +22,7 @@ To provide an automated method to compute the similarities between multiple canc
 ## DATA
 Currently, data for each patient is manually extracted from the respective DICOM files (using Slicer-RT) and encoded into JSON format. Next, the JSON file is preproccesed to calculate similarity scores and ranks bewtween patients, which is then added to the JSON file. The JSON file is then ready to be read by the application. JSON for a single patient looks like this:
 
-'''json
+```json
 {
     "id": 1,
     "name": "Patient 1",
@@ -199,4 +199,4 @@ Currently, data for each patient is manually extracted from the respective DICOM
     "similarity": [1, 6, 9, 10, 15, 11, 13, 5, 7, 8, 3, 14, 12, 2, 4],
     "scores": [1, 0.98852, 0.97781, 0.95906, 0.85954, 0.82487, 0.81777, 0.79799, 0.72638, 0.72515, 0.67101, 0.66705, 0.65221, 0.64747, 0.63087]
 }
-'''
+```
