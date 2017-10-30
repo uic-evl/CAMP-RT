@@ -20,7 +20,7 @@ OARs (Organs at Risk): Healthy organs located in the radiation field during radi
 To provide an automated method to compute the similarities between multiple cancer patients and rank them accordingly. This would allow radiologists to optimize the radiation therapy plan in a short timeframe, while minimizing pain and side effects to healthy organs at risk.
 
 ## DATA
-Currently, data for each patient is manually extracted from the respective DICOM files (using Slicer-RT) and encoded into JSON format. Next, the JSON file is preproccesed to calculate similarity scores and ranks bewtween patients, which is then added to the JSON file. The JSON file is then ready to be read by the application. JSON for a single patient looks like this:
+Currently, data for each patient is manually extracted from the respective DICOM files (using Slicer-RT) and encoded into JSON format. Next, the JSON file is preprocessed to calculate similarity scores and ranks between patients, which is then added to the JSON file. The JSON file is then ready to be read by the application. JSON for a single patient looks like this:
 
 ```json
 {
