@@ -592,40 +592,40 @@ function init() {
     ///models
     // Load STL model
 
-    var tempObject = scenes[0].getObjectByName("Upper_Lip");
+    //var tempObject = scenes[0].getObjectByName("Upper_Lip");
 
-    console.log("loading model");
-    var loaderSTL = new THREE.STLLoader();
-    loaderSTL.load('resources/models/Upper_Lip.stl',
-        function (geometry) {
-            var material = new THREE.MeshPhongMaterial({
-                color: 0xF44336,
-                specular: 0x111111,
-                shininess: 200
-            });
-            var mesh = new THREE.Mesh(geometry, material);
-            // to LPS space
-            /*
-                        var RASToLPS = new THREE.Matrix4();
-                        RASToLPS.set(-1, 0, 0, 0,
-                            0, -1, 0, 0,
-                            0, 0, 1, 0,
-                            0, 0, 0, 1);
-                        mesh.applyMatrix(RASToLPS);
-            */
+    //console.log("loading model");
+    //var loaderSTL = new THREE.STLLoader();
+    //loaderSTL.load('resources/models/Upper_Lip.stl',
+    //    function (geometry) {
+    //        var material = new THREE.MeshPhongMaterial({
+    //            color: 0xF44336,
+    //            specular: 0x111111,
+    //            shininess: 200
+    //       });
+    //        var mesh = new THREE.Mesh(geometry, material);
+    // to LPS space
+    /*
+                var RASToLPS = new THREE.Matrix4();
+                RASToLPS.set(-1, 0, 0, 0,
+                    0, -1, 0, 0,
+                    0, 0, 1, 0,
+                    0, 0, 0, 1);
+                mesh.applyMatrix(RASToLPS);
+    */
 
-            //mesh.position.x = organs[23].x;
-            //mesh.position.y = organs[23].y;
-            //mesh.position.z = organs[23].z;
+    //mesh.position.x = organs[23].x;
+    //mesh.position.y = organs[23].y;
+    //mesh.position.z = organs[23].z;
 
-            //mesh.position.set(tempObject.position.x, tempObject.position.y, tempObject.position.z);
+    //mesh.position.set(tempObject.position.x, tempObject.position.y, tempObject.position.z);
 
-            //mesh.position.set(0, 0, 0);
+    //mesh.position.set(0, 0, 0);
 
 
 
-            //scenes[0].add(mesh);
-        });
+    //scenes[0].add(mesh);
+    //  });
 
     ///
 
