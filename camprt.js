@@ -743,7 +743,7 @@ function init() {
 
         camera.add(MovingCube);
         //MovingCube.position.set(65, -65, -100);
-        MovingCube.position.set(32, -30, -150);
+        MovingCube.position.set(100, -60, -250);
 
         // light
         var light = new THREE.AmbientLight(0xffffff, 1.0); // white light
