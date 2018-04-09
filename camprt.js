@@ -74,7 +74,7 @@ var listItems, arrayOfDivs = [],
 d3.queue()
     .defer(d3.json, "data/organs.json")
     .defer(d3.json, "data/links.json")
-    .defer(d3.json, "data/patients_V5.json")
+    .defer(d3.json, "data/patients_V7.json")
     .await(start);
 
 function start(error, organsData, linksData, patientsData) {
@@ -586,10 +586,14 @@ function init() {
 
             outlineMesh.name = pOrgan + "_outline";
 
-            if (organSphere.name == "GTVn" || organSphere.name == "GTVp")
+            //if (organSphere.name == "GTVn" || organSphere.name == "GTVp")
+            if (organSphere.name == "GTVp")
                 outlineMesh.scale.multiplyScalar(1.4);
+            else if (organSphere.name == "GTVn")
+                outlineMesh.scale.multiplyScalar(1.25);
             else
                 outlineMesh.scale.multiplyScalar(1.15);
+
 
             //outlineMesh.scale.multiplyScalar(1.15);
 
