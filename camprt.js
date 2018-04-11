@@ -74,7 +74,7 @@ var listItems, arrayOfDivs = [],
 d3.queue()
     .defer(d3.json, "data/organs.json")
     .defer(d3.json, "data/links.json")
-    .defer(d3.json, "data/patients_V7.json")
+    .defer(d3.json, "data/patients_V8.json")
     .await(start);
 
 function start(error, organsData, linksData, patientsData) {
@@ -233,6 +233,9 @@ function populateOrganMasterList() {
         tempInput.setAttribute("name", "organMasterList");
         tempInput.setAttribute("onchange", "handleCheckBox(this)");
 
+        tempInput.setAttribute("checked", true);
+
+
 
         var tempLabel = document.createElement("label");
 
@@ -265,8 +268,8 @@ function checkOrganMasterList() {
 
         var tempItem = document.getElementById(organ.name);
 
-        //if (scenes[selectedPatient - 1].getObjectByName(organ.name).userData.dosePerVolume != null) {
-        if (scenes[selectedPatient - 1].getObjectByName(organ.name).userData.meanDose != null) {
+        if (scenes[selectedPatient - 1].getObjectByName(organ.name).userData.dosePerVolume != null) {
+            //if (scenes[selectedPatient - 1].getObjectByName(organ.name).userData.meanDose != null) {
 
             if (tempItem.checked != true)
                 tempItem.setAttribute("checked", true);
@@ -607,7 +610,8 @@ function init() {
             organSphere.userData.minDose = undefined;
             organSphere.userData.meanDose = patientOrganList[pOrgan].meanDose;
             organSphere.userData.maxDose = undefined;
-            organSphere.userData.dosePerVolume = undefined;
+            //organSphere.userData.dosePerVolume = undefined;
+            organSphere.userData.dosePerVolume = patientOrganList[pOrgan].meanDose;
 
             if (organSphere.userData.meanDose >= 0.0) //null == -1 in json, pearson problems
                 nodeColor = color(organSphere.userData.meanDose);
@@ -991,7 +995,7 @@ function populateAndPlaceDetails(state) {
         organName.innerHTML = nodeHover.name;
 
         // Dose Per Volume
-        dosePerVolume.innerHTML = nodeHover.userData.dosePerVolume + " (GY/cc)";
+        dosePerVolume.innerHTML = nodeHover.userData.dosePerVolume + "  GY";
 
         // line separator
         lineSeparator.style["borderColor"] = "#" + nodeHover.material.color.getHexString();
