@@ -62,7 +62,9 @@ var color = d3.scaleLinear()
 
 
 // data
-var organs, links, patients;
+var organs, oAtlas, links, patients;
+
+var partitions = ["Oral Cavity & Jaw", "Throat", "Salivary Glands", "Eyes", "Brainstem & Spinal Cord", "Other"];
 
 var organRef = [];
 
@@ -73,15 +75,17 @@ var listItems, arrayOfDivs = [],
 
 d3.queue()
     .defer(d3.json, "data/organs.json")
-    .defer(d3.json, "data/links.json")
+    .defer(d3.json, "data/SAHN_RT.json")
+    //.defer(d3.json, "data/links.json")
     .defer(d3.json, "data/patients_V8.json")
     .await(start);
 
-function start(error, organsData, linksData, patientsData) {
+function start(error, organsData, organAtlas, patientsData) {
     if (error) return alert("Data invalid: " + error);
 
     organs = organsData;
-    links = linksData;
+    oAtlas = organAtlas[0];
+    //links = linksData;
     patients = patientsData;
 
     pRankingOrder = patients[selectedPatient - 1].similarity;
@@ -199,60 +203,139 @@ function populateOrganMasterList() {
 
     var master = document.getElementById("masterList");
 
-    for (var i = 0; i < patients.length; i++) {
+    /*
+        for (var i = 0; i < patients.length; i++) {
 
-        var patientOrganList = patients[i].organData;
+            var patientOrganList = patients[i].organData;
 
-        for (var pOrgan in patientOrganList) {
+            for (var pOrgan in patientOrganList) {
 
-            // pOrgan == string name of organ
-            // patientOrganList[pOrgan] == the properties of current object
+                // pOrgan == string name of organ
+                // patientOrganList[pOrgan] == the properties of current object
 
-            if (!organRef.includes(pOrgan))
-                organRef.push(pOrgan);
+                if (!organRef.includes(pOrgan))
+                    organRef.push(pOrgan);
 
+            }
+
+            //organRef.sort();
+            console.log(organRef);
         }
 
-        //organRef.sort();
-        console.log(organRef);
-    }
+        organs.forEach(function (organ, index) {
 
-    organs.forEach(function (organ, index) {
+            var tempDiv = document.createElement("div");
+
+            tempDiv.setAttribute("class", "checkboxContainer");
+            tempDiv.setAttribute("id", organ.name + "_Master");
+
+
+            var tempInput = document.createElement("INPUT");
+
+            tempInput.setAttribute("type", "checkbox");
+            tempInput.setAttribute("id", organ.name);
+            tempInput.setAttribute("value", organ.name);
+            tempInput.setAttribute("name", "organMasterList");
+            tempInput.setAttribute("onchange", "handleCheckBox(this)");
+
+            tempInput.setAttribute("checked", true);
+
+
+
+            var tempLabel = document.createElement("label");
+
+            tempLabel.setAttribute("for", organ.name);
+            tempLabel.innerHTML = organ.name;
+
+            // ----------
+
+            tempDiv.appendChild(tempInput);
+            tempDiv.appendChild(tempLabel);
+
+            master.appendChild(tempDiv);
+
+        });
+
+        //checkOrganMasterList(); // to see which organs in the list should be checked initially
+        formatOrganMasterList(); // alternate background color for better reading
+    */
+
+
+
+
+    partitions.forEach(function (group, i) {
 
         var tempDiv = document.createElement("div");
 
-        tempDiv.setAttribute("class", "checkboxContainer");
-        tempDiv.setAttribute("id", organ.name + "_Master");
-
+        tempDiv.setAttribute("class", "checkbox_group");
+        tempDiv.setAttribute("id", String(i + 1) + "_group_container");
 
         var tempInput = document.createElement("INPUT");
 
         tempInput.setAttribute("type", "checkbox");
-        tempInput.setAttribute("id", organ.name);
-        tempInput.setAttribute("value", organ.name);
-        tempInput.setAttribute("name", "organMasterList");
-        tempInput.setAttribute("onchange", "handleCheckBox(this)");
+        tempInput.setAttribute("id", String(i + 1) + "_title");
+        tempInput.setAttribute("value", group);
+        //tempInput.setAttribute("name", "organMasterList");
+        //tempInput.setAttribute("onchange", "handleCheckBox(this)");
+        tempInput.setAttribute("onchange", "handleCheckBoxGroup(this)");
 
         tempInput.setAttribute("checked", true);
 
 
-
         var tempLabel = document.createElement("label");
-
-        tempLabel.setAttribute("for", organ.name);
-        tempLabel.innerHTML = organ.name;
+        tempLabel.setAttribute("for", group);
+        tempLabel.setAttribute("width", "100%");
+        tempLabel.style.textAlign = "right";
+        tempLabel.innerHTML = group;
 
         // ----------
 
         tempDiv.appendChild(tempInput);
         tempDiv.appendChild(tempLabel);
 
+
+        // ----------
+
+        var tempDiv2 = document.createElement("div");
+
+        tempDiv2.setAttribute("class", "checkbox_single");
+        tempDiv2.setAttribute("id", String(i + 1) + "_single_container");
+
+
+
         master.appendChild(tempDiv);
+        master.appendChild(tempDiv2);
 
     });
 
-    //checkOrganMasterList(); // to see which organs in the list should be checked initially
-    formatOrganMasterList(); // alternate background color for better reading
+
+    // for loop bad, iterates in an unspecified order!!!!!!!!!!!!!!!!!!!!!!
+    //for (var group in partitions) {
+    //}
+
+    for (var organ in oAtlas) {
+
+        if (organ != "GTVn" && organ != "GTVp") {
+
+            //console.log(organ);
+
+            // pOrgan == string name of organ
+            // patientOrganList[pOrgan] == the properties of current object
+
+            //console.log(patientOrganList[pOrgan]);
+
+            // node
+            //var organSphere = new THREE.Mesh(geometry, material.clone());
+
+            //organSphere.position.x = (patientOrganList[pOrgan].x);
+            //organSphere.position.y = (patientOrganList[pOrgan].y);
+            //organSphere.position.z = (patientOrganList[pOrgan].z);
+
+            //organSphere.name = pOrgan;
+            //organSphere.userData.type = "node";
+        }
+
+    }
 }
 
 function checkOrganMasterList() {
@@ -372,9 +455,9 @@ function computeCenterOfGraphAndShift() {
         xyzMin = getMin(positions);
         xyzMax = getMax(positions);
 
-        console.log(patients[i].ID);
-        console.log(xyzMin);
-        console.log(xyzMax);
+        //console.log(patients[i].ID);
+        //console.log(xyzMin);
+        //console.log(xyzMax);
 
 
         sceneCenter = [
