@@ -283,9 +283,14 @@ function populateOrganMasterList() {
 
 
         var tempLabel = document.createElement("label");
-        tempLabel.setAttribute("for", group);
-        tempLabel.setAttribute("width", "100%");
-        tempLabel.style.textAlign = "right";
+        tempLabel.setAttribute("for", String(i + 1) + "_title");
+        //tempLabel.setAttribute("width", "100%");
+        //tempLabel.style.display = "block";
+        //tempLabel.style.textAlign = "right";
+        //tempLabel.style.float = "right";
+        tempLabel.style.fontSize = "16px";
+        tempLabel.style.fontWeight = "bold";
+        tempLabel.style.paddingLeft = "15px";
         tempLabel.innerHTML = group;
 
         // ----------
@@ -306,6 +311,14 @@ function populateOrganMasterList() {
         master.appendChild(tempDiv);
         master.appendChild(tempDiv2);
 
+        var tempDiv3 = document.createElement("div");
+
+        tempDiv3.setAttribute("class", "dummy");
+        //tempDiv3.setAttribute("height", "15px");
+        //tempDiv3.setAttribute("width", "100%");
+
+        master.appendChild(tempDiv3);
+
     });
 
 
@@ -317,7 +330,56 @@ function populateOrganMasterList() {
 
         if (organ != "GTVn" && organ != "GTVp") {
 
+            var parent = document.getElementById(String(oAtlas[organ].partition) + "_single_container");
+
+
+
+            var tempDiv = document.createElement("div");
+            tempDiv.style.paddingLeft = "60px";
+
+            //tempDiv.setAttribute("class", "checkbox_group");
+            //tempDiv.setAttribute("id", String(i + 1) + "_group_container");
+
+            var tempInput = document.createElement("INPUT");
+
+            tempInput.setAttribute("type", "checkbox");
+            tempInput.setAttribute("id", organ + "_checkList");
+            tempInput.setAttribute("value", organ);
+            //tempInput.setAttribute("name", "organMasterList");
+            //tempInput.setAttribute("onchange", "handleCheckBox(this)");
+            tempInput.setAttribute("onchange", "handleCheckBoxSingle(this)");
+
+            tempInput.setAttribute("checked", true);
+
+
+            var tempLabel = document.createElement("label");
+            tempLabel.setAttribute("for", organ + "_checkList");
+            //tempLabel.setAttribute("width", "100%");
+            //tempLabel.style.display = "inline-block";
+            //tempLabel.style.textAlign = "right";
+            //tempLabel.style.float = "right";
+            //tempLabel.style.fontSize = "16px";
+            //tempLabel.style.fontWeight = "bold";
+            tempLabel.style.paddingLeft = "15px";
+
+            tempLabel.innerHTML = organ;
+
+            // ----------
+
+            tempDiv.appendChild(tempInput);
+            tempDiv.appendChild(tempLabel);
+
+            parent.appendChild(tempDiv);
+
+
+
+
+
+
+
+
             //console.log(organ);
+            //console.log(oAtlas[organ].partition);
 
             // pOrgan == string name of organ
             // patientOrganList[pOrgan] == the properties of current object
