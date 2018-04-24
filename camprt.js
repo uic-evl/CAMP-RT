@@ -199,9 +199,11 @@ function populateDropDownMenu() {
 
 }
 
+var master = document.getElementById("masterList");
+
 function populateOrganMasterList() {
 
-    var master = document.getElementById("masterList");
+    //var master = document.getElementById("masterList");
 
     /*
         for (var i = 0; i < patients.length; i++) {
@@ -262,7 +264,7 @@ function populateOrganMasterList() {
 
 
 
-
+    // make partition input first
     partitions.forEach(function (group, i) {
 
         var tempDiv = document.createElement("div");
@@ -303,7 +305,7 @@ function populateOrganMasterList() {
 
         var tempDiv2 = document.createElement("div");
 
-        tempDiv2.setAttribute("class", "checkbox_single");
+        //tempDiv2.setAttribute("class", "checkbox_single");
         tempDiv2.setAttribute("id", String(i + 1) + "_single_container");
 
 
@@ -326,6 +328,7 @@ function populateOrganMasterList() {
     //for (var group in partitions) {
     //}
 
+    // individual organs
     for (var organ in oAtlas) {
 
         if (organ != "GTVn" && organ != "GTVp") {
@@ -336,6 +339,8 @@ function populateOrganMasterList() {
 
             var tempDiv = document.createElement("div");
             tempDiv.style.paddingLeft = "60px";
+            tempDiv.style.paddingTop = "1px";
+            tempDiv.style.paddingBottom = "1px";
 
             //tempDiv.setAttribute("class", "checkbox_group");
             //tempDiv.setAttribute("id", String(i + 1) + "_group_container");
@@ -344,6 +349,7 @@ function populateOrganMasterList() {
 
             tempInput.setAttribute("type", "checkbox");
             tempInput.setAttribute("id", organ + "_checkList");
+            tempInput.setAttribute("class", String(oAtlas[organ].partition) + "_GroupChildren");
             tempInput.setAttribute("value", organ);
             //tempInput.setAttribute("name", "organMasterList");
             //tempInput.setAttribute("onchange", "handleCheckBox(this)");
@@ -371,30 +377,6 @@ function populateOrganMasterList() {
 
             parent.appendChild(tempDiv);
 
-
-
-
-
-
-
-
-            //console.log(organ);
-            //console.log(oAtlas[organ].partition);
-
-            // pOrgan == string name of organ
-            // patientOrganList[pOrgan] == the properties of current object
-
-            //console.log(patientOrganList[pOrgan]);
-
-            // node
-            //var organSphere = new THREE.Mesh(geometry, material.clone());
-
-            //organSphere.position.x = (patientOrganList[pOrgan].x);
-            //organSphere.position.y = (patientOrganList[pOrgan].y);
-            //organSphere.position.z = (patientOrganList[pOrgan].z);
-
-            //organSphere.name = pOrgan;
-            //organSphere.userData.type = "node";
         }
 
     }
@@ -429,7 +411,7 @@ function checkOrganMasterList() {
 }
 
 function formatOrganMasterList() {
-    var master = document.getElementById("masterList");
+    //var master = document.getElementById("masterList");
     var organList = master.children;
 
     for (var i = 0; i < organList.length; i++) {
@@ -443,7 +425,12 @@ function formatOrganMasterList() {
 
 }
 
-function handleCheckBox(event) {
+function handleCheckBoxSingle(event) {
+
+    //console.log(event.parent.className);
+    //console.log(event.parentNode.parentNode.className);
+
+
 
     if (event.checked) {
 
@@ -451,7 +438,8 @@ function handleCheckBox(event) {
 
             var node = scene.getObjectByName(event.value);
 
-            node.visible = true;
+            if (node)
+                node.visible = true;
         });
 
     } else {
@@ -460,9 +448,84 @@ function handleCheckBox(event) {
 
             var node = scene.getObjectByName(event.value);
 
-            node.visible = false;
+            if (node)
+                node.visible = false;
         });
     }
+
+
+}
+
+function handleCheckBoxGroup(event) {
+
+    //console.log(event.parent.className);
+    //console.log(event.parentNode.className);
+
+    console.log(event.id[0]);
+
+
+    var children = master.getElementsByClassName(event.id[0] + "_GroupChildren");
+
+
+
+    if (event.checked) {
+
+        for (var i = 0; i < children.length; i++) {
+
+            children[i].checked = true;
+            //children[i].dispatchEvent(event);
+        }
+
+        scenes.forEach(function (scene, index) {
+
+            for (var i = 0; i < children.length; i++) {
+                //children.forEach(function (child, index) {
+
+                var node = scene.getObjectByName(children[i].value);
+
+                //children[i].setAttribute("checked", false);
+                //children[i].checked = false;
+
+                //children[i].fireEvent("onchange");
+
+                //console.log(children[i].checked);
+
+                if (node)
+                    node.visible = true;
+                //node.opacity = 0.1;
+
+            }
+        });
+
+    } else {
+
+        for (var i = 0; i < children.length; i++) {
+
+            children[i].checked = false;
+            //children[i].dispatchEvent(event);
+        }
+
+        scenes.forEach(function (scene, index) {
+
+            for (var i = 0; i < children.length; i++) {
+                //children.forEach(function (child, index) {
+
+                var node = scene.getObjectByName(children[i].value);
+
+                //children[i].setAttribute("checked", true);
+                //children[i].checked = true;
+
+                //console.log(children[i].checked);
+
+                if (node)
+                    node.visible = false;
+                //node.opacity = 1.0;
+
+            }
+        });
+    }
+
+
 }
 
 function flipGraph() {
