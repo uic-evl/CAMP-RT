@@ -201,6 +201,109 @@ function populateDropDownMenu() {
 
 var master = document.getElementById("masterList");
 
+function handleCheckBoxSingle(event) {
+
+    //console.log(event.parent.className);
+    //console.log(event.parentNode.parentNode.className);
+
+
+
+    if (event.checked) {
+
+        scenes.forEach(function (scene, index) {
+
+            var node = scene.getObjectByName(event.value);
+
+            if (node)
+                node.visible = true;
+        });
+
+    } else {
+
+        scenes.forEach(function (scene, index) {
+
+            var node = scene.getObjectByName(event.value);
+
+            if (node)
+                node.visible = false;
+        });
+    }
+
+
+}
+
+function handleCheckBoxGroup(event) {
+
+    //console.log(event.parent.className);
+    //console.log(event.parentNode.className);
+
+    console.log(event.id[0]);
+
+
+    var children = master.getElementsByClassName(event.id[0] + "_GroupChildren");
+
+
+
+    if (event.checked) {
+
+        for (var i = 0; i < children.length; i++) {
+
+            children[i].checked = true;
+            //children[i].dispatchEvent(event);
+        }
+
+        scenes.forEach(function (scene, index) {
+
+            for (var i = 0; i < children.length; i++) {
+                //children.forEach(function (child, index) {
+
+                var node = scene.getObjectByName(children[i].value);
+
+                //children[i].setAttribute("checked", false);
+                //children[i].checked = false;
+
+                //children[i].fireEvent("onchange");
+
+                //console.log(children[i].checked);
+
+                if (node)
+                    node.visible = true;
+                //node.opacity = 0.1;
+
+            }
+        });
+
+    } else {
+
+        for (var i = 0; i < children.length; i++) {
+
+            children[i].checked = false;
+            //children[i].dispatchEvent(event);
+        }
+
+        scenes.forEach(function (scene, index) {
+
+            for (var i = 0; i < children.length; i++) {
+                //children.forEach(function (child, index) {
+
+                var node = scene.getObjectByName(children[i].value);
+
+                //children[i].setAttribute("checked", true);
+                //children[i].checked = true;
+
+                //console.log(children[i].checked);
+
+                if (node)
+                    node.visible = false;
+                //node.opacity = 1.0;
+
+            }
+        });
+    }
+
+
+}
+
 function populateOrganMasterList() {
 
     //var master = document.getElementById("masterList");
@@ -425,108 +528,7 @@ function formatOrganMasterList() {
 
 }
 
-function handleCheckBoxSingle(event) {
 
-    //console.log(event.parent.className);
-    //console.log(event.parentNode.parentNode.className);
-
-
-
-    if (event.checked) {
-
-        scenes.forEach(function (scene, index) {
-
-            var node = scene.getObjectByName(event.value);
-
-            if (node)
-                node.visible = true;
-        });
-
-    } else {
-
-        scenes.forEach(function (scene, index) {
-
-            var node = scene.getObjectByName(event.value);
-
-            if (node)
-                node.visible = false;
-        });
-    }
-
-
-}
-
-function handleCheckBoxGroup(event) {
-
-    //console.log(event.parent.className);
-    //console.log(event.parentNode.className);
-
-    console.log(event.id[0]);
-
-
-    var children = master.getElementsByClassName(event.id[0] + "_GroupChildren");
-
-
-
-    if (event.checked) {
-
-        for (var i = 0; i < children.length; i++) {
-
-            children[i].checked = true;
-            //children[i].dispatchEvent(event);
-        }
-
-        scenes.forEach(function (scene, index) {
-
-            for (var i = 0; i < children.length; i++) {
-                //children.forEach(function (child, index) {
-
-                var node = scene.getObjectByName(children[i].value);
-
-                //children[i].setAttribute("checked", false);
-                //children[i].checked = false;
-
-                //children[i].fireEvent("onchange");
-
-                //console.log(children[i].checked);
-
-                if (node)
-                    node.visible = true;
-                //node.opacity = 0.1;
-
-            }
-        });
-
-    } else {
-
-        for (var i = 0; i < children.length; i++) {
-
-            children[i].checked = false;
-            //children[i].dispatchEvent(event);
-        }
-
-        scenes.forEach(function (scene, index) {
-
-            for (var i = 0; i < children.length; i++) {
-                //children.forEach(function (child, index) {
-
-                var node = scene.getObjectByName(children[i].value);
-
-                //children[i].setAttribute("checked", true);
-                //children[i].checked = true;
-
-                //console.log(children[i].checked);
-
-                if (node)
-                    node.visible = false;
-                //node.opacity = 1.0;
-
-            }
-        });
-    }
-
-
-}
 
 function flipGraph() {
 
