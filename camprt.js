@@ -1138,8 +1138,10 @@ function render() {
 
                 INTERSECTED = tempObject;
 
-                INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
-                INTERSECTED.material.color.setHex(0x00e4ff);
+                if (INTERSECTED) {
+                    INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
+                    INTERSECTED.material.color.setHex(0x00e4ff);
+                }
 
                 // details
 
