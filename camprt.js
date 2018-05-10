@@ -49,7 +49,7 @@ var mouseNorm = new THREE.Vector2(-500, -500),
 
 var width, height;
 
-var cameraDistZ = 300;
+var cameraDistZ = 500;
 
 // 36 steps
 
@@ -103,8 +103,6 @@ function start(error, organAtlas, patientsData) {
     computeCenterOfGraphAndShift(); // compute center of graph and shift to origin
     //shiftGraphToOrigin(); // center graph to origin
 
-    prepareOrganModels();
-
     init(); // initialize
 
     populateOrganMasterList();
@@ -136,44 +134,46 @@ function start(error, organAtlas, patientsData) {
 
 function prepareOrganModels() {
 
-    var loader = new THREE.VTKLoader();
+    // doesn't get organs in order
 
     for (var pOrgan in oAtlas) {
 
+        (function (pOrgan) {
 
-        loader.load('resources/models/' + pOrgan + '.vtk', function (geometry) {
+            let loader = new THREE.VTKLoader();
+
+            loader.load('resources/models/' + pOrgan + '.vtk', function (geometry) {
 
 
-            console.log(pOrgan);
+                //console.log(pOrgan);
 
-            geometry.computeVertexNormals();
-            geometry.center();
+                geometry.computeVertexNormals();
+                geometry.center();
 
-            let material = new THREE.MeshBasicMaterial({
-                color: "#ffffff",
-                side: THREE.DoubleSide,
-                opacity: 0.5,
-                transparent: true,
-                depthWrite: false
+                let material = new THREE.MeshBasicMaterial({
+                    color: "#ffffff",
+                    side: THREE.DoubleSide,
+                    opacity: 0.5,
+                    transparent: true,
+                    depthWrite: false
+                });
+
+                let mesh = new THREE.Mesh(geometry, material.clone());
+                mesh.name = String(pOrgan) + "_model";
+
+                mesh.position.x = oAtlas[pOrgan].x;
+                mesh.position.y = oAtlas[pOrgan].y;
+                mesh.position.z = oAtlas[pOrgan].z;
+
+                mesh.rotation.x = -Math.PI / 2.0;
+                mesh.rotation.z = -Math.PI / 2;
+
+                organModels.add(mesh);
+
+
             });
 
-            let mesh = new THREE.Mesh(geometry, material.clone());
-            mesh.name = String(pOrgan) + "_model";
-
-            mesh.position.x = oAtlas[pOrgan].x;
-            mesh.position.y = oAtlas[pOrgan].y;
-            mesh.position.z = oAtlas[pOrgan].z;
-
-            console.log(oAtlas[pOrgan].y);
-
-            mesh.rotation.x = -Math.PI / 2.0;
-            mesh.rotation.z = -Math.PI / 2;
-
-            organModels.add(mesh);
-
-
-
-        });
+        }(pOrgan));
 
 
     }
@@ -270,9 +270,14 @@ function handleCheckBoxSingle(event) {
         scenes.forEach(function (scene, index) {
 
             var node = scene.getObjectByName(event.value);
+            var model = scene.getObjectByName(String(event.value) + "_model");
 
-            if (node)
+            console.log(event.value);
+
+            if (node && model) {
                 node.visible = true;
+                model.visible = true;
+            }
         });
 
     } else {
@@ -280,9 +285,12 @@ function handleCheckBoxSingle(event) {
         scenes.forEach(function (scene, index) {
 
             var node = scene.getObjectByName(event.value);
+            var model = scene.getObjectByName(String(event.value) + "_model");
 
-            if (node)
+            if (node && model) {
                 node.visible = false;
+                model.visible = false;
+            }
         });
     }
 
@@ -315,6 +323,7 @@ function handleCheckBoxGroup(event) {
                 //children.forEach(function (child, index) {
 
                 var node = scene.getObjectByName(children[i].value);
+                var model = scene.getObjectByName(String(children[i].value) + "_model");
 
                 //children[i].setAttribute("checked", false);
                 //children[i].checked = false;
@@ -323,8 +332,10 @@ function handleCheckBoxGroup(event) {
 
                 //console.log(children[i].checked);
 
-                if (node)
+                if (node && model) {
                     node.visible = true;
+                    model.visible = true;
+                }
                 //node.opacity = 0.1;
 
             }
@@ -344,14 +355,18 @@ function handleCheckBoxGroup(event) {
                 //children.forEach(function (child, index) {
 
                 var node = scene.getObjectByName(children[i].value);
+                var model = scene.getObjectByName(String(children[i].value) + "_model");
+
 
                 //children[i].setAttribute("checked", true);
                 //children[i].checked = true;
 
                 //console.log(children[i].checked);
 
-                if (node)
+                if (node && model) {
                     node.visible = false;
+                    model.visible = false;
+                }
                 //node.opacity = 1.0;
 
             }
@@ -602,9 +617,9 @@ function flipGraph() {
             var tOrganY = (patientOrganList[pOrgan].y * -1);
             var tOrganZ = (patientOrganList[pOrgan].z * -1);
 
-            patientOrganList[pOrgan].x = tOrganY;
-            patientOrganList[pOrgan].y = tOrganZ;
-            patientOrganList[pOrgan].z = tOrganX;
+            patientOrganList[pOrgan].x = tOrganY * 1.3;
+            patientOrganList[pOrgan].y = tOrganZ * 2.5;
+            patientOrganList[pOrgan].z = tOrganX * 1.1;
         }
     }
 
@@ -617,9 +632,9 @@ function flipGraph() {
         var tOrganY = (oAtlas[pOrgan].y * -1);
         var tOrganZ = (oAtlas[pOrgan].z * -1);
 
-        oAtlas[pOrgan].x = tOrganY;
-        oAtlas[pOrgan].y = tOrganZ;
-        oAtlas[pOrgan].z = tOrganX;
+        oAtlas[pOrgan].x = tOrganY * 1.3;
+        oAtlas[pOrgan].y = tOrganZ * 2.5;
+        oAtlas[pOrgan].z = tOrganX * 1.1;
     }
 }
 
@@ -838,6 +853,10 @@ function init() {
     ];
     //
 
+    //prepareOrganModels();
+
+    //
+
     for (var i = 0; i < patients.length; i++) {
 
         var scene = new THREE.Scene();
@@ -858,7 +877,7 @@ function init() {
 
         parent.appendChild(element);
 
-        var scalarVal = 4.1;
+        var scalarVal = 4.1; //4.1
 
         var camera = new THREE.PerspectiveCamera(35, scene.userData.element.offsetWidth / scene.userData.element.offsetHeight, 1, 100000);
         //var camera = new THREE.OrthographicCamera(scene.userData.element.offsetWidth / -scalarVal, scene.userData.element.offsetWidth / scalarVal, scene.userData.element.offsetHeight / scalarVal, scene.userData.element.offsetHeight / -scalarVal, 1, 100000);
@@ -898,6 +917,7 @@ function init() {
         });
 
         //console.log(typeof patientOrganList);
+
 
         for (var pOrgan in patientOrganList) {
 
@@ -972,7 +992,57 @@ function init() {
             organSphere.add(outlineMesh);
 
 
+            (function (pOrgan, organProperties, scene, nodeColor) {
+
+                let loader = new THREE.VTKLoader();
+
+                if (!(pOrgan == "GTVn" || pOrgan == "GTVp")) {
+
+                    loader.load('resources/models/' + pOrgan + '.vtk', function (geometry) {
+
+
+                        //console.log(pOrgan);
+
+                        geometry.computeVertexNormals();
+                        geometry.center();
+
+                        //let material = new THREE.MeshBasicMaterial({
+                        let material = new THREE.MeshLambertMaterial({
+                            color: nodeColor,
+                            side: THREE.DoubleSide,
+                            opacity: 0.5,
+                            transparent: true,
+                            depthWrite: true
+                        });
+
+                        let mesh = new THREE.Mesh(geometry, material.clone());
+                        mesh.name = (String(pOrgan) + "_model");
+
+                        //console.log(mesh.name);
+
+                        mesh.position.x = organProperties.x;
+                        mesh.position.y = organProperties.y;
+                        mesh.position.z = organProperties.z;
+
+                        mesh.rotation.x = -Math.PI / 2.0;
+                        mesh.rotation.z = -Math.PI / 2;
+
+                        organModels.add(mesh);
+
+                        scene.add(mesh);
+
+
+
+                    });
+
+                }
+
+            }(pOrgan, patientOrganList[pOrgan], scene, nodeColor));
+
+
         }
+
+        //scene.add(organModels);
 
         var tmp_geo = new THREE.Geometry();
 
@@ -1070,10 +1140,13 @@ function init() {
             }
 
 
-
-
-
         }
+
+
+
+
+
+        //scene.add(organModels);
 
 
         //for (var z = 0; z < patientOrganList.length; z++) {
