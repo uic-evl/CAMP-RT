@@ -33,6 +33,7 @@ var scenes = [],
     renderer;
 
 var selectedPatient = 1;
+var patientsToShow = 32;
 
 var syncCameras = true,
     syncCamerasInterval,
@@ -63,6 +64,7 @@ var color = d3.scaleLinear()
 
 // data
 var organs, oAtlas, links, patients;
+var organModels = new THREE.Group();
 
 var partitions = ["Oral Cavity & Jaw", "Throat", "Salivary Glands", "Eyes", "Brainstem & Spinal Cord", "Other"];
 
@@ -74,19 +76,22 @@ var listItems, arrayOfDivs = [],
     currScene;
 
 d3.queue()
-    .defer(d3.json, "data/organs.json")
-    .defer(d3.json, "data/SAHN_RT.json")
+    //.defer(d3.json, "data/organs.json")
+    .defer(d3.json, "data/organAtlas.json")
     //.defer(d3.json, "data/links.json")
     .defer(d3.json, "data/patients_V8.json")
     .await(start);
 
-function start(error, organsData, organAtlas, patientsData) {
+function start(error, organAtlas, patientsData) {
     if (error) return alert("Data invalid: " + error);
 
-    organs = organsData;
+    //organs = organsData;
     oAtlas = organAtlas[0];
     //links = linksData;
     patients = patientsData;
+
+    delete oAtlas["GTVn"];
+    delete oAtlas["GTVp"];
 
     pRankingOrder = patients[selectedPatient - 1].similarity;
     pScores = patients[selectedPatient - 1].scores;
@@ -97,6 +102,9 @@ function start(error, organsData, organAtlas, patientsData) {
     flipGraph(); // fixes orientation of organs
     computeCenterOfGraphAndShift(); // compute center of graph and shift to origin
     //shiftGraphToOrigin(); // center graph to origin
+
+    prepareOrganModels();
+
     init(); // initialize
 
     populateOrganMasterList();
@@ -125,6 +133,55 @@ function start(error, organsData, organAtlas, patientsData) {
 }
 
 // ----------------------------------------------------------------
+
+function prepareOrganModels() {
+
+    var loader = new THREE.VTKLoader();
+
+    for (var pOrgan in oAtlas) {
+
+
+        loader.load('resources/models/' + pOrgan + '.vtk', function (geometry) {
+
+
+            console.log(pOrgan);
+
+            geometry.computeVertexNormals();
+            geometry.center();
+
+            let material = new THREE.MeshBasicMaterial({
+                color: "#ffffff",
+                side: THREE.DoubleSide,
+                opacity: 0.5,
+                transparent: true,
+                depthWrite: false
+            });
+
+            let mesh = new THREE.Mesh(geometry, material.clone());
+            mesh.name = String(pOrgan) + "_model";
+
+            mesh.position.x = oAtlas[pOrgan].x;
+            mesh.position.y = oAtlas[pOrgan].y;
+            mesh.position.z = oAtlas[pOrgan].z;
+
+            console.log(oAtlas[pOrgan].y);
+
+            mesh.rotation.x = -Math.PI / 2.0;
+            mesh.rotation.z = -Math.PI / 2;
+
+            organModels.add(mesh);
+
+
+
+        });
+
+
+    }
+
+
+
+
+}
 
 function populateColorScale() {
 
@@ -237,7 +294,7 @@ function handleCheckBoxGroup(event) {
     //console.log(event.parent.className);
     //console.log(event.parentNode.className);
 
-    console.log(event.id[0]);
+    //console.log(event.id[0]);
 
 
     var children = master.getElementsByClassName(event.id[0] + "_GroupChildren");
@@ -550,6 +607,20 @@ function flipGraph() {
             patientOrganList[pOrgan].z = tOrganX;
         }
     }
+
+    for (var pOrgan in oAtlas) {
+
+        // pOrgan == string name of organ
+        // patientOrganList[pOrgan] == the properties of current object
+
+        var tOrganX = (oAtlas[pOrgan].x * -1);
+        var tOrganY = (oAtlas[pOrgan].y * -1);
+        var tOrganZ = (oAtlas[pOrgan].z * -1);
+
+        oAtlas[pOrgan].x = tOrganY;
+        oAtlas[pOrgan].y = tOrganZ;
+        oAtlas[pOrgan].z = tOrganX;
+    }
 }
 
 function computeCenterOfGraphAndShift() {
@@ -605,6 +676,57 @@ function computeCenterOfGraphAndShift() {
 
         //console.log(positions);
     }
+
+
+
+    var sceneCenter = [0.0, 0.0, 0.0];
+
+    var xyzMin = new Array(3);
+    var xyzMax = new Array(3);
+
+    var positions = [];
+
+
+    for (var pOrgan in oAtlas) {
+
+        // pOrgan == string name of organ
+        // patientOrganList[pOrgan] == the properties of current object
+
+        var xyz = {
+            x: oAtlas[pOrgan].x,
+            y: oAtlas[pOrgan].y,
+            z: oAtlas[pOrgan].z
+        };
+
+        positions.push(xyz);
+    }
+
+    xyzMin = getMin(positions);
+    xyzMax = getMax(positions);
+
+    //console.log(patients[i].ID);
+    //console.log(xyzMin);
+    //console.log(xyzMax);
+
+
+    sceneCenter = [
+        ((xyzMin[0] + xyzMax[0]) / 2),
+        ((xyzMin[1] + xyzMax[1]) / 2),
+        ((xyzMin[2] + xyzMax[2]) / 2)
+        ];
+
+    for (var pOrgan in oAtlas) {
+
+        // pOrgan == string name of organ
+        // patientOrganList[pOrgan] == the properties of current object
+
+        oAtlas[pOrgan].x = (oAtlas[pOrgan].x - sceneCenter[0]);
+        oAtlas[pOrgan].y = (oAtlas[pOrgan].y - sceneCenter[1]);
+        oAtlas[pOrgan].z = (oAtlas[pOrgan].z - sceneCenter[2]);
+    }
+
+
+
 }
 
 function getMin(pos) {
@@ -825,8 +947,11 @@ function init() {
 
             if (organSphere.userData.meanDose >= 0.0) //null == -1 in json, pearson problems
                 nodeColor = color(organSphere.userData.meanDose);
-            else
-                nodeColor = '0xa0a0a0'; //new THREE.Color().setHex(0xa0a0a0)
+            else {
+                nodeColor = '#a0a0a0'; //new THREE.Color().setHex(0xa0a0a0)
+                organSphere.userData.meanDose = undefined;
+                organSphere.userData.dosePerVolume = undefined;
+            }
 
             //if (organSphere.name == "GTVn" || organSphere.name == "GTVp")
             //    nodeColor = '#000000';
@@ -866,6 +991,88 @@ function init() {
             //line.frustumCulled = false;
 
             scene.add(line);
+        }
+
+
+
+        // check for missing data
+        for (var organ in oAtlas) {
+
+            //if (!patientOrganList.includes(organ)) {
+            if (!patientOrganList.hasOwnProperty(organ)) {
+
+                //console.log(patients[i].name);
+                //console.log(organ);
+
+
+                // node
+                var organSphere = new THREE.Mesh(geometry, material.clone());
+
+                organSphere.position.x = (oAtlas[organ].x);
+                organSphere.position.y = (oAtlas[organ].y);
+                organSphere.position.z = (oAtlas[organ].z);
+
+                organSphere.name = organ;
+                organSphere.userData.type = "node";
+
+                // outline
+                var outlineMesh = new THREE.Mesh(geometry, outlineMaterial.clone());
+
+                outlineMesh.name = organ + "_outline";
+
+                //if (organSphere.name == "GTVn" || organSphere.name == "GTVp")
+                if (organSphere.name == "GTVp")
+                    outlineMesh.scale.multiplyScalar(1.4);
+                else if (organSphere.name == "GTVn")
+                    outlineMesh.scale.multiplyScalar(1.25);
+                else
+                    outlineMesh.scale.multiplyScalar(1.15);
+
+
+                //outlineMesh.scale.multiplyScalar(1.15);
+
+                // color
+                var nodeColor;
+
+                //if (patientOrganList[organ.name] != null) {
+                //console.log(patientOrganList[organ.name]);
+
+                organSphere.userData.volume = undefined;
+                organSphere.userData.minDose = undefined;
+                organSphere.userData.meanDose = undefined;
+                organSphere.userData.maxDose = undefined;
+                //organSphere.userData.dosePerVolume = undefined;
+                organSphere.userData.dosePerVolume = undefined;
+
+
+                nodeColor = '#a0a0a0'; //new THREE.Color().setHex(0xa0a0a0)
+
+                //if (organSphere.name == "GTVn" || organSphere.name == "GTVp")
+                //    nodeColor = '#000000';
+
+                organSphere.material.color.setStyle(nodeColor);
+
+                //} else {
+                //console.log("no");
+
+                //organSphere.userData.dosePerVolume = null;
+                //nodeColor = "rgb(131, 131, 131)";
+                //organSphere.material.color.setStyle(nodeColor);
+
+                //organSphere.visible = false;
+                //}
+
+                scene.add(organSphere);
+                organSphere.add(outlineMesh);
+
+
+
+            }
+
+
+
+
+
         }
 
 
@@ -1037,12 +1244,13 @@ function updateOrder(updatedPatient) {
     var lastPatient = document.getElementById(pRankingOrder[pRankingOrder.length - 1]);
     var firstPatient = document.getElementById(pRankingOrder[0]);
 
+    firstPatient.style.display = "none";
+
     //insert last element from pRankingOrder in last place (before null)
     parent.insertBefore(lastPatient, null);
 
-    var pScoreElement = firstPatient.querySelector(".pScore");
-
     // first patient always has score of 1, clear it
+    var pScoreElement = firstPatient.querySelector(".pScore");
     pScoreElement.innerHTML = "";
 
     for (var i = (pRankingOrder.length - 2); i >= 0; i--) {
@@ -1057,7 +1265,22 @@ function updateOrder(updatedPatient) {
 
         // update patient score
         pScoreElement.innerHTML = pScores[i + 1].toFixed(5);
+
+        // hide patients
+        //if (i > patientsToShow) {
+        //    second.style.opacity = 0.0;
+        second.style.display = "none";
+        //} else {
+        //    second.style.opacity = 1.0;
+        //second.style.display = "inline-block";
+        //}
     }
+
+    for (var j = 0; j < patientsToShow; j++) {
+        document.getElementById(pRankingOrder[j]).style.display = "inline-block";
+    }
+
+
 }
 
 function animate() {
@@ -1083,85 +1306,89 @@ function render() {
 
     pRankingOrder.forEach(function (rank, index) {
 
-        var scene = scenes[rank - 1];
-        var controls = scene.userData.controls;
-        var camera = scene.userData.camera;
+        if (index <= patientsToShow + 1) {
 
-        var orientMarkerCube = camera.children[0];
+            var scene = scenes[rank - 1];
+            var controls = scene.userData.controls;
+            var camera = scene.userData.camera;
 
-        // get the element that is a place holder for where we want to
-        // draw the scene
-        var element = scene.userData.element;
+            var orientMarkerCube = camera.children[0];
 
-        // get its position relative to the page's viewport
-        var rect = element.getBoundingClientRect();
+            // get the element that is a place holder for where we want to
+            // draw the scene
+            var element = scene.userData.element;
 
-        // check if it's offscreen. If so skip it
-        if (rect.bottom < 0 || rect.top > renderer.domElement.clientHeight ||
-            rect.right < 0 || rect.left > renderer.domElement.clientWidth) {
+            // get its position relative to the page's viewport
+            var rect = element.getBoundingClientRect();
 
-            return; // it's off screen
-        }
+            // check if it's offscreen. If so skip it
+            if (rect.bottom < 0 || rect.top > renderer.domElement.clientHeight ||
+                rect.right < 0 || rect.left > renderer.domElement.clientWidth) {
 
-        // update orientation marker
-        rotMatrix.extractRotation(controls.object.matrix);
-        orientMarkerCube.rotation.setFromRotationMatrix(rotMatrix.transpose());
+                return; // it's off screen
+            }
 
-        // set the viewport
-        var width = rect.right - rect.left;
-        var height = rect.bottom - rect.top;
-        var left = rect.left;
-        var bottom = renderer.domElement.clientHeight - rect.bottom;
+            // update orientation marker
+            rotMatrix.extractRotation(controls.object.matrix);
+            orientMarkerCube.rotation.setFromRotationMatrix(rotMatrix.transpose());
 
-        renderer.setViewport(left, bottom, width, height);
-        renderer.setScissor(left, bottom, width, height);
+            // set the viewport
+            var width = rect.right - rect.left;
+            var height = rect.bottom - rect.top;
+            var left = rect.left;
+            var bottom = renderer.domElement.clientHeight - rect.bottom;
 
-        //controls.update();
+            renderer.setViewport(left, bottom, width, height);
+            renderer.setScissor(left, bottom, width, height);
 
-        // raycaster
-        //raycaster.setFromCamera(mouseNorm, camera);
-        raycaster.setFromCamera(mouseNorm, currScene.userData.camera);
+            //controls.update();
 
-        //var intersects = raycaster.intersectObjects(scene.children);
-        var intersects = raycaster.intersectObjects(currScene.children);
+            // raycaster
+            //raycaster.setFromCamera(mouseNorm, camera);
+            raycaster.setFromCamera(mouseNorm, currScene.userData.camera);
 
-        if (intersects.length >= 1 && intersects[0].object.userData.type == "node" && detailsOnRotate) {
+            //var intersects = raycaster.intersectObjects(scene.children);
+            var intersects = raycaster.intersectObjects(currScene.children);
 
-            nodeHover = intersects[0].object;
-            var tempObject = scene.getObjectByName(nodeHover.name + "_outline");
-            //var tempObject = nodeHover.children[0]; // this breaks something with details?
+            if (intersects.length >= 1 && intersects[0].object.userData.type == "node" && detailsOnRotate) {
 
-            if (INTERSECTED != tempObject) {
+                nodeHover = intersects[0].object;
+                var tempObject = scene.getObjectByName(nodeHover.name + "_outline");
+                //var tempObject = nodeHover.children[0]; // this breaks something with details?
 
-                if (INTERSECTED)
-                    INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+                if (INTERSECTED != tempObject) {
 
-                INTERSECTED = tempObject;
+                    if (INTERSECTED)
+                        INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+
+                    INTERSECTED = tempObject;
+
+                    if (INTERSECTED) {
+                        INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
+                        INTERSECTED.material.color.setHex(0x00e4ff);
+                    }
+
+                    // details
+
+                    populateAndPlaceDetails("SHOW");
+
+                }
+            } else {
 
                 if (INTERSECTED) {
-                    INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
-                    INTERSECTED.material.color.setHex(0x00e4ff);
+                    INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+
+                    // details
+                    populateAndPlaceDetails("HIDE");
+
                 }
 
-                // details
-
-                populateAndPlaceDetails("SHOW");
-
-            }
-        } else {
-
-            if (INTERSECTED) {
-                INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
-
-                // details
-                populateAndPlaceDetails("HIDE");
-
+                INTERSECTED = null;
             }
 
-            INTERSECTED = null;
+            renderer.render(scene, camera);
+
         }
-
-        renderer.render(scene, camera);
     });
 
     //renderer.render( currScene, currScene.userData.camera );
