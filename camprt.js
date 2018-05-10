@@ -125,9 +125,12 @@ function start(error, organAtlas, patientsData) {
 
     updateOrder(selectedPatient); // update order in GUI
 
-    document.getElementById("loadScreen").style.display = "none";
+    //document.getElementById("loadScreen").style.display = "none";
 
     animate(); // render
+
+    document.getElementById("loadScreen").style.display = "none";
+
 }
 
 // ----------------------------------------------------------------
@@ -808,7 +811,7 @@ function init() {
     renderer.setClearColor(0xffffff, 1);
     renderer.setPixelRatio(window.devicePixelRatio);
     //renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.sortObjects = false;
+    renderer.sortObjects = true;
 
     raycaster = new THREE.Raycaster();
 
@@ -877,16 +880,26 @@ function init() {
 
         parent.appendChild(element);
 
-        var scalarVal = 4.1; //4.1
+        var scalarVal = 2.4; //4.1
 
-        var camera = new THREE.PerspectiveCamera(35, scene.userData.element.offsetWidth / scene.userData.element.offsetHeight, 1, 100000);
-        //var camera = new THREE.OrthographicCamera(scene.userData.element.offsetWidth / -scalarVal, scene.userData.element.offsetWidth / scalarVal, scene.userData.element.offsetHeight / scalarVal, scene.userData.element.offsetHeight / -scalarVal, 1, 100000);
+        //var camera = new THREE.PerspectiveCamera(35, scene.userData.element.offsetWidth / scene.userData.element.offsetHeight, 1, 100000);
+        var camera = new THREE.OrthographicCamera(scene.userData.element.offsetWidth / -scalarVal, scene.userData.element.offsetWidth / scalarVal, scene.userData.element.offsetHeight / scalarVal, scene.userData.element.offsetHeight / -scalarVal, 1, 100000);
         camera.position.z = cameraDistZ;
         //camera.position.z = cameraDistZ; // 2000
 
         camera.updateProjectionMatrix();
         scene.userData.camera = camera;
 
+        // orientation marker, patient coordinate system
+        var MovingCubeMat = new THREE.MultiMaterial(materialArray);
+        var MovingCubeGeom = new THREE.CubeGeometry(25, 25, 25, 1, 1, 1, materialArray);
+        var MovingCube = new THREE.Mesh(MovingCubeGeom, MovingCubeMat);
+
+        camera.add(MovingCube);
+        //MovingCube.position.set(65, -65, -100);
+        MovingCube.position.set(121, -121, -250);
+
+        //
         var controls = new THREE.OrbitControls(scene.userData.camera, scene.userData.element);
         controls.minDistance = 2;
         controls.maxDistance = 5000;
@@ -943,11 +956,11 @@ function init() {
 
             //if (organSphere.name == "GTVn" || organSphere.name == "GTVp")
             if (organSphere.name == "GTVp")
-                outlineMesh.scale.multiplyScalar(1.4);
+                outlineMesh.scale.multiplyScalar(1.6);
             else if (organSphere.name == "GTVn")
-                outlineMesh.scale.multiplyScalar(1.25);
+                outlineMesh.scale.multiplyScalar(1.5);
             else
-                outlineMesh.scale.multiplyScalar(1.15);
+                outlineMesh.scale.multiplyScalar(1.3);
 
 
             //outlineMesh.scale.multiplyScalar(1.15);
@@ -1006,16 +1019,19 @@ function init() {
                         geometry.computeVertexNormals();
                         geometry.center();
 
-                        //let material = new THREE.MeshBasicMaterial({
-                        let material = new THREE.MeshLambertMaterial({
+                        let material = new THREE.MeshBasicMaterial({
+                            //let material = new THREE.MeshLambertMaterial({
+                            //let material = new THREE.MeshStandardMaterial({
                             color: nodeColor,
-                            side: THREE.DoubleSide,
-                            opacity: 0.5,
+                            opacity: 0.2,
                             transparent: true,
-                            depthWrite: true
+                            //side: THREE.DoubleSide,
+                            depthTest: true,
+                            depthWrite: true,
+                            depthFunc: THREE.LessEqualDepth
                         });
 
-                        let mesh = new THREE.Mesh(geometry, material.clone());
+                        let mesh = new THREE.Mesh(geometry, material);
                         mesh.name = (String(pOrgan) + "_model");
 
                         //console.log(mesh.name);
@@ -1027,7 +1043,31 @@ function init() {
                         mesh.rotation.x = -Math.PI / 2.0;
                         mesh.rotation.z = -Math.PI / 2;
 
-                        organModels.add(mesh);
+
+                        // oral cavity
+                        if (pOrgan == "Tongue")
+                            mesh.renderOrder = -10;
+                        else if (pOrgan == "Genioglossus_M")
+                            mesh.renderOrder = -10;
+                        else if (pOrgan == "Lt_Ant_Digastric_M")
+                            mesh.renderOrder = -10;
+                        else if (pOrgan == "Mylogeniohyoid_M")
+                            mesh.renderOrder = -10;
+                        else if (pOrgan == "Rt_Ant_Digastric_M")
+                            mesh.renderOrder = -10;
+
+                        else if (pOrgan == "Extended_Oral_Cavity")
+                            mesh.renderOrder = -9;
+
+                        // throat
+                        else if (pOrgan == "Larynx")
+                            mesh.renderOrder = -10;
+                        else if (pOrgan == "Supraglottic_Larynx")
+                            mesh.renderOrder = -9;
+
+
+
+                        //organModels.add(mesh);
 
                         scene.add(mesh);
 
@@ -1092,11 +1132,11 @@ function init() {
 
                 //if (organSphere.name == "GTVn" || organSphere.name == "GTVp")
                 if (organSphere.name == "GTVp")
-                    outlineMesh.scale.multiplyScalar(1.4);
+                    outlineMesh.scale.multiplyScalar(1.6);
                 else if (organSphere.name == "GTVn")
-                    outlineMesh.scale.multiplyScalar(1.25);
+                    outlineMesh.scale.multiplyScalar(1.5);
                 else
-                    outlineMesh.scale.multiplyScalar(1.15);
+                    outlineMesh.scale.multiplyScalar(1.3);
 
 
                 //outlineMesh.scale.multiplyScalar(1.15);
@@ -1234,14 +1274,6 @@ function init() {
 
         scene.add(camera);
 
-        // orientation marker, patient coordinate system
-        var MovingCubeMat = new THREE.MultiMaterial(materialArray);
-        var MovingCubeGeom = new THREE.CubeGeometry(15, 15, 15, 1, 1, 1, materialArray);
-        var MovingCube = new THREE.Mesh(MovingCubeGeom, MovingCubeMat);
-
-        camera.add(MovingCube);
-        //MovingCube.position.set(65, -65, -100);
-        MovingCube.position.set(100, -60, -250);
 
         // light
         var light = new THREE.AmbientLight(0xffffff, 1.0); // white light
@@ -1423,33 +1455,47 @@ function render() {
             //var intersects = raycaster.intersectObjects(scene.children);
             var intersects = raycaster.intersectObjects(currScene.children);
 
-            if (intersects.length >= 1 && intersects[0].object.userData.type == "node" && detailsOnRotate) {
+            if (intersects.length >= 1 && detailsOnRotate) {
 
-                nodeHover = intersects[0].object;
-                var tempObject = scene.getObjectByName(nodeHover.name + "_outline");
-                //var tempObject = nodeHover.children[0]; // this breaks something with details?
+                //for (var i = 0; i < intersects.length; i++) {
+                for (var i = intersects.length - 1; i >= 0; i--) {
 
-                if (INTERSECTED != tempObject) {
+                    if (intersects[i].object.userData.type == "node") {
 
-                    if (INTERSECTED)
-                        INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+                        nodeHover = intersects[i].object;
+                        var tempObject = scene.getObjectByName(nodeHover.name + "_outline");
+                        //var tempObject = nodeHover.children[0]; // this breaks something with details?
 
-                    INTERSECTED = tempObject;
+                        if (INTERSECTED != tempObject) {
 
-                    if (INTERSECTED) {
-                        INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
-                        INTERSECTED.material.color.setHex(0x00e4ff);
+                            if (INTERSECTED) {
+                                INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+                                //INTERSECTED.scale.multiplyScalar(1);
+                            }
+
+                            INTERSECTED = tempObject;
+
+                            if (INTERSECTED) {
+                                INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
+                                INTERSECTED.material.color.setHex(0x00e4ff);
+                                //INTERSECTED.scale.multiplyScalar(1.3);
+                            }
+
+                            // details
+
+                            populateAndPlaceDetails("SHOW");
+
+                        }
+
                     }
 
-                    // details
-
-                    populateAndPlaceDetails("SHOW");
 
                 }
             } else {
 
                 if (INTERSECTED) {
                     INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+                    //INTERSECTED.scale.multiplyScalar(1);
 
                     // details
                     populateAndPlaceDetails("HIDE");
