@@ -1277,6 +1277,12 @@ function init() {
 
         // light
         var light = new THREE.AmbientLight(0xffffff, 1.0); // white light
+        //var light = new THREE.DirectionalLight(0xffffff);
+        //light.position.set(200, 200, 1000).normalize();
+
+        //camera.add(light);
+        //camera.add(light.target);
+
         scene.add(light);
 
 
