@@ -27,13 +27,15 @@ var organName = document.getElementById("details_organName"),
     volumeVal = document.getElementById("details_volume_val"),
     meanDoseVal = document.getElementById("details_meanDose_val"),
     minDoseVal = document.getElementById("details_minDose_val"),
-    maxDoseVal = document.getElementById("details_maxDose_val");
+    maxDoseVal = document.getElementById("details_maxDose_val"),
+    pDisplayed = document.getElementById("pDisplayed");
+
 
 var scenes = [],
     renderer;
 
-var selectedPatient = 1;
-var patientsToShow = 32;
+var selectedPatient = 1,
+    patientsToShow = 15;
 
 var syncCameras = true,
     syncCamerasInterval,
@@ -89,6 +91,9 @@ function start(error, organAtlas, patientsData) {
     oAtlas = organAtlas[0];
     //links = linksData;
     patients = patientsData;
+
+    //var numPatients = patients.length;
+    handlePatientsDisplayed(patients.length);
 
     delete oAtlas["GTVn"];
     delete oAtlas["GTVp"];
