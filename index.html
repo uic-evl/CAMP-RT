@@ -361,13 +361,13 @@
             box-shadow: 0px 0px 12px 1px rgba(0, 0, 0, 0.25);
         }
 
-        .list-item .scene {
+        .scene {
             cursor: crosshair;
             width: 350px;
             height: 350px;
         }
 
-        .list-item .description {
+        .description {
             color: #444;
             font-family: sans-serif;
             font-size: large;
@@ -377,7 +377,7 @@
             float: left;
         }
 
-        .list-item .pScore {
+        .pScore {
             color: #888;
             font-family: sans-serif;
             font-size: large;
@@ -392,6 +392,60 @@
 
         }
 
+        #showHide {
+
+            font-size: 14px;
+            padding: 12px;
+
+        }
+
+
+
+        .button {
+            background-color: #4CAF50;
+            /* Green */
+            border: none;
+            color: white;
+            padding: 16px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+            font-size: 16px;
+            margin: auto;
+            -webkit-transition-duration: 0.4s;
+            /* Safari */
+            transition-duration: 0.4s;
+            cursor: pointer;
+        }
+
+        #pDisplayed {
+
+            color: rgb(100, 100, 100);
+            font-size: 13px;
+
+        }
+
+        #view5 {
+
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        #view5:hover {
+
+            color: rgb(100, 100, 100);
+        }
+
+        #hide5 {
+
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        #hide5:hover {
+
+            color: rgb(100, 100, 100);
+        }
     </style>
 </head>
 
@@ -455,7 +509,18 @@
 
         <div style="position: absolute; bottom: 3px; right: 20px;">
 
-            <p style="color: rgb(100,100,100); font-size: 13px;">Showing 32 out of 101 patients</p>
+            <div id="showHide" style="">
+                <div style="display: inline-block;" id="view5" onclick="showOrHidePatients(&quot;show&quot;)">View</div>
+                <div style="display: inline-block;">/</div>
+                <div style="display: inline-block;" id="hide5" onclick="showOrHidePatients(&quot;hide&quot;)">Hide</div>
+                <div style="display: inline-block;">5 more patients</div>
+
+            </div>
+        </div>
+
+        <div style="position: absolute; bottom: 3px; left: 20px;">
+
+            <p id="pDisplayed" style=""></p>
 
         </div>
 
@@ -503,12 +568,40 @@
         }
 
 
-        function onHideDetails() {
+        function onHideDetails() {}
 
+        //handlePatientsDisplayed();
+
+        function showOrHidePatients(count) {
+
+
+
+            if (count == "show") {
+
+                for (var j = 0; j < patientsToShow; j++)
+                    document.getElementById(pRankingOrder[j]).style.display = "inline-block";
+
+                patientsToShow += 5;
+
+            } else {
+                for (var j = patientsToShow - 1; j > patientsToShow - 6; j--)
+                    document.getElementById(pRankingOrder[j]).style.display = "none";
+
+                patientsToShow -= 5;
+
+
+            }
 
 
         }
 
+
+        function handlePatientsDisplayed(totalP) {
+
+            pDisplayed.innerHTML = "Showing " + patientsToShow + " out of " + totalP + " patients";
+
+
+        }
     </script>
 </body>
 
