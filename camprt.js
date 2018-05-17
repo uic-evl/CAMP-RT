@@ -1214,7 +1214,17 @@ manager.onLoad = function () {
 
 };
 
+var loadProgress = document.getElementById("loadProgress");
 
+//loadProgress.innerHTML = this.value;
+
+manager.onProgress = function (url, itemsLoaded, itemsTotal) {
+
+    //console.log('Loaded ' + itemsLoaded + ' of ' + itemsTotal + ' files.');
+    //loadProgress.innerHTML = 'Loaded ' + itemsLoaded + ' of ' + itemsTotal + ' files.';
+    loadProgress.innerHTML = parseInt(itemsLoaded / itemsTotal * 100) + " %"
+
+};
 
 function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
 
