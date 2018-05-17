@@ -179,6 +179,7 @@
         #colorScale {
             position: relative;
             top: 22px;
+            right: 75px;
             height: 30px;
             margin: 2px auto 2px auto;
             border: 1px solid black;
@@ -387,35 +388,31 @@
         }
 
         .hide {
-
             display: none !important;
+        }
 
+        .noselect {
+            -webkit-touch-callout: none;
+            /* iOS Safari */
+            -webkit-user-select: none;
+            /* Safari */
+            -khtml-user-select: none;
+            /* Konqueror HTML */
+            -moz-user-select: none;
+            /* Firefox */
+            -ms-user-select: none;
+            /* Internet Explorer/Edge */
+            user-select: none;
+            /* Non-prefixed version, currently
+                                  supported by Chrome and Opera */
         }
 
         #showHide {
 
+            color: #444;
             font-size: 14px;
             padding: 12px;
 
-        }
-
-
-
-        .button {
-            background-color: #4CAF50;
-            /* Green */
-            border: none;
-            color: white;
-            padding: 16px 32px;
-            text-align: center;
-            text-decoration: none;
-            display: block;
-            font-size: 16px;
-            margin: auto;
-            -webkit-transition-duration: 0.4s;
-            /* Safari */
-            transition-duration: 0.4s;
-            cursor: pointer;
         }
 
         #pDisplayed {
@@ -432,7 +429,6 @@
         }
 
         #view5:hover {
-
             color: rgb(100, 100, 100);
         }
 
@@ -443,8 +439,54 @@
         }
 
         #hide5:hover {
-
             color: rgb(100, 100, 100);
+        }
+
+        .slidecontainer {
+            position: relative;
+            top: 15px;
+            left: 75px;
+            height: 30px;
+            width: 250px;
+            margin: 2px 2px 2px 2px;
+            color: #eee;
+            display: inline-block;
+            transition: 0.3s;
+            z-index: 11;
+        }
+
+        .slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 15px;
+            border-radius: 5px;
+            background: #d3d3d3;
+            outline: none;
+            opacity: 0.7;
+            -webkit-transition: .2s;
+            transition: opacity .2s;
+        }
+
+        .slider:hover {
+            opacity: 1;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #00e4ff;
+            cursor: crosshair;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #00e4ff;
+            cursor: crosshair;
         }
     </style>
 </head>
@@ -473,6 +515,9 @@
                 <div class="scaleLabels" style="left: 280px;">50</div>
                 <div class="scaleLabels" style="left: 340px;">100</div>
                 -->
+            </div>
+            <div class="slidecontainer">
+                <input type="range" min="10" max="100" value="20" class="slider" id="opacSlider">
             </div>
             <span id="sideMenu_button" onclick="handleSideNav()">&#9776;</span>
         </div>
@@ -510,17 +555,17 @@
         <div style="position: absolute; bottom: 3px; right: 20px;">
 
             <div id="showHide" style="">
-                <div style="display: inline-block;" id="view5" onclick="showOrHidePatients(&quot;show&quot;)">View</div>
-                <div style="display: inline-block;">/</div>
-                <div style="display: inline-block;" id="hide5" onclick="showOrHidePatients(&quot;hide&quot;)">Hide</div>
-                <div style="display: inline-block;">5 more patients</div>
+                <div style="display: inline-block;" class="noselect" id="view5" onclick="showPatients()">Show</div>
+                <div style="display: inline-block;" class="noselect">/</div>
+                <div style="display: inline-block;" class="noselect" id="hide5" onclick="hidePatients()">Hide</div>
+                <div style="display: inline-block;" class="noselect">5 more patients</div>
 
             </div>
         </div>
 
         <div style="position: absolute; bottom: 3px; left: 20px;">
 
-            <p id="pDisplayed" style=""></p>
+            <p class="noselect" id="pDisplayed" style=""></p>
 
         </div>
 
@@ -537,6 +582,7 @@
     <script src="js/THREEx.KeyboardState.js"></script>
     <script src="js/loaders/VTKLoader.js"></script>
 
+
     <script id="template" type="notjs">
         <div class="scene"></div>
         <div class="description">$</div>
@@ -551,6 +597,32 @@
             //console.log(e.value);
             //
             updateOrder(e.value);
+        }
+
+        function sortDropDown() {
+            var lb = document.getElementById('patientMenu');
+            arrTexts = new Array();
+            arrValues = new Array();
+            arrOldTexts = new Array();
+
+            for (i = 0; i < lb.length; i++) {
+                arrTexts[i] = lb.options[i].text;
+                arrValues[i] = lb.options[i].value;
+
+                arrOldTexts[i] = lb.options[i].text;
+            }
+
+            arrTexts.sort();
+
+            for (i = 0; i < lb.length; i++) {
+                lb.options[i].text = arrTexts[i];
+                for (j = 0; j < lb.length; j++) {
+                    if (arrTexts[i] == arrOldTexts[j]) {
+                        lb.options[i].value = arrValues[j];
+                        j = lb.length;
+                    }
+                }
+            }
         }
 
         //maybe include onmouseleave="handleSideNav()" in sidenav
@@ -572,33 +644,45 @@
 
         //handlePatientsDisplayed();
 
-        function showOrHidePatients(count) {
+        function showPatients() {
+
+            var count = patientsToShow;
+
+            for (var j = count; j < count + 5; j++) {
+
+                if (patientsToShow >= patients.length)
+                    return;
+
+                patientsToShow += 1;
+                document.getElementById(pRankingOrder[j]).style.display = "inline-block";
+                handlePatientsDisplayed();
+            }
 
 
+        }
 
-            if (count == "show") {
+        function hidePatients() {
 
-                for (var j = 0; j < patientsToShow; j++)
-                    document.getElementById(pRankingOrder[j]).style.display = "inline-block";
+            var count = patientsToShow;
 
-                patientsToShow += 5;
+            for (var j = count - 1; j > count - 6; j--) {
 
-            } else {
-                for (var j = patientsToShow - 1; j > patientsToShow - 6; j--)
-                    document.getElementById(pRankingOrder[j]).style.display = "none";
+                if (patientsToShow <= 0)
+                    return;
 
-                patientsToShow -= 5;
-
-
+                document.getElementById(pRankingOrder[j]).style.display = "none";
+                patientsToShow -= 1;
+                handlePatientsDisplayed();
             }
 
 
         }
 
 
-        function handlePatientsDisplayed(totalP) {
 
-            pDisplayed.innerHTML = "Showing " + patientsToShow + " out of " + totalP + " patients";
+        function handlePatientsDisplayed() {
+
+            pDisplayed.innerHTML = "Showing " + patientsToShow + " out of " + patients.length + " patients";
 
 
         }
