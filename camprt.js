@@ -1,3 +1,10 @@
+// slider for opacity
+// paper/publication
+// check the match scores
+// think about thesis/project
+
+
+
 'use strict';
 
 // SOME QUICK, TEMPORARY NOTES:
@@ -36,6 +43,8 @@ var scenes = [],
 
 var selectedPatient = 1,
     patientsToShow = 15;
+
+var totalModelCount;
 
 var syncCameras = true,
     syncCamerasInterval,
@@ -93,10 +102,13 @@ function start(error, organAtlas, patientsData) {
     patients = patientsData;
 
     //var numPatients = patients.length;
-    handlePatientsDisplayed(patients.length);
+    handlePatientsDisplayed();
 
     delete oAtlas["GTVn"];
     delete oAtlas["GTVp"];
+
+    //totalModelCount = patients.length * oAtlas.length;
+    //console.log(totalModelCount);
 
     pRankingOrder = patients[selectedPatient - 1].similarity;
     pScores = patients[selectedPatient - 1].scores;
@@ -134,62 +146,13 @@ function start(error, organAtlas, patientsData) {
 
     animate(); // render
 
-    document.getElementById("loadScreen").style.display = "none";
+    //document.getElementById("loadScreen").style.display = "none";
 
 }
 
 // ----------------------------------------------------------------
 
-function prepareOrganModels() {
 
-    // doesn't get organs in order
-
-    for (var pOrgan in oAtlas) {
-
-        (function (pOrgan) {
-
-            let loader = new THREE.VTKLoader();
-
-            loader.load('resources/models/' + pOrgan + '.vtk', function (geometry) {
-
-
-                //console.log(pOrgan);
-
-                geometry.computeVertexNormals();
-                geometry.center();
-
-                let material = new THREE.MeshBasicMaterial({
-                    color: "#ffffff",
-                    side: THREE.DoubleSide,
-                    opacity: 0.5,
-                    transparent: true,
-                    depthWrite: false
-                });
-
-                let mesh = new THREE.Mesh(geometry, material.clone());
-                mesh.name = String(pOrgan) + "_model";
-
-                mesh.position.x = oAtlas[pOrgan].x;
-                mesh.position.y = oAtlas[pOrgan].y;
-                mesh.position.z = oAtlas[pOrgan].z;
-
-                mesh.rotation.x = -Math.PI / 2.0;
-                mesh.rotation.z = -Math.PI / 2;
-
-                organModels.add(mesh);
-
-
-            });
-
-        }(pOrgan));
-
-
-    }
-
-
-
-
-}
 
 function populateColorScale() {
 
@@ -261,6 +224,8 @@ function populateDropDownMenu() {
 
         menu.appendChild(tempOption);
     });
+
+    //sortDropDown();
 
 }
 
@@ -1009,81 +974,7 @@ function init() {
             scene.add(organSphere);
             organSphere.add(outlineMesh);
 
-
-            (function (pOrgan, organProperties, scene, nodeColor) {
-
-                let loader = new THREE.VTKLoader();
-
-                if (!(pOrgan == "GTVn" || pOrgan == "GTVp")) {
-
-                    loader.load('resources/models/' + pOrgan + '.vtk', function (geometry) {
-
-
-                        //console.log(pOrgan);
-
-                        geometry.computeVertexNormals();
-                        geometry.center();
-
-                        let material = new THREE.MeshBasicMaterial({
-                            //let material = new THREE.MeshLambertMaterial({
-                            //let material = new THREE.MeshStandardMaterial({
-                            color: nodeColor,
-                            opacity: 0.2,
-                            transparent: true,
-                            //side: THREE.DoubleSide,
-                            depthTest: true,
-                            depthWrite: true,
-                            depthFunc: THREE.LessEqualDepth
-                        });
-
-                        let mesh = new THREE.Mesh(geometry, material);
-                        mesh.name = (String(pOrgan) + "_model");
-
-                        //console.log(mesh.name);
-
-                        mesh.position.x = organProperties.x;
-                        mesh.position.y = organProperties.y;
-                        mesh.position.z = organProperties.z;
-
-                        mesh.rotation.x = -Math.PI / 2.0;
-                        mesh.rotation.z = -Math.PI / 2;
-
-
-                        // oral cavity
-                        if (pOrgan == "Tongue")
-                            mesh.renderOrder = -10;
-                        else if (pOrgan == "Genioglossus_M")
-                            mesh.renderOrder = -10;
-                        else if (pOrgan == "Lt_Ant_Digastric_M")
-                            mesh.renderOrder = -10;
-                        else if (pOrgan == "Mylogeniohyoid_M")
-                            mesh.renderOrder = -10;
-                        else if (pOrgan == "Rt_Ant_Digastric_M")
-                            mesh.renderOrder = -10;
-
-                        else if (pOrgan == "Extended_Oral_Cavity")
-                            mesh.renderOrder = -9;
-
-                        // throat
-                        else if (pOrgan == "Larynx")
-                            mesh.renderOrder = -10;
-                        else if (pOrgan == "Supraglottic_Larynx")
-                            mesh.renderOrder = -9;
-
-
-
-                        //organModels.add(mesh);
-
-                        scene.add(mesh);
-
-
-
-                    });
-
-                }
-
-            }(pOrgan, patientOrganList[pOrgan], scene, nodeColor));
-
+            placeOrganModels(pOrgan, patientOrganList[pOrgan], scene, nodeColor);
 
         }
 
@@ -1180,7 +1071,7 @@ function init() {
                 scene.add(organSphere);
                 organSphere.add(outlineMesh);
 
-
+                placeOrganModels(organ, oAtlas[organ], scene, nodeColor);
 
             }
 
@@ -1305,50 +1196,99 @@ function init() {
 
 
 
-    ///
 
-    ///models
-    // Load STL model
-
-    //var tempObject = scenes[0].getObjectByName("Upper_Lip");
-
-    //console.log("loading model");
-    //var loaderSTL = new THREE.STLLoader();
-    //loaderSTL.load('resources/models/Upper_Lip.stl',
-    //    function (geometry) {
-    //        var material = new THREE.MeshPhongMaterial({
-    //            color: 0xF44336,
-    //            specular: 0x111111,
-    //            shininess: 200
-    //       });
-    //        var mesh = new THREE.Mesh(geometry, material);
-    // to LPS space
-    /*
-                var RASToLPS = new THREE.Matrix4();
-                RASToLPS.set(-1, 0, 0, 0,
-                    0, -1, 0, 0,
-                    0, 0, 1, 0,
-                    0, 0, 0, 1);
-                mesh.applyMatrix(RASToLPS);
-    */
-
-    //mesh.position.x = organs[23].x;
-    //mesh.position.y = organs[23].y;
-    //mesh.position.z = organs[23].z;
-
-    //mesh.position.set(tempObject.position.x, tempObject.position.y, tempObject.position.z);
-
-    //mesh.position.set(0, 0, 0);
-
-
-
-    //scenes[0].add(mesh);
-    //  });
 
     ///
-
 
     //renderer.autoClear = false;
+}
+
+
+var manager = new THREE.LoadingManager();
+
+manager.onLoad = function () {
+
+    console.log('Loading complete!');
+
+    document.getElementById("loadScreen").style.display = "none";
+
+};
+
+
+
+function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
+
+    let loader = new THREE.VTKLoader(manager);
+
+    if (!(pOrgan == "GTVn" || pOrgan == "GTVp")) {
+
+        loader.load('resources/models/' + pOrgan + '.vtk', function (geometry) {
+
+
+            //console.log(pOrgan);
+
+            geometry.computeVertexNormals();
+            geometry.center();
+
+            let material = new THREE.MeshBasicMaterial({
+                //let material = new THREE.MeshLambertMaterial({
+                //let material = new THREE.MeshStandardMaterial({
+                color: nodeColor,
+                opacity: 0.2,
+                transparent: true,
+                //side: THREE.DoubleSide,
+                depthTest: true,
+                depthWrite: true,
+                depthFunc: THREE.LessEqualDepth
+            });
+
+            let mesh = new THREE.Mesh(geometry, material);
+            mesh.name = (String(pOrgan) + "_model");
+            //mesh.onAfterRender = onAfterRender;
+
+            //console.log(mesh.name);
+
+            mesh.position.x = organProperties.x;
+            mesh.position.y = organProperties.y;
+            mesh.position.z = organProperties.z;
+
+            mesh.rotation.x = -Math.PI / 2.0;
+            mesh.rotation.z = -Math.PI / 2;
+
+
+            // oral cavity
+            if (pOrgan == "Tongue")
+                mesh.renderOrder = -10;
+            else if (pOrgan == "Genioglossus_M")
+                mesh.renderOrder = -10;
+            else if (pOrgan == "Lt_Ant_Digastric_M")
+                mesh.renderOrder = -10;
+            else if (pOrgan == "Mylogeniohyoid_M")
+                mesh.renderOrder = -10;
+            else if (pOrgan == "Rt_Ant_Digastric_M")
+                mesh.renderOrder = -10;
+
+            else if (pOrgan == "Extended_Oral_Cavity")
+                mesh.renderOrder = -9;
+
+            // throat
+            else if (pOrgan == "Larynx")
+                mesh.renderOrder = -10;
+            else if (pOrgan == "Supraglottic_Larynx")
+                mesh.renderOrder = -9;
+
+
+
+            //organModels.add(mesh);
+
+            scene.add(mesh);
+
+
+
+        });
+
+    }
+
 }
 
 function updateOrder(updatedPatient) {
@@ -1671,3 +1611,38 @@ function onDocumentMouseMove(event) {
         }
     }
 }
+
+var opacSlider = document.getElementById("opacSlider");
+
+opacSlider.oninput = function () {
+    //output.innerHTML = this.value;
+
+    var opac = (this.value / 100.0);
+
+    scenes.forEach(function (scene, index) {
+
+        for (var pOrgan in oAtlas) {
+
+            var tempObject = scene.getObjectByName(pOrgan + "_model");
+
+            if (tempObject)
+                tempObject.material.opacity = opac;
+
+
+            //tempObject.materials[0].opacity = opac;
+
+        }
+
+
+    });
+}
+
+var onAfterRender = function (renderer, scene, camera, geometry, material, group) {
+
+    //geometry.setDrawRange( 0, Infinity );
+
+
+
+    //console.log(loaded);
+
+};
