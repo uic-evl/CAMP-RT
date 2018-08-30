@@ -90,7 +90,8 @@ d3.queue()
     //.defer(d3.json, "data/organs.json")
     .defer(d3.json, "data/organAtlas.json")
     //.defer(d3.json, "data/links.json")
-    .defer(d3.json, "data/patients_V8.json")
+    //.defer(d3.json, "data/patients_4.json")
+    .defer(d3.json, "data/patients_SSIM.json")
     .await(start);
 
 function start(error, organAtlas, patientsData) {
@@ -110,8 +111,11 @@ function start(error, organAtlas, patientsData) {
     //totalModelCount = patients.length * oAtlas.length;
     //console.log(totalModelCount);
 
-    pRankingOrder = patients[selectedPatient - 1].similarity;
-    pScores = patients[selectedPatient - 1].scores;
+    //pRankingOrder = patients[selectedPatient - 1].similarity;
+    pRankingOrder = patients[selectedPatient - 1].similarity_ssim;
+
+    //pScores = patients[selectedPatient - 1].scores;
+    pScores = patients[selectedPatient - 1].scores_ssim;
 
     populateDropDownMenu();
     populateColorScale();
@@ -1304,8 +1308,11 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
 function updateOrder(updatedPatient) {
 
     selectedPatient = updatedPatient;
-    pRankingOrder = patients[selectedPatient - 1].similarity;
-    pScores = patients[selectedPatient - 1].scores;
+    //pRankingOrder = patients[selectedPatient - 1].similarity;
+    pRankingOrder = patients[selectedPatient - 1].similarity_ssim;
+
+    //pScores = patients[selectedPatient - 1].scores;
+    pScores = patients[selectedPatient - 1].scores_ssim;
 
     var lastPatient = document.getElementById(pRankingOrder[pRankingOrder.length - 1]);
     var firstPatient = document.getElementById(pRankingOrder[0]);
@@ -1366,7 +1373,8 @@ function render() {
     renderer.setClearColor(0xa5a5a5);
     renderer.setScissorTest(true);
 
-    pRankingOrder = patients[selectedPatient - 1].similarity;
+    //pRankingOrder = patients[selectedPatient - 1].similarity;
+    pRankingOrder = patients[selectedPatient - 1].similarity_ssim;
 
     var rotMatrix = new THREE.Matrix4();
 
