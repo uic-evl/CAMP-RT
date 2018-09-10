@@ -1,6 +1,7 @@
 [
     {
         "ID": "222", 
+        "ID_int": 222, 
         "name": "Patient 222", 
         "organData": {
             "GTVn": {
@@ -706,6 +707,7 @@
     }, 
     {
         "ID": "5058", 
+        "ID_int": 5058, 
         "name": "Patient 5058", 
         "organData": {
             "GTVn": {
@@ -1411,6 +1413,7 @@
     }, 
     {
         "ID": "172", 
+        "ID_int": 172, 
         "name": "Patient 172", 
         "organData": {
             "GTVn": {
@@ -2116,6 +2119,7 @@
     }, 
     {
         "ID": "192", 
+        "ID_int": 192, 
         "name": "Patient 192", 
         "organData": {
             "Brainstem": {
@@ -2821,6 +2825,7 @@
     }, 
     {
         "ID": "251", 
+        "ID_int": 251, 
         "name": "Patient 251", 
         "organData": {
             "GTVn": {
@@ -3526,6 +3531,7 @@
     }, 
     {
         "ID": "261", 
+        "ID_int": 261, 
         "name": "Patient 261", 
         "organData": {
             "GTVn": {
@@ -4231,6 +4237,7 @@
     }, 
     {
         "ID": "213", 
+        "ID_int": 213, 
         "name": "Patient 213", 
         "organData": {
             "GTVn": {
@@ -4930,6 +4937,7 @@
     }, 
     {
         "ID": "256", 
+        "ID_int": 256, 
         "name": "Patient 256", 
         "organData": {
             "GTVn": {
@@ -5635,6 +5643,7 @@
     }, 
     {
         "ID": "2007", 
+        "ID_int": 2007, 
         "name": "Patient 2007", 
         "organData": {
             "GTVp": {
@@ -6340,6 +6349,7 @@
     }, 
     {
         "ID": "179", 
+        "ID_int": 179, 
         "name": "Patient 179", 
         "organData": {
             "GTVn": {
@@ -7045,6 +7055,7 @@
     }, 
     {
         "ID": "289", 
+        "ID_int": 289, 
         "name": "Patient 289", 
         "organData": {
             "Brainstem": {
@@ -7750,6 +7761,7 @@
     }, 
     {
         "ID": "5081", 
+        "ID_int": 5081, 
         "name": "Patient 5081", 
         "organData": {
             "GTVp": {
@@ -8455,6 +8467,7 @@
     }, 
     {
         "ID": "183", 
+        "ID_int": 183, 
         "name": "Patient 183", 
         "organData": {
             "GTVn": {
@@ -9160,6 +9173,7 @@
     }, 
     {
         "ID": "262", 
+        "ID_int": 262, 
         "name": "Patient 262", 
         "organData": {
             "GTVn": {
@@ -9865,6 +9879,7 @@
     }, 
     {
         "ID": "239", 
+        "ID_int": 239, 
         "name": "Patient 239", 
         "organData": {
             "Brainstem": {
@@ -10558,6 +10573,7 @@
     }, 
     {
         "ID": "228", 
+        "ID_int": 228, 
         "name": "Patient 228", 
         "organData": {
             "GTVp": {
@@ -11263,6 +11279,7 @@
     }, 
     {
         "ID": "10082", 
+        "ID_int": 10082, 
         "name": "Patient 10082", 
         "organData": {
             "GTVn": {
@@ -11968,6 +11985,7 @@
     }, 
     {
         "ID": "252", 
+        "ID_int": 252, 
         "name": "Patient 252", 
         "organData": {
             "GTVp": {
@@ -12673,6 +12691,7 @@
     }, 
     {
         "ID": "283", 
+        "ID_int": 283, 
         "name": "Patient 283", 
         "organData": {
             "Brainstem": {
@@ -13378,6 +13397,7 @@
     }, 
     {
         "ID": "257", 
+        "ID_int": 257, 
         "name": "Patient 257", 
         "organData": {
             "GTVn": {
@@ -14083,6 +14103,7 @@
     }, 
     {
         "ID": "5100", 
+        "ID_int": 5100, 
         "name": "Patient 5100", 
         "organData": {
             "GTVn": {
@@ -14788,6 +14809,7 @@
     }, 
     {
         "ID": "276", 
+        "ID_int": 276, 
         "name": "Patient 276", 
         "organData": {
             "Brainstem": {
@@ -15493,6 +15515,7 @@
     }, 
     {
         "ID": "285", 
+        "ID_int": 285, 
         "name": "Patient 285", 
         "organData": {
             "GTVn": {
@@ -16198,6 +16221,7 @@
     }, 
     {
         "ID": "169", 
+        "ID_int": 169, 
         "name": "Patient 169", 
         "organData": {
             "GTVp": {
@@ -16903,6 +16927,7 @@
     }, 
     {
         "ID": "5084", 
+        "ID_int": 5084, 
         "name": "Patient 5084", 
         "organData": {
             "GTVp": {
@@ -17608,6 +17633,7 @@
     }, 
     {
         "ID": "176", 
+        "ID_int": 176, 
         "name": "Patient 176", 
         "organData": {
             "Brainstem": {
@@ -18313,6 +18339,7 @@
     }, 
     {
         "ID": "177", 
+        "ID_int": 177, 
         "name": "Patient 177", 
         "organData": {
             "GTVn": {
@@ -19018,6 +19045,7 @@
     }, 
     {
         "ID": "209", 
+        "ID_int": 209, 
         "name": "Patient 209", 
         "organData": {
             "GTVp": {
@@ -19723,6 +19751,7 @@
     }, 
     {
         "ID": "287", 
+        "ID_int": 287, 
         "name": "Patient 287", 
         "organData": {
             "Brainstem": {
@@ -20428,6 +20457,7 @@
     }, 
     {
         "ID": "155", 
+        "ID_int": 155, 
         "name": "Patient 155", 
         "organData": {
             "GTVp": {
@@ -21127,6 +21157,7 @@
     }, 
     {
         "ID": "249", 
+        "ID_int": 249, 
         "name": "Patient 249", 
         "organData": {
             "GTVn": {
@@ -21802,6 +21833,7 @@
     }, 
     {
         "ID": "164", 
+        "ID_int": 164, 
         "name": "Patient 164", 
         "organData": {
             "GTVn": {
@@ -22507,6 +22539,7 @@
     }, 
     {
         "ID": "221", 
+        "ID_int": 221, 
         "name": "Patient 221", 
         "organData": {
             "GTVn": {
@@ -23206,6 +23239,7 @@
     }, 
     {
         "ID": "244", 
+        "ID_int": 244, 
         "name": "Patient 244", 
         "organData": {
             "GTVp": {
@@ -23911,6 +23945,7 @@
     }, 
     {
         "ID": "242", 
+        "ID_int": 242, 
         "name": "Patient 242", 
         "organData": {
             "GTVp": {
@@ -24610,6 +24645,7 @@
     }, 
     {
         "ID": "236", 
+        "ID_int": 236, 
         "name": "Patient 236", 
         "organData": {
             "GTVn": {
@@ -25309,6 +25345,7 @@
     }, 
     {
         "ID": "268", 
+        "ID_int": 268, 
         "name": "Patient 268", 
         "organData": {
             "GTVn": {
@@ -26014,6 +26051,7 @@
     }, 
     {
         "ID": "10159", 
+        "ID_int": 10159, 
         "name": "Patient 10159", 
         "organData": {
             "GTVp": {
@@ -26719,6 +26757,7 @@
     }, 
     {
         "ID": "5059", 
+        "ID_int": 5059, 
         "name": "Patient 5059", 
         "organData": {
             "GTVp": {
@@ -27424,6 +27463,7 @@
     }, 
     {
         "ID": "178", 
+        "ID_int": 178, 
         "name": "Patient 178", 
         "organData": {
             "GTVp": {
@@ -28129,6 +28169,7 @@
     }, 
     {
         "ID": "174", 
+        "ID_int": 174, 
         "name": "Patient 174", 
         "organData": {
             "GTVn": {
@@ -28828,6 +28869,7 @@
     }, 
     {
         "ID": "271", 
+        "ID_int": 271, 
         "name": "Patient 271", 
         "organData": {
             "Brainstem": {
@@ -29533,6 +29575,7 @@
     }, 
     {
         "ID": "5077", 
+        "ID_int": 5077, 
         "name": "Patient 5077", 
         "organData": {
             "GTVn": {
@@ -30232,6 +30275,7 @@
     }, 
     {
         "ID": "184", 
+        "ID_int": 184, 
         "name": "Patient 184", 
         "organData": {
             "GTVp": {
@@ -30937,6 +30981,7 @@
     }, 
     {
         "ID": "229", 
+        "ID_int": 229, 
         "name": "Patient 229", 
         "organData": {
             "GTVn": {
@@ -31642,6 +31687,7 @@
     }, 
     {
         "ID": "189", 
+        "ID_int": 189, 
         "name": "Patient 189", 
         "organData": {
             "GTVn": {
@@ -32347,6 +32393,7 @@
     }, 
     {
         "ID": "234", 
+        "ID_int": 234, 
         "name": "Patient 234", 
         "organData": {
             "GTVn": {
@@ -33052,6 +33099,7 @@
     }, 
     {
         "ID": "152", 
+        "ID_int": 152, 
         "name": "Patient 152", 
         "organData": {
             "GTVp": {
@@ -33751,6 +33799,7 @@
     }, 
     {
         "ID": "173", 
+        "ID_int": 173, 
         "name": "Patient 173", 
         "organData": {
             "Brainstem": {
@@ -34456,6 +34505,7 @@
     }, 
     {
         "ID": "223", 
+        "ID_int": 223, 
         "name": "Patient 223", 
         "organData": {
             "GTVn": {
@@ -35161,6 +35211,7 @@
     }, 
     {
         "ID": "248", 
+        "ID_int": 248, 
         "name": "Patient 248", 
         "organData": {
             "GTVn": {
@@ -35860,6 +35911,7 @@
     }, 
     {
         "ID": "220", 
+        "ID_int": 220, 
         "name": "Patient 220", 
         "organData": {
             "GTVp": {
@@ -36565,6 +36617,7 @@
     }, 
     {
         "ID": "280", 
+        "ID_int": 280, 
         "name": "Patient 280", 
         "organData": {
             "Brainstem": {
@@ -37270,6 +37323,7 @@
     }, 
     {
         "ID": "215", 
+        "ID_int": 215, 
         "name": "Patient 215", 
         "organData": {
             "GTVp": {
@@ -37975,6 +38029,7 @@
     }, 
     {
         "ID": "5092", 
+        "ID_int": 5092, 
         "name": "Patient 5092", 
         "organData": {
             "GTVp": {
@@ -38680,6 +38735,7 @@
     }, 
     {
         "ID": "10164", 
+        "ID_int": 10164, 
         "name": "Patient 10164", 
         "organData": {
             "Brainstem": {
@@ -39373,6 +39429,7 @@
     }, 
     {
         "ID": "200", 
+        "ID_int": 200, 
         "name": "Patient 200", 
         "organData": {
             "GTVn": {
@@ -40078,6 +40135,7 @@
     }, 
     {
         "ID": "2009", 
+        "ID_int": 2009, 
         "name": "Patient 2009", 
         "organData": {
             "Brainstem": {
@@ -40777,6 +40835,7 @@
     }, 
     {
         "ID": "158", 
+        "ID_int": 158, 
         "name": "Patient 158", 
         "organData": {
             "GTVn": {
@@ -41482,6 +41541,7 @@
     }, 
     {
         "ID": "153", 
+        "ID_int": 153, 
         "name": "Patient 153", 
         "organData": {
             "GTVp": {
@@ -42187,6 +42247,7 @@
     }, 
     {
         "ID": "281", 
+        "ID_int": 281, 
         "name": "Patient 281", 
         "organData": {
             "GTVn": {
@@ -42892,6 +42953,7 @@
     }, 
     {
         "ID": "195", 
+        "ID_int": 195, 
         "name": "Patient 195", 
         "organData": {
             "GTVn": {
@@ -43597,6 +43659,7 @@
     }, 
     {
         "ID": "197", 
+        "ID_int": 197, 
         "name": "Patient 197", 
         "organData": {
             "GTVp": {
@@ -44302,6 +44365,7 @@
     }, 
     {
         "ID": "274", 
+        "ID_int": 274, 
         "name": "Patient 274", 
         "organData": {
             "Brainstem": {
@@ -45007,6 +45071,7 @@
     }, 
     {
         "ID": "226", 
+        "ID_int": 226, 
         "name": "Patient 226", 
         "organData": {
             "GTVp": {
@@ -45712,6 +45777,7 @@
     }, 
     {
         "ID": "205", 
+        "ID_int": 205, 
         "name": "Patient 205", 
         "organData": {
             "GTVp": {
@@ -46411,6 +46477,7 @@
     }, 
     {
         "ID": "218", 
+        "ID_int": 218, 
         "name": "Patient 218", 
         "organData": {
             "GTVp": {
@@ -47116,6 +47183,7 @@
     }, 
     {
         "ID": "181", 
+        "ID_int": 181, 
         "name": "Patient 181", 
         "organData": {
             "GTVp": {
@@ -47821,6 +47889,7 @@
     }, 
     {
         "ID": "849711", 
+        "ID_int": 849711, 
         "name": "Patient 849711", 
         "organData": {
             "GTVp": {
@@ -48526,6 +48595,7 @@
     }, 
     {
         "ID": "265", 
+        "ID_int": 265, 
         "name": "Patient 265", 
         "organData": {
             "GTVp": {
@@ -49231,6 +49301,7 @@
     }, 
     {
         "ID": "171", 
+        "ID_int": 171, 
         "name": "Patient 171", 
         "organData": {
             "GTVn": {
@@ -49936,6 +50007,7 @@
     }, 
     {
         "ID": "10034", 
+        "ID_int": 10034, 
         "name": "Patient 10034", 
         "organData": {
             "Brainstem": {
@@ -50629,6 +50701,7 @@
     }, 
     {
         "ID": "212", 
+        "ID_int": 212, 
         "name": "Patient 212", 
         "organData": {
             "GTVp": {
@@ -51334,6 +51407,7 @@
     }, 
     {
         "ID": "278", 
+        "ID_int": 278, 
         "name": "Patient 278", 
         "organData": {
             "Brainstem": {
@@ -52039,6 +52113,7 @@
     }, 
     {
         "ID": "224", 
+        "ID_int": 224, 
         "name": "Patient 224", 
         "organData": {
             "GTVn": {
@@ -52738,6 +52813,7 @@
     }, 
     {
         "ID": "5071", 
+        "ID_int": 5071, 
         "name": "Patient 5071", 
         "organData": {
             "GTVn": {
@@ -53443,6 +53519,7 @@
     }, 
     {
         "ID": "286", 
+        "ID_int": 286, 
         "name": "Patient 286", 
         "organData": {
             "Brainstem": {
@@ -54148,6 +54225,7 @@
     }, 
     {
         "ID": "225", 
+        "ID_int": 225, 
         "name": "Patient 225", 
         "organData": {
             "GTVp": {
@@ -54853,6 +54931,7 @@
     }, 
     {
         "ID": "10044", 
+        "ID_int": 10044, 
         "name": "Patient 10044", 
         "organData": {
             "GTVp": {
@@ -55558,6 +55637,7 @@
     }, 
     {
         "ID": "5080", 
+        "ID_int": 5080, 
         "name": "Patient 5080", 
         "organData": {
             "GTVn": {
@@ -56263,6 +56343,7 @@
     }, 
     {
         "ID": "10153", 
+        "ID_int": 10153, 
         "name": "Patient 10153", 
         "organData": {
             "GTVn": {
@@ -56968,6 +57049,7 @@
     }, 
     {
         "ID": "2011", 
+        "ID_int": 2011, 
         "name": "Patient 2011", 
         "organData": {
             "GTVn": {
@@ -57673,6 +57755,7 @@
     }, 
     {
         "ID": "5075", 
+        "ID_int": 5075, 
         "name": "Patient 5075", 
         "organData": {
             "GTVp": {
@@ -58378,6 +58461,7 @@
     }, 
     {
         "ID": "260", 
+        "ID_int": 260, 
         "name": "Patient 260", 
         "organData": {
             "GTVp": {
@@ -59083,6 +59167,7 @@
     }, 
     {
         "ID": "185", 
+        "ID_int": 185, 
         "name": "Patient 185", 
         "organData": {
             "GTVp": {
@@ -59788,6 +59873,7 @@
     }, 
     {
         "ID": "237", 
+        "ID_int": 237, 
         "name": "Patient 237", 
         "organData": {
             "GTVp": {
@@ -60487,6 +60573,7 @@
     }, 
     {
         "ID": "180", 
+        "ID_int": 180, 
         "name": "Patient 180", 
         "organData": {
             "GTVn": {
@@ -61192,6 +61279,7 @@
     }, 
     {
         "ID": "5090", 
+        "ID_int": 5090, 
         "name": "Patient 5090", 
         "organData": {
             "GTVp": {
@@ -61897,6 +61985,7 @@
     }, 
     {
         "ID": "160", 
+        "ID_int": 160, 
         "name": "Patient 160", 
         "organData": {
             "GTVn": {
@@ -62596,6 +62685,7 @@
     }, 
     {
         "ID": "194", 
+        "ID_int": 194, 
         "name": "Patient 194", 
         "organData": {
             "GTVn": {
@@ -63301,6 +63391,7 @@
     }, 
     {
         "ID": "263", 
+        "ID_int": 263, 
         "name": "Patient 263", 
         "organData": {
             "GTVp": {
@@ -64006,6 +64097,7 @@
     }, 
     {
         "ID": "267", 
+        "ID_int": 267, 
         "name": "Patient 267", 
         "organData": {
             "Brainstem": {
@@ -64711,6 +64803,7 @@
     }, 
     {
         "ID": "232", 
+        "ID_int": 232, 
         "name": "Patient 232", 
         "organData": {
             "GTVn": {
@@ -65416,6 +65509,7 @@
     }, 
     {
         "ID": "5068", 
+        "ID_int": 5068, 
         "name": "Patient 5068", 
         "organData": {
             "GTVp": {
@@ -66121,6 +66215,7 @@
     }, 
     {
         "ID": "188", 
+        "ID_int": 188, 
         "name": "Patient 188", 
         "organData": {
             "GTVp": {
@@ -66826,6 +66921,7 @@
     }, 
     {
         "ID": "175", 
+        "ID_int": 175, 
         "name": "Patient 175", 
         "organData": {
             "GTVp": {
@@ -67525,6 +67621,7 @@
     }, 
     {
         "ID": "156", 
+        "ID_int": 156, 
         "name": "Patient 156", 
         "organData": {
             "GTVn": {
@@ -68224,6 +68321,7 @@
     }, 
     {
         "ID": "154", 
+        "ID_int": 154, 
         "name": "Patient 154", 
         "organData": {
             "GTVn": {
@@ -68923,6 +69021,7 @@
     }, 
     {
         "ID": "5085", 
+        "ID_int": 5085, 
         "name": "Patient 5085", 
         "organData": {
             "GTVp": {
@@ -69628,6 +69727,7 @@
     }, 
     {
         "ID": "5078", 
+        "ID_int": 5078, 
         "name": "Patient 5078", 
         "organData": {
             "GTVn": {
@@ -70333,6 +70433,7 @@
     }, 
     {
         "ID": "246", 
+        "ID_int": 246, 
         "name": "Patient 246", 
         "organData": {
             "GTVn": {
@@ -71038,6 +71139,7 @@
     }, 
     {
         "ID": "206", 
+        "ID_int": 206, 
         "name": "Patient 206", 
         "organData": {
             "GTVn": {
