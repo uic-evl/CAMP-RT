@@ -86,6 +86,7 @@ var pRankingOrder, pScores;
 var listItems, arrayOfDivs = [],
     currScene;
 
+
 d3.queue()
     //.defer(d3.json, "data/organs.json")
     .defer(d3.json, "data/organAtlas.json")
