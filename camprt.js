@@ -109,6 +109,8 @@ function start(error, organAtlas, patientsData) {
     delete oAtlas["GTVn"];
     delete oAtlas["GTVp"];
 
+    selectedPatient = populateDropDownMenu();
+
     //totalModelCount = patients.length * oAtlas.length;
     //console.log(totalModelCount);
 
@@ -118,7 +120,6 @@ function start(error, organAtlas, patientsData) {
     //pScores = patients[selectedPatient - 1].scores;
     pScores = patients[selectedPatient - 1].scores_ssim;
 
-    populateDropDownMenu();
     populateColorScale();
 
     flipGraph(); // fixes orientation of organs
@@ -214,11 +215,29 @@ function hideColorScaleLabel(event) {
 
 }
 
+function compare(a, b) {
+
+    var a_ID = a.ID_int;
+    var b_ID = b.ID_int;
+
+    var comparison = 0;
+
+    if (a_ID > b_ID) {
+        comparison = 1;
+    } else if (a_ID < b_ID) {
+        comparison = -1;
+    }
+    return comparison;
+}
+
 function populateDropDownMenu() {
 
     var menu = document.getElementById("patientMenu");
 
-    patients.forEach(function (patient, index) {
+    // copy of patients sorted
+    var patients_sorted = patients.concat().sort(compare);
+
+    patients_sorted.forEach(function (patient, index) {
 
         var tempOption = document.createElement("option");
 
@@ -229,6 +248,12 @@ function populateDropDownMenu() {
 
         menu.appendChild(tempOption);
     });
+
+    var firstPatient = patients_sorted[0].ID_internal;
+
+    patients_sorted.length = 0;
+
+    return firstPatient;
 
     //sortDropDown();
 
