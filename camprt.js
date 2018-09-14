@@ -92,7 +92,7 @@ d3.queue()
     .defer(d3.json, "data/organAtlas.json")
     //.defer(d3.json, "data/links.json")
     //.defer(d3.json, "data/patients_4.json")
-    .defer(d3.json, "data/patients_SSIM.json")
+    .defer(d3.json, "data/patients_SSIM_withDoses.json")
     .await(start);
 
 function start(error, organAtlas, patientsData) {
