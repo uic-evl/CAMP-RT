@@ -24,8 +24,9 @@
             position: absolute;
             top: 0px;
             width: 100%;
+            min-width: 1130px;
             z-index: 1;
-            padding: 7em 0 3em 0;
+            padding: 5em 0 3em 0;
         }
 
         a {
@@ -41,10 +42,14 @@
 
         #dropMenu {
             position: absolute;
-            bottom: 3px;
+            bottom: 5px;
             left: 10px;
             opacity: 0.95;
             z-index: 11;
+        }
+        
+        #patientMenu {
+            
         }
 
         #loadScreen {
@@ -65,16 +70,17 @@
         select {
             cursor: pointer;
             color: #eee;
-            background-color: #444;
+            background-color: rgb(50, 50, 50);
             font-family: sans-serif;
             font-size: medium;
             font-weight: lighter;
             /*text-align: center;*/
-            width: 125px;
+            padding: 5px 5px;
+            width: 160px;
             height: 31px;
             -webkit-border-radius: 0px;
-            border: 0px;
-            outline: 5px solid #444;
+            border: 2px solid rgb(30, 30, 30);
+            outline: 0px solid rgb(30, 30, 30);
             outline-offset: -2px;
         }
 
@@ -98,25 +104,33 @@
             left: 0px;
             background-color: #444;
             width: 100%;
-            height: 80px;
+            min-width: 1130px;
+            /*height: 80px;*/
+            height: 60px;
             z-index: 10;
             box-shadow: 0px 0px 13px 2px rgba(0, 0, 0, 0.7);
             text-align: center;
         }
 
         #sideMenu_button {
-            position: absolute;
-            bottom: 0px;
-            right: 10px;
+            display: inline-block;
+            height: 31px;
+            width: 100px;
+            background-color: rgb(50, 50, 50);
             color: #eee;
             font-family: sans-serif;
-            font-size: 30px;
+            font-size: medium;
             cursor: pointer;
-            padding: 0px 12px;
+            margin-top: 0px;
+            padding: 5px 5px;
+            margin-left: 0px;
+            user-select: none;
+            border: 2px solid rgb(30, 30, 30);
         }
 
         #sideMenu_button:hover {
             background-color: #666;
+            
         }
 
         #mySidenav {
@@ -125,7 +139,7 @@
             width: 350px;
             position: fixed;
             opacity: .98;
-            top: 83px;
+            top: 63px;
             right: -400px;
             background-color: #444;
             overflow-x: hidden;
@@ -181,14 +195,15 @@
             position: relative;
             top: 22px;
             right: 75px;
-            height: 30px;
+            height: 31px;
             margin: 2px auto 2px auto;
             border: 1px solid black;
             color: #eee;
             display: inline-block;
             transition: 0.3s;
-            cursor: crosshair;
             z-index: 11;
+            
+            cursor: crosshair;
         }
 
         .scaleLabels {
@@ -221,6 +236,8 @@
             background-color: #444;
             padding: 0px 5px;
             z-index: 11;
+            cursor: default;
+            user-select: none;
         }
 
         #colorScaleDetails {
@@ -444,28 +461,24 @@
         }
 
         .slidecontainer {
-            position: relative;
-            top: 15px;
-            left: 75px;
-            height: 30px;
-            width: 250px;
-            margin: 2px 2px 2px 2px;
+            width: 200px;
             color: #eee;
             display: inline-block;
             transition: 0.3s;
+            float: left;
+            padding: 4px 0px; 
             z-index: 11;
         }
 
         .slider {
             -webkit-appearance: none;
             width: 100%;
-            height: 15px;
+            height: 5px;
             border-radius: 5px;
             background: #d3d3d3;
             outline: none;
-            opacity: 0.7;
-            -webkit-transition: .2s;
-            transition: opacity .2s;
+            cursor: crosshair;
+            
         }
 
         .slider:hover {
@@ -475,18 +488,28 @@
         .slider::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 25px;
-            height: 25px;
+            width: 22px;
+            height: 22px;
+            border-width: 2px;
+            border-style: solid;
+            border-color: rgb(30, 30, 30);
             border-radius: 50%;
-            background: #00e4ff;
+            background: rgb(50, 50, 50);
             cursor: crosshair;
+        }
+        
+        .slider:hover::-webkit-slider-thumb {
+            background: #666;
         }
 
         .slider::-moz-range-thumb {
-            width: 25px;
-            height: 25px;
+            width: 22px;
+            height: 22px;
+            border-width: 2px;
+            border-style: solid;
+            border-color: rgb(30, 30, 30);
             border-radius: 50%;
-            background: #00e4ff;
+            background: rgb(50, 50, 50);
             cursor: crosshair;
         }
     </style>
@@ -505,7 +528,7 @@
         <div id="navbar">
             <div id="dropMenu">
                 <select id="patientMenu" onchange="dropDown(this);">
-            </select>
+                </select>
             </div>
             <div id="colorScale">
                 <div id="colorScaleDetails"></div>
@@ -518,10 +541,15 @@
                 <div class="scaleLabels" style="left: 340px;">100</div>
                 -->
             </div>
-            <div class="slidecontainer">
-                <input type="range" min="10" max="100" value="20" class="slider" id="opacSlider">
+            <div style="position: absolute; right: 10px; bottom: 5px; width: auto; height: 31px; border: 0px solid red;">
+                <div style="float: left; border: 2px solid rgb(30, 30, 30); padding: 0px 20px 0px 5px; border-right-width: 0px;">
+                    <div style="color: white; padding: 6px 5px; float: left; user-select: none;">Opacity</div>
+                    <div class="slidecontainer">
+                        <input type="range" min="0" max="100" value="20" class="slider" id="opacSlider">
+                    </div>
+                </div>
+                <div id="sideMenu_button" onclick="handleSideNav()">Organ List</div>
             </div>
-            <span id="sideMenu_button" onclick="handleSideNav()">&#9776;</span>
         </div>
         <div id="mySidenav" class="sidenav">
             <!--<div class="navText">Color Scale</div>
@@ -601,32 +629,6 @@
             updateOrder(e.value);
         }
 
-        function sortDropDown() {
-            var lb = document.getElementById('patientMenu');
-            arrTexts = new Array();
-            arrValues = new Array();
-            arrOldTexts = new Array();
-
-            for (i = 0; i < lb.length; i++) {
-                arrTexts[i] = lb.options[i].text;
-                arrValues[i] = lb.options[i].value;
-
-                arrOldTexts[i] = lb.options[i].text;
-            }
-
-            arrTexts.sort();
-
-            for (i = 0; i < lb.length; i++) {
-                lb.options[i].text = arrTexts[i];
-                for (j = 0; j < lb.length; j++) {
-                    if (arrTexts[i] == arrOldTexts[j]) {
-                        lb.options[i].value = arrValues[j];
-                        j = lb.length;
-                    }
-                }
-            }
-        }
-
         //maybe include onmouseleave="handleSideNav()" in sidenav
         var sideNavClosed = true;
         var sideNav = document.getElementById("mySidenav");
@@ -689,6 +691,7 @@
 
         }
     </script>
+
 </body>
 
 </html>
