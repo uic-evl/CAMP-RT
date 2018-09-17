@@ -104,7 +104,7 @@ function start(error, organAtlas, patientsData) {
     patients = patientsData;
 
     //var numPatients = patients.length;
-    handlePatientsDisplayed();
+    //handlePatientsDisplayed();
 
     delete oAtlas["GTVn"];
     delete oAtlas["GTVp"];
@@ -215,7 +215,7 @@ function hideColorScaleLabel(event) {
 
 }
 
-function compare(a, b) {
+function compareID(a, b) {
 
     var a_ID = a.ID_int;
     var b_ID = b.ID_int;
@@ -235,7 +235,7 @@ function populateDropDownMenu() {
     var menu = document.getElementById("patientMenu");
 
     // copy of patients sorted
-    var patients_sorted = patients.concat().sort(compare);
+    var patients_sorted = patients.concat().sort(compareID);
 
     patients_sorted.forEach(function (patient, index) {
 
@@ -249,7 +249,24 @@ function populateDropDownMenu() {
         menu.appendChild(tempOption);
     });
 
+    // first patient 
     var firstPatient = patients_sorted[0].ID_internal;
+
+    // check URL for ID variable
+
+    // change patient this way or by changing selected patient in dropdown?
+
+    var patientURL = getQueryVariable("id");
+
+    if (patientURL != false) {
+
+        var convertedPatient = getInternalID(patientURL);
+
+        if (convertedPatient != false) {
+            firstPatient = convertedPatient;
+            menu.value = convertedPatient;
+        }
+    }
 
     patients_sorted.length = 0;
 
@@ -257,6 +274,30 @@ function populateDropDownMenu() {
 
     //sortDropDown();
 
+}
+
+function getInternalID(searchString) {
+
+    for (var i = 0; i < patients.length; i++) {
+
+        if (patients[i].ID == searchString)
+            return patients[i].ID_internal;
+
+    }
+
+    return false;
+}
+
+function getQueryVariable(variable) {
+    var query = window.location.search.substring(1);
+    var vars = query.split("&");
+    for (var i = 0; i < vars.length; i++) {
+        var pair = vars[i].split("=");
+        if (pair[0] == variable) {
+            return pair[1];
+        }
+    }
+    return (false);
 }
 
 var master = document.getElementById("masterList");
