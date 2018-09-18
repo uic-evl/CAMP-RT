@@ -1542,7 +1542,7 @@ function render() {
                     //INTERSECTED.scale.multiplyScalar(1);
 
                     // details
-                    //populateAndPlaceDetails("HIDE");
+                    populateAndPlaceDetails("HIDE");
 
                 }
 
