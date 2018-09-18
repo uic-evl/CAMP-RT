@@ -104,7 +104,7 @@ function start(error, organAtlas, patientsData) {
     patients = patientsData;
 
     //var numPatients = patients.length;
-    //handlePatientsDisplayed();
+    handlePatientsDisplayed();
 
     delete oAtlas["GTVn"];
     delete oAtlas["GTVp"];
@@ -557,9 +557,12 @@ function populateOrganMasterList() {
 
 
             var tempDiv = document.createElement("div");
-            tempDiv.style.paddingLeft = "60px";
+            tempDiv.style.marginRight = "20px";
+            tempDiv.style.marginLeft = "50px";
+            tempDiv.style.paddingLeft = "10px";
             tempDiv.style.paddingTop = "1px";
             tempDiv.style.paddingBottom = "1px";
+            tempDiv.setAttribute("class", "GroupChildren");
 
             //tempDiv.setAttribute("class", "checkbox_group");
             //tempDiv.setAttribute("id", String(i + 1) + "_group_container");
@@ -569,6 +572,7 @@ function populateOrganMasterList() {
             tempInput.setAttribute("type", "checkbox");
             tempInput.setAttribute("id", organ + "_checkList");
             tempInput.setAttribute("class", String(oAtlas[organ].partition) + "_GroupChildren");
+            //tempInput.setAttribute("class", "GroupChildren");
             tempInput.setAttribute("value", organ);
             //tempInput.setAttribute("name", "organMasterList");
             //tempInput.setAttribute("onchange", "handleCheckBox(this)");
@@ -1523,6 +1527,10 @@ function render() {
 
                         }
 
+                        break;
+
+                    } else {
+                        populateAndPlaceDetails("HIDE");
                     }
 
 
@@ -1534,7 +1542,7 @@ function render() {
                     //INTERSECTED.scale.multiplyScalar(1);
 
                     // details
-                    populateAndPlaceDetails("HIDE");
+                    //populateAndPlaceDetails("HIDE");
 
                 }
 
