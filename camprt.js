@@ -1,9 +1,5 @@
-// slider for opacity
 // paper/publication
 // check the match scores
-// think about thesis/project
-
-
 
 'use strict';
 
@@ -12,7 +8,6 @@
 //      top navbar slides down to show extended view of selected patient?
 //          shows volume rendered detailed models of organs
 //          exploded view
-//          on left show list of all organs, highlights organ when hovering over node
 
 if (!Detector.webgl) {
     Detector.addGetWebGLMessage();
@@ -92,7 +87,8 @@ d3.queue()
     .defer(d3.json, "data/organAtlas.json")
     //.defer(d3.json, "data/links.json")
     //.defer(d3.json, "data/patients_4.json")
-    .defer(d3.json, "data/patients_SSIM_withDoses.json")
+    //.defer(d3.json, "data/patients_SSIM_noDoses_Weighted_v2.json")
+    .defer(d3.json, "data/patients_SSIM_wDoses_Weighted_v2.json")
     .await(start);
 
 function start(error, organAtlas, patientsData) {
