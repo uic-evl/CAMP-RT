@@ -145,7 +145,7 @@ def FillOrganData(f, organRef):
                 od[organ]['minDose'] = -1.0
             
             if row[7] != "":
-                od[organ]['maxDose'] = float(row[7])  # min dose
+                od[organ]['maxDose'] = float(row[7])  # max dose
             else:
                 od[organ]['maxDose'] = -1.0
 
@@ -159,14 +159,28 @@ def FillMatrix(f, organRef):
 
     rows = list(reader)
 
-    for row in rows:
-        organ1 = row[0]
-        organ2 = row[1]
+    hasGTVp = False
+    hasGTVn = False
 
-        organ1 = RunTestCases(organ1)
-        organ2 = RunTestCases(organ2)
+    for row in rows:
+        #organ1 = row[0]
+        #organ2 = row[1]
+
+        organ1 = RunTestCases(row[0])
+        organ2 = RunTestCases(row[1])
+
+        row[0] = organ1
+        row[1] = organ2
+
+
 
         if organ1 in masterList and organ2 in masterList:
+
+            if organ1 == 'GTVp' or organ2 == 'GTVp':
+                hasGTVp = True
+
+            if organ1 == 'GTVn' or organ2 == 'GTVn':
+                hasGTVn = True
 
             if organ1 not in organRef:  # list keeps reference to main
                 organRef += [organ1]
@@ -183,8 +197,8 @@ def FillMatrix(f, organRef):
         organ1 = row[0]
         organ2 = row[1]
 
-        organ1 = RunTestCases(organ1)  # do I need this, redundant?
-        organ2 = RunTestCases(organ2)  #
+        #organ1 = RunTestCases(organ1)  #
+        #organ2 = RunTestCases(organ2)  #
 
         if organ1 in masterList and organ2 in masterList:
 
@@ -194,15 +208,23 @@ def FillMatrix(f, organRef):
             array2D[organRef.index(organ2), organRef.index(organ1)] = row[2]
             #array2D[organRef.index(organ2), organRef.index(organ1)] = 0.0
 
-            if organ1 == 'GTVp':
-                array2D_tDist[organRef.index(organ2), organRef.index(organ2)] = row[2]
+            if hasGTVp:
+                if organ1 == 'GTVp':
+                    array2D_tDist[organRef.index(organ2), organRef.index(organ2)] = row[2]
+                elif organ2 == 'GTVp':
+                    array2D_tDist[organRef.index(organ1), organRef.index(organ1)] = row[2]
+            elif hasGTVn:
+                if organ1 == 'GTVn':
+                    array2D_tDist[organRef.index(organ2), organRef.index(organ2)] = row[2]
+                elif organ2 == 'GTVn':
+                    array2D_tDist[organRef.index(organ1), organRef.index(organ1)] = row[2]
 
     # print(array2D)
     # print(array2D.shape)
     # print("")
 
     # return np.matrix(array2D)
-    return array2D, array2D_tDist
+    return [array2D, array2D_tDist, hasGTVp, hasGTVn]
 
 # Input: 2 objects
 # Output: Pearson Correlation Score
@@ -274,6 +296,8 @@ def main(argv):
                 pEntry['ID_int'] = int(pID)
                 pEntry['name'] = "Patient " + str(pID)
 
+                pEntry['tumorVolume'] = 0.0
+
                 if '_cent' in fname:  # parse centroids file
                     pEntry['organData'] = FillOrganData(f, organRef)
                 else:
@@ -282,13 +306,25 @@ def main(argv):
                 pEntry['ID_internal'] = count
 
                 if '_dist' in fname:  # parse distances file
-                    pEntry['matrix'], pEntry['matrix_tumorDistances']  = FillMatrix(f, organRef)
+                    data = FillMatrix(f, organRef)
+                    pEntry['matrix'] = data[0]
+                    pEntry['matrix_tumorDistances'] = data[1]
+                    pEntry['hasGTVp'] = data[2]
+                    pEntry['hasGTVn'] = data[3]
                 else:
                     pEntry['matrix'] = []  # placeholder
                     pEntry['matrix_tumorDistances'] = []
+                    pEntry['hasGTVp'] = False
+                    pEntry['hasGTVn'] = False
                 
                 pEntry['matrix_ssim'] = []
+
+                pEntry['matrix_ssim_dist'] = []
+                pEntry['matrix_ssim_vol'] = []
+
                 pEntry['matrix_dose'] = []
+
+                pEntry['matrix_TumorVolume'] = []
 
                 pEntry['matrix_pos'] = []
 
@@ -311,7 +347,11 @@ def main(argv):
 
                 if '_dist' in fname:  # parse distances file
                     if pEntry != None:
-                        pEntry['matrix'], pEntry['matrix_tumorDistances']  = FillMatrix(f, organRef)
+                        data = FillMatrix(f, organRef)
+                        pEntry['matrix'] = data[0]
+                        pEntry['matrix_tumorDistances'] = data[1]
+                        pEntry['hasGTVp'] = data[2]
+                        pEntry['hasGTVn'] = data[3]
 
     #print (organRef)
     #organRef.sort()
@@ -327,11 +367,11 @@ def main(argv):
     for p in patients:
         #p['matrix'].resize((len(organRef), len(organRef)))
         # add padding to matrix so all matrices are the same size
-        padSize = len(organRef) - p['matrix'].shape[0]
-        p['matrix'] = np.lib.pad(
-            p['matrix'], ((0, padSize), (0, padSize)), mode='constant')
-        p['matrix_tumorDistances'] = np.lib.pad(
-            p['matrix_tumorDistances'], ((0, padSize), (0, padSize)), mode='constant')
+        #padSize = len(organRef) - p['matrix'].shape[0]
+        #p['matrix'] = np.lib.pad(
+        #    p['matrix'], ((0, padSize), (0, padSize)), mode='constant')
+        #p['matrix_tumorDistances'] = np.lib.pad(
+        #    p['matrix_tumorDistances'], ((0, padSize), (0, padSize)), mode='constant')
 
         organs = p['organData']
 
@@ -345,6 +385,28 @@ def main(argv):
         # initiliaze dose matrix
         p['matrix_dose'] = np.zeros((len(organRef), len(organRef)))
 
+        # initiliaze tumor volume matrix
+        p['matrix_TumorVolume'] = np.zeros((len(organRef), len(organRef)))
+
+        #print(p['name'])
+
+        #if p['organData'].has_key('GTVp'):
+        if p['hasGTVp']:
+            #print(p['organData']['GTVp']['volume'])
+            p['tumorVolume'] = p['organData']['GTVp']['volume']
+        #elif p['organData'].has_key('GTVn'):
+        elif p['hasGTVn']:
+            #print('GTVn: ' + str(p['organData']['GTVn']['volume']))
+            p['tumorVolume'] = p['organData']['GTVn']['volume']
+        #else:
+            #print("neither")
+        
+        #if p['organData'].has_key('GTVp'):
+        #    p['hasGTVp'] = True
+        
+        #if p['organData'].has_key('GTVn'):
+        #    p['hasGTVn'] = True
+
         for organ in organs.items():  # populate diagonal of matrix with mean dose data
             #if p['ID'] == "222":
             # print(organ)
@@ -353,12 +415,13 @@ def main(argv):
             # print('\n')
 
             #p['matrix'][organRef.index(organ[0])][organRef.index(organ[0])] = -0.000001
-            #['matrix'][organRef.index(organ[0]), organRef.index(organ[0])] = organ[1]['meanDose']
+            p['matrix'][organRef.index(organ[0]), organRef.index(organ[0])] = organ[1]['meanDose']
             #p['matrix'][organRef.index(organ[0]), organRef.index(organ[0])] = -1.0
             #p['matrix'][organRef.index(organ[0]), organRef.index(organ[0])] = int(p['ID'])
 
             #populate dose matrix
             p['matrix_dose'][organRef.index(organ[0]), organRef.index(organ[0])] = organ[1]['meanDose']
+            p['matrix_TumorVolume'][organRef.index(organ[0]), organRef.index(organ[0])] = p['tumorVolume']
 
             # populate position matrix
             posMatrix[0, organRef.index(organ[0])] = organ[1]['x']
@@ -375,16 +438,33 @@ def main(argv):
         #print(matrixCopy)
 
         #p['matrix_ssim'] = np.matmul(matrixCopy, p['matrix_dose'])
-        #p['matrix_ssim'] = np.dot(matrixCopy, p['matrix_dose'])
+        p['matrix_ssim'] = np.dot(matrixCopy, p['matrix_dose'])
 
+        ####
         # SHOULD WE DELETE ROWS/COLS first before dot product?
-        p['matrix_ssim'] = np.dot(matrixCopy, p['matrix_tumorDistances'])
-        p['matrix_ssim'] = np.dot(p['matrix_ssim'], p['matrix_dose'])
+        #p['matrix_ssim'] = np.dot(matrixCopy, p['matrix_tumorDistances'])
+
+        p['matrix_ssim_dist'] = np.dot(matrixCopy, p['matrix_tumorDistances'])
+        p['matrix_ssim_vol'] = np.dot(matrixCopy, p['matrix_TumorVolume'])
+
+        #print(p['name'])
+        #print(p['matrix_tumorDistances'])
+
+        #p['matrix_ssim'] = np.dot(p['matrix_ssim'], p['matrix_TumorVolume'])
+
+        #p['matrix_ssim'] = np.dot(p['matrix_ssim'], p['matrix_dose'])
+
+        ####
+
+        #print(p['name'])
+        #print(p['matrix_TumorVolume'])
 
         #p['matrix_ssim'] = np.copy(p['matrix'])
         #print(p['matrix_ssim'])
 
     ###########
+    print (len(organRef))
+    print (organRef)
     # print(type(patients[50]['matrix']))
     # print('\n')
 
@@ -414,6 +494,7 @@ def main(argv):
 
     # delete columns and rows corresponding to GTVn # ---------------------------------------------
     # ended up not using GTVn for similarity computation
+    # now deleting both tumors, use has_key or indexOf to make sure the right rows/columns are being deleted
     for currP in patients:
 
         if organRef[0] != "GTVn" and organRef[1] != "GTVp":
@@ -431,8 +512,17 @@ def main(argv):
         currP['matrix_ssim'] = np.delete(currP['matrix_ssim'], (0), axis=0)
         currP['matrix_ssim'] = np.delete(currP['matrix_ssim'], (0), axis=1)
 
+        currP['matrix_ssim_dist'] = np.delete(currP['matrix_ssim_dist'], (0), axis=0)
+        currP['matrix_ssim_dist'] = np.delete(currP['matrix_ssim_dist'], (0), axis=1)
+
+        currP['matrix_ssim_vol'] = np.delete(currP['matrix_ssim_vol'], (0), axis=0)
+        currP['matrix_ssim_vol'] = np.delete(currP['matrix_ssim_vol'], (0), axis=1)
+
         currP['matrix_dose'] = np.delete(currP['matrix_dose'], (0), axis=0)
         currP['matrix_dose'] = np.delete(currP['matrix_dose'], (0), axis=1)
+
+        currP['matrix_TumorVolume'] = np.delete(currP['matrix_TumorVolume'], (0), axis=0)
+        currP['matrix_TumorVolume'] = np.delete(currP['matrix_TumorVolume'], (0), axis=1)
 
         # DO IT AGAIN FOR GTVp
 
@@ -447,8 +537,17 @@ def main(argv):
         currP['matrix_ssim'] = np.delete(currP['matrix_ssim'], (0), axis=0)
         currP['matrix_ssim'] = np.delete(currP['matrix_ssim'], (0), axis=1)
 
+        currP['matrix_ssim_dist'] = np.delete(currP['matrix_ssim_dist'], (0), axis=0)
+        currP['matrix_ssim_dist'] = np.delete(currP['matrix_ssim_dist'], (0), axis=1)
+
+        currP['matrix_ssim_vol'] = np.delete(currP['matrix_ssim_vol'], (0), axis=0)
+        currP['matrix_ssim_vol'] = np.delete(currP['matrix_ssim_vol'], (0), axis=1)
+
         currP['matrix_dose'] = np.delete(currP['matrix_dose'], (0), axis=0)
         currP['matrix_dose'] = np.delete(currP['matrix_dose'], (0), axis=1)
+
+        currP['matrix_TumorVolume'] = np.delete(currP['matrix_TumorVolume'], (0), axis=0)
+        currP['matrix_TumorVolume'] = np.delete(currP['matrix_TumorVolume'], (0), axis=1)
 
         #print(currP['ID'])
     
@@ -471,6 +570,8 @@ def main(argv):
         currP['matrix_pos'] = currP['matrix_pos'][:,0]
         #print (currP['matrix_pos'])
     
+
+    
     pSimMatrix = np.zeros((len(patients) + 1, len(patients) + 1))
 
     # Calculate Pearson correlation coefficients
@@ -481,7 +582,11 @@ def main(argv):
         ssimResults = []
         for nextP in patients:
             pCoeff_1 = pearsonr(currP['matrix'].flat, nextP['matrix'].flat)[0]
-            ssimScor = myssim.ssim(matlab.double(currP['matrix_ssim'].tolist()), matlab.double(nextP['matrix_ssim'].tolist()))
+            #ssimScor = myssim.ssim(matlab.double(currP['matrix_ssim'].tolist()), matlab.double(nextP['matrix_ssim'].tolist()))
+            ssimScor_dist = myssim.ssim(matlab.double(currP['matrix_ssim_dist'].tolist()), matlab.double(nextP['matrix_ssim_dist'].tolist()))
+            ssimScor_vol = myssim.ssim(matlab.double(currP['matrix_ssim_vol'].tolist()), matlab.double(nextP['matrix_ssim_vol'].tolist()))
+
+            ssimScor = (ssimScor_dist + ssimScor_vol) / 2.0
             #ssimScor = 1.0
             if (ssimScor <= 0.0):
                 #ssimScor = 0
@@ -748,8 +853,11 @@ def main(argv):
         del p['matrix']
         del p['matrix_pos']
         del p['matrix_ssim']
+        del p['matrix_ssim_dist']
+        del p['matrix_ssim_vol']
         del p['matrix_dose']
         del p['matrix_tumorDistances']
+        del p['matrix_TumorVolume']
     
     # sort patient list before outputting to json
     #sorted_patients = sorted(patients, key=itemgetter('ID_int')) 

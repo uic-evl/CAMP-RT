@@ -88,7 +88,14 @@ d3.queue()
     //.defer(d3.json, "data/links.json")
     //.defer(d3.json, "data/patients_4.json")
     //.defer(d3.json, "data/patients_SSIM_noDoses_Weighted_v2.json")
-    .defer(d3.json, "data/patients_SSIM_wDoses_Weighted_v2.json")
+    //.defer(d3.json, "data/patients_SSIM_wDoses_Weighted_v2.json")
+    //.defer(d3.json, "data/patients_SSIM_noDoses_wTDists.json")
+    ///.defer(d3.json, "data/patients_SSIM_noDoses_wTDists_subGTVp.json")
+    //.defer(d3.json, "data/patients_SSIM_noDoses_wTDists_wTVol.json")
+    //.defer(d3.json, "data/patients_SSIM_noDoses_wTDists_wTVol_subGTVp.json")
+    ///.defer(d3.json, "data/patients_SSIM_noDoses_wTDists_wTVol_subGTVp_v2.json")
+    ///.defer(d3.json, "data/patients_SSIM_wDoses_wTDists_wTVol_subGTVp.json")
+    .defer(d3.json, "data/patients_SSIM_noDoses_wTDists_wTVol_subGTVp_2pass.json")
     .await(start);
 
 function start(error, organAtlas, patientsData) {
@@ -915,6 +922,9 @@ function init() {
         element.id = patients[i].ID_internal;
         element.innerHTML = template.replace('$', patients[i].name);
 
+        var tVolumeElement = element.querySelector(".tVolume");
+        tVolumeElement.innerHTML = "GTV: " + "<b>" + patients[i].tumorVolume + "</b>" + " cc";
+
         // Look up the element that represents the area
         // we want to render the scene
         scene.userData.element = element.querySelector(".scene");
@@ -1012,12 +1022,14 @@ function init() {
             //if (patientOrganList[organ.name] != null) {
             //console.log(patientOrganList[organ.name]);
 
-            organSphere.userData.volume = undefined;
-            organSphere.userData.minDose = undefined;
+            organSphere.userData.volume = patientOrganList[pOrgan].volume;
+            organSphere.userData.minDose = patientOrganList[pOrgan].minDose;
             organSphere.userData.meanDose = patientOrganList[pOrgan].meanDose;
-            organSphere.userData.maxDose = undefined;
+            organSphere.userData.maxDose = patientOrganList[pOrgan].maxDose;
             //organSphere.userData.dosePerVolume = undefined;
-            organSphere.userData.dosePerVolume = patientOrganList[pOrgan].meanDose;
+
+            // do this in python script
+            organSphere.userData.dosePerVolume = undefined;
 
             if (organSphere.userData.meanDose >= 0.0) //null == -1 in json, pearson problems
                 nodeColor = color(organSphere.userData.meanDose);
@@ -1565,23 +1577,23 @@ function updateSize() {
 function populateAndPlaceDetails(state) {
 
     if (state == "SHOW") {
+
+        nodeDetails.style.display = "block";
         // PLACEMENT
         // check if details are offscreen, then shift appropriately
         // X, add 10 pixels for buffer, since width is dynamic
-        if (mouse.x + detailsOffsetX + nodeDetails.offsetWidth + 10 > canvas.clientWidth) {
+        if (mouse.x + detailsOffsetX + nodeDetails.offsetWidth + 5 >= canvas.clientWidth) {
             nodeDetails.style.left = (mouse.x - detailsOffsetX - nodeDetails.offsetWidth) + "px";
         } else {
             nodeDetails.style.left = (mouse.x + detailsOffsetX) + "px";
         }
 
         // Y
-        if (mouse.y + detailsOffsetY + nodeDetails.offsetHeight > canvas.clientHeight) {
+        if (mouse.y + detailsOffsetY + nodeDetails.offsetHeight + 5 >= canvas.clientHeight) {
             nodeDetails.style.top = (mouse.y - detailsOffsetY - nodeDetails.offsetHeight) + "px";
         } else {
             nodeDetails.style.top = (mouse.y + detailsOffsetY) + "px";
         }
-
-        nodeDetails.style.display = "block";
         //nodeDetails.style.opacity = .95;
         //nodeDetails.style.opacity = "1.0";
 
@@ -1593,22 +1605,22 @@ function populateAndPlaceDetails(state) {
         organName.innerHTML = nodeHover.name;
 
         // Dose Per Volume
-        dosePerVolume.innerHTML = nodeHover.userData.dosePerVolume + "  GY";
+        dosePerVolume.innerHTML = nodeHover.userData.dosePerVolume;
 
         // line separator
         lineSeparator.style["borderColor"] = "#" + nodeHover.material.color.getHexString();
 
         // Volume
-        volumeVal.innerHTML = nodeHover.userData.volume;
+        volumeVal.innerHTML = nodeHover.userData.volume + "";
 
         // Mean Dose
-        meanDoseVal.innerHTML = nodeHover.userData.meanDose;
+        meanDoseVal.innerHTML = nodeHover.userData.meanDose + "  GY";
 
         // Min Dose
-        minDoseVal.innerHTML = nodeHover.userData.minDose;
+        minDoseVal.innerHTML = nodeHover.userData.minDose + "";
 
         // Max Dose
-        maxDoseVal.innerHTML = nodeHover.userData.maxDose;
+        maxDoseVal.innerHTML = nodeHover.userData.maxDose + "";
 
     } else if (state == "HIDE") {
 
