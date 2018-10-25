@@ -81,6 +81,8 @@ var pRankingOrder, pScores;
 var listItems, arrayOfDivs = [],
     currScene;
 
+//does the secondary tumor become the primary interest when the primary is eradicated. 
+// in that case do we substitue the secondary for the primary
 
 d3.queue()
     //.defer(d3.json, "data/organs.json")
@@ -96,6 +98,8 @@ d3.queue()
     ///.defer(d3.json, "data/patients_SSIM_noDoses_wTDists_wTVol_subGTVp_v2.json")
     ///.defer(d3.json, "data/patients_SSIM_wDoses_wTDists_wTVol_subGTVp.json")
     .defer(d3.json, "data/patients_SSIM_noDoses_wTDists_wTVol_subGTVp_2pass.json")
+    ///.defer(d3.json, "data/patients_SSIM_noDoses_wTDists_wTVol_subGTVp_2pass_deleteFirst.json")
+    ///.defer(d3.json, "data/patients_SSIM_wDoses_wTDists_wTVol_subGTVp_2pass.json")
     .await(start);
 
 function start(error, organAtlas, patientsData) {
