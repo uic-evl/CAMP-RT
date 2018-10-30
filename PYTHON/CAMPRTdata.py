@@ -1,12 +1,13 @@
 #"""Python 2.7.12"""
 # changed 3.5.2 to 2.7.12
 # to run...
-# python CAMPRTdata.py patients/
+# python2.7 CAMPRTdata.py patients/
 
 from collections import OrderedDict
 from scipy.stats.stats import pearsonr
 from scipy.stats.stats import spearmanr
 from scipy import spatial
+from sklearn.cluster import KMeans
 from operator import itemgetter
 
 #import matplotlib.pyplot as plt
@@ -289,6 +290,10 @@ def main(argv):
                 pEntry['similarity_ssim'] = []
                 pEntry['scores_ssim'] = []
 
+                pEntry['laterality'] = ""
+                pEntry['laterality_int'] = -1
+                pEntry['tumorSubsite'] = ""
+
                 patients.append(pEntry)
 
                 count += 1
@@ -313,6 +318,22 @@ def main(argv):
     #print ("Organ Reference: ")
     #print("\n")
     #print ("\nLength", len(organRef))
+
+    # read in laterality
+    with open("laterality.csv", 'rb') as csvFile:
+        reader = csv.reader(csvFile)
+        header = next(reader)
+
+        for row in reader:
+            for p in patients:
+                if str(row[0]) == p['ID']:
+                    p['laterality'] = str(row[1])
+                    p['tumorSubsite'] = str(row[2])
+
+                    if str(row[1]) in ["L", "R"]:
+                        p['laterality_int'] = 0
+                    elif str(row[1]) == "Bilateral":
+                        p['laterality_int'] = 1
 
     # make sure matrices are all same size [check]
     # fill matrix diagonal [check]
@@ -464,7 +485,12 @@ def main(argv):
             ssimScor_dist = myssim.ssim(matlab.double(currP['matrix_ssim_dist'].tolist()), matlab.double(nextP['matrix_ssim_dist'].tolist()))
             ssimScor_vol = myssim.ssim(matlab.double(currP['matrix_ssim_vol'].tolist()), matlab.double(nextP['matrix_ssim_vol'].tolist()))
 
-            ssimScor = (ssimScor_dist + ssimScor_vol) / 2.0
+            if currP['laterality_int'] == nextP['laterality_int']:
+                ssimScor = (ssimScor_dist + ssimScor_vol + 1) / 3.0
+            else:
+                ssimScor = (ssimScor_dist + ssimScor_vol + 0) / 3.0
+            
+
             #ssimScor = 1.0
             if (ssimScor <= 0.0):
                 #ssimScor = 0
@@ -505,6 +531,16 @@ def main(argv):
         for score in ssimResults:
             currP["similarity_ssim"].append(score[0])
             currP["scores_ssim"].append(score[1])
+        
+        # array.reshape(-1, 1) if your data has a single feature or array.reshape(1, -1) if it contains a single sample
+        reshaped = np.array(currP["scores_ssim"]).reshape(-1, 1)
+        kmeans = KMeans().fit(reshaped)
+        print ("")
+        print (currP["ID"])
+        print (kmeans.cluster_centers_)
+        print (kmeans.labels_)
+        print ("")
+        
 
         # print(correlations)
         # print('\n')
