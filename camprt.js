@@ -84,6 +84,7 @@ var listItems, arrayOfDivs = [],
 //does the secondary tumor become the primary interest when the primary is eradicated. 
 // in that case do we substitue the secondary for the primary
 
+/*
 d3.queue()
     //.defer(d3.json, "data/organs.json")
     .defer(d3.json, "data/organAtlas.json")
@@ -97,13 +98,29 @@ d3.queue()
     //.defer(d3.json, "data/patients_SSIM_noDoses_wTDists_wTVol_subGTVp.json")
     ///.defer(d3.json, "data/patients_SSIM_noDoses_wTDists_wTVol_subGTVp_v2.json")
     ///.defer(d3.json, "data/patients_SSIM_wDoses_wTDists_wTVol_subGTVp.json")
-    .defer(d3.json, "data/patients_SSIM_noDoses_wTDists_wTVol_subGTVp_2pass.json")
+    ///.defer(d3.json, "data/patients_SSIM_noDoses_wTDists_wTVol_subGTVp_2pass.json")
+    .defer(d3.json, "data/patients_SSIM_noDoses_wTDists_wTVol_lat_3pass_deleteFirst.json")
     ///.defer(d3.json, "data/patients_SSIM_noDoses_wTDists_wTVol_subGTVp_2pass_deleteFirst.json")
     ///.defer(d3.json, "data/patients_SSIM_wDoses_wTDists_wTVol_subGTVp_2pass.json")
     .await(start);
+*/
 
-function start(error, organAtlas, patientsData) {
-    if (error) return alert("Data invalid: " + error);
+var files = ["data/organAtlas.json", "data/patients_SSIM_noDoses_wTDists_wTVol_lat_3pass_deleteFirst.json"];
+var promises = [];
+
+files.forEach(function (url) {
+    promises.push(d3.json(url));
+});
+
+Promise.all(promises).then(function (values) {
+    start(values[0], values[1]);
+});
+
+
+
+//function start(error, organAtlas, patientsData) {
+function start(organAtlas, patientsData) {
+    //if (error) return alert("Data invalid: " + error);
 
     //organs = organsData;
     oAtlas = organAtlas[0];
@@ -929,6 +946,9 @@ function init() {
         var tVolumeElement = element.querySelector(".tVolume");
         tVolumeElement.innerHTML = "GTV: " + "<b>" + patients[i].tumorVolume + "</b>" + " cc";
 
+        var lateralityElement = element.querySelector(".laterality");
+        lateralityElement.innerHTML = "<b>(" + patients[i].laterality + ")</b> " + " " + patients[i].tumorSubsite;
+
         // Look up the element that represents the area
         // we want to render the scene
         scene.userData.element = element.querySelector(".scene");
@@ -1033,7 +1053,7 @@ function init() {
             //organSphere.userData.dosePerVolume = undefined;
 
             // do this in python script
-            organSphere.userData.dosePerVolume = undefined;
+            organSphere.userData.dosePerVolume = (patientOrganList[pOrgan].meanDose / patientOrganList[pOrgan].volume).toFixed(3);
 
             if (organSphere.userData.meanDose >= 0.0) //null == -1 in json, pearson problems
                 nodeColor = color(organSphere.userData.meanDose);
