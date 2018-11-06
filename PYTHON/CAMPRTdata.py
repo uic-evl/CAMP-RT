@@ -319,6 +319,7 @@ def main(argv):
     #print("\n")
     #print ("\nLength", len(organRef))
 
+    # alg compares tumor distances, then for laterality left and right are equal? is this right?
     # read in laterality
     with open("laterality.csv", 'rb') as csvFile:
         reader = csv.reader(csvFile)

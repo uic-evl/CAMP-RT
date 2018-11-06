@@ -13,7 +13,7 @@ if (!Detector.webgl) {
     Detector.addGetWebGLMessage();
 }
 
-var canvas;
+var canvas, canvas2;
 
 //console.log(JSON.stringify());
 
@@ -30,11 +30,15 @@ var organName = document.getElementById("details_organName"),
     meanDoseVal = document.getElementById("details_meanDose_val"),
     minDoseVal = document.getElementById("details_minDose_val"),
     maxDoseVal = document.getElementById("details_maxDose_val"),
-    pDisplayed = document.getElementById("pDisplayed");
+    pDisplayed = document.getElementById("pDisplayed"),
+    pTarget_chart = document.getElementById("pTarget_chart"),
+    pPrediction_chart = document.getElementById("pPrediction_chart"),
+    pDifference_chart = document.getElementById("pDifference_chart");
 
 
 var scenes = [],
-    renderer;
+    scenesRP = [],
+    renderer, renderer2;
 
 var selectedPatient = 1,
     patientsToShow = 15;
@@ -66,6 +70,14 @@ var rangeColorScale = ['#ffffe0', '#fff8d2', '#fff0c4', '#ffe9b8', '#ffe2ae', '#
 var color = d3.scaleLinear()
     .domain(domainColorScale)
     .range(rangeColorScale);
+
+
+var domainColorScale2 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+var rangeColorScale2 = ['#f7fcfd', '#e6f0f7', '#d6e4f0', '#c6d8e9', '#b6cce3', '#a5c1dc', '#9ab4d6', '#94a7cf', '#8d99c7', '#8d89c0', '#8d7ab8', '#8c6ab1', '#8b59a8', '#8949a0', '#863694', '#832286', '#7b0d77', '#6b0768', '#5c0359', '#4d004b'];
+
+var color2 = d3.scaleLinear()
+    .domain(domainColorScale2)
+    .range(rangeColorScale2);
 
 
 // data
@@ -170,7 +182,7 @@ function start(organAtlas, patientsData) {
 
     document.addEventListener("mousemove", onDocumentMouseMove, false);
 
-    updateOrder(selectedPatient); // update order in GUI
+    //updateOrder(selectedPatient); // update order in GUI
 
     //document.getElementById("loadScreen").style.display = "none";
 
@@ -212,6 +224,37 @@ function populateColorScale() {
         colorScaleEntries[i].addEventListener('mouseover', showColorScaleLabel, false);
         colorScaleEntries[i].addEventListener('mouseout', hideColorScaleLabel, false);
     }
+
+
+
+
+    parentDiv = document.getElementById("colorScale2");
+
+    rangeColorScale2.forEach(function (color, index) {
+
+        var tempDiv = document.createElement("div");
+
+        tempDiv.style.height = "100%";
+        tempDiv.style.width = "17px";
+        tempDiv.style["backgroundColor"] = color;
+        tempDiv.style.display = "inline-block";
+        tempDiv.style.transition = "0.3s";
+
+        tempDiv.value = domainColorScale2[index];
+        tempDiv.className = "colorScaleEntry2";
+
+        parentDiv.appendChild(tempDiv);
+    });
+
+
+
+    var colorScaleEntries2 = document.getElementsByClassName("colorScaleEntry2");
+
+    for (var i = 0, ref = colorScaleEntries2.length; i < ref; i++) {
+        colorScaleEntries2[i].addEventListener('mouseover', showColorScaleLabel2, false);
+        colorScaleEntries2[i].addEventListener('mouseout', hideColorScaleLabel2, false);
+    }
+
 }
 
 function showColorScaleLabel(event) {
@@ -234,6 +277,31 @@ function hideColorScaleLabel(event) {
     //console.log(event.target.value);
 
     var details = document.getElementById("colorScaleDetails");
+
+    details.style.display = "none";
+
+}
+
+function showColorScaleLabel2(event) {
+
+    //console.log(event.target.value);
+
+    var details = document.getElementById("colorScaleDetails2");
+
+
+    details.style.left = event.target.offsetLeft + "px";
+    details.innerHTML = "" + event.target.value;
+
+
+    details.style.display = "block";
+
+}
+
+function hideColorScaleLabel2(event) {
+
+    //console.log(event.target.value);
+
+    var details = document.getElementById("colorScaleDetails2");
 
     details.style.display = "none";
 
@@ -866,21 +934,33 @@ function shiftGraphToOrigin() {
     //});
 }
 
+var materialArray2;
+
+canvas = document.getElementById("c");
+canvas2 = document.getElementById("c2");
+var template = document.getElementById("template").text;
+
 function init() {
-
-    canvas = document.getElementById("c");
-
-    var template = document.getElementById("template").text;
 
     renderer = new THREE.WebGLRenderer({
         canvas: canvas,
         antialias: true
     });
-
     renderer.setClearColor(0xffffff, 1);
     renderer.setPixelRatio(window.devicePixelRatio);
     //renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.sortObjects = true;
+
+
+    renderer2 = new THREE.WebGLRenderer({
+        canvas: canvas2,
+        antialias: true,
+        alpha: true
+    });
+    renderer2.setClearColor(0xffffff, 1);
+    renderer2.setPixelRatio(window.devicePixelRatio);
+    //renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer2.sortObjects = true;
 
     raycaster = new THREE.Raycaster();
 
@@ -921,6 +1001,47 @@ function init() {
         }),
             new THREE.MeshBasicMaterial({
             map: texture5
+        })
+    ];
+    //
+
+    //
+    var maxAnisotropy2 = renderer2.getMaxAnisotropy();
+
+    var textureLoader2 = new THREE.TextureLoader();
+
+    var texture0_2 = textureLoader2.load('resources/anterior.png'), // xpos, Right
+        texture1_2 = textureLoader2.load('resources/posterior.png'), // xneg, Left
+        texture2_2 = textureLoader2.load('resources/superior.png'), // ypos, Top
+        texture3_2 = textureLoader2.load('resources/inferior.png'), // yneg, Bottom
+        texture4_2 = textureLoader2.load('resources/right.png'), // zpos, Back
+        texture5_2 = textureLoader2.load('resources/left.png'); // zneg, Front
+
+    texture0_2.anisotropy = maxAnisotropy2;
+    texture1_2.anisotropy = maxAnisotropy2;
+    texture2_2.anisotropy = maxAnisotropy2;
+    texture3_2.anisotropy = maxAnisotropy2;
+    texture4_2.anisotropy = maxAnisotropy2;
+    texture5_2.anisotropy = maxAnisotropy2;
+    //getcontext2d. draw image
+    materialArray2 = [
+            new THREE.MeshBasicMaterial({
+            map: texture0_2
+        }),
+            new THREE.MeshBasicMaterial({
+            map: texture1_2
+        }),
+            new THREE.MeshBasicMaterial({
+            map: texture2_2
+        }),
+            new THREE.MeshBasicMaterial({
+            map: texture3_2
+        }),
+            new THREE.MeshBasicMaterial({
+            map: texture4_2
+        }),
+            new THREE.MeshBasicMaterial({
+            map: texture5_2
         })
     ];
     //
@@ -1317,6 +1438,8 @@ manager.onLoad = function () {
 
     console.log('Loading complete!');
 
+    updateOrder(selectedPatient);
+
     document.getElementById("loadScreen").style.display = "none";
 
 };
@@ -1361,6 +1484,7 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
 
             let mesh = new THREE.Mesh(geometry, material);
             mesh.name = (String(pOrgan) + "_model");
+            mesh.userData.type = "node_model";
             //mesh.onAfterRender = onAfterRender;
 
             //console.log(mesh.name);
@@ -1452,9 +1576,368 @@ function updateOrder(updatedPatient) {
         //}
     }
 
+    // if there is a tie, fix first patient
+    parent.insertBefore(document.getElementById(selectedPatient), firstPatient);
+
+    var pScoreElement1 = document.getElementById(selectedPatient).querySelector(".pScore");
+    var pScoreElement2 = firstPatient.querySelector(".pScore");
+
+    pScoreElement2.innerHTML = pScoreElement1.innerHTML;
+    pScoreElement1.innerHTML = "";
+
     for (var j = 0; j < patientsToShow; j++) {
         document.getElementById(pRankingOrder[j]).style.display = "inline-block";
     }
+
+    initializeRiskPrediction(firstPatient, pRankingOrder[0], pRankingOrder);
+
+
+}
+
+function initializeRiskPrediction(firstPatient, rank, pRankingOrder) {
+
+    // remove scenes
+    scenesRP.length = 0;
+
+    // -----------------------------------------
+    // -----------------------------------------
+
+    var cln = firstPatient.cloneNode(true);
+
+    cln.className = "list-item";
+
+    cln.removeAttribute("class");
+    cln.removeAttribute("id");
+
+    cln.setAttribute("class", "list-item-RP");
+    cln.value = 1;
+
+    if (pTarget_chart.childNodes.length > 0) {
+        pTarget_chart.removeChild(pTarget_chart.childNodes[0]);
+    }
+
+    pTarget_chart.appendChild(cln);
+
+    // -----------------------------------------
+
+    var source_scene = scenes[rank - 1];
+    var target_scene = new THREE.Scene();
+
+    //target_scene.userData.element = cln.querySelector(".scene");
+    target_scene.userData.element = pTarget_chart.childNodes[0].querySelector(".scene");
+
+    for (var i = 0; i < source_scene.children.length; i++) {
+
+        //if (source_scene.children[i].type == "OrthographicCamera") {
+
+        //console.log(source_scene.children[i].children[0]);
+
+        //target_scene.userData.camera = source_scene.children[i].clone();
+        //} 
+        if (source_scene.children[i].userData.type == "node" ||
+            source_scene.children[i].userData.type == "node_model") {
+
+            //console.log(source_scene.children[i]);
+            var organ = source_scene.children[i].clone();
+            organ.material.color.setStyle(source_scene.children[i].material.color);
+            target_scene.add(organ);
+        }
+    }
+
+    //var target_camera = source_scene.userData.camera.clone();
+
+    //for (var i = 0; i < source_scene.userData.camera.children.length; i++) {
+    //    console.log("go");
+    //    target_camera.add(source_scene.userData.camera.children[i].clone());
+    //}
+    //target_camera.children[0].position.set(121, -121, -250);
+
+    //target_scene.userData.camera = target_camera;
+
+
+    var scalarVal = 2.4; //4.1
+
+    //var camera = new THREE.PerspectiveCamera(35, scene.userData.element.offsetWidth / scene.userData.element.offsetHeight, 1, 100000);
+    var target_camera = new THREE.OrthographicCamera(target_scene.userData.element.offsetWidth / -scalarVal, target_scene.userData.element.offsetWidth / scalarVal, target_scene.userData.element.offsetHeight / scalarVal, target_scene.userData.element.offsetHeight / -scalarVal, 1, 100000);
+    target_camera.position.z = cameraDistZ;
+    //camera.position.z = cameraDistZ; // 2000
+
+    target_camera.updateProjectionMatrix();
+    target_scene.userData.camera = target_camera;
+
+
+    var MovingCubeMat2 = new THREE.MultiMaterial(materialArray2);
+    var MovingCubeGeom2 = new THREE.CubeGeometry(25, 25, 25, 1, 1, 1, materialArray2);
+    var MovingCube2 = new THREE.Mesh(MovingCubeGeom2, MovingCubeMat2);
+
+    //target_camera.add(MovingCube2);
+    //MovingCube2.position.set(121, -121, -250);
+
+
+    var target_controls = new THREE.OrbitControls(target_scene.userData.camera, target_scene.userData.element);
+    target_controls.minDistance = 2;
+    target_controls.maxDistance = 5000;
+    target_controls.enablePan = false;
+    target_controls.enableZoom = false;
+
+    target_scene.userData.controls = target_controls;
+
+
+    var light = new THREE.AmbientLight(0xffffff, 1.0); // white light
+    target_scene.add(light);
+
+    scenesRP.push(target_scene);
+
+
+    //
+
+    // -----------------------------------------
+    // -----------------------------------------
+    // make a list item
+    var element = document.createElement("div");
+    element.className = "list-item-RP";
+    //element.id = patients[i].id;
+    element.innerHTML = template.replace('$', "Prediction").replace('!', "");
+
+    var tVolumeElement = element.querySelector(".tVolume");
+    tVolumeElement.innerHTML = "";
+
+    var lateralityElement = element.querySelector(".laterality");
+    lateralityElement.innerHTML = "";
+
+    element.value = 2;
+
+    if (pPrediction_chart.childNodes.length > 0) {
+        pPrediction_chart.removeChild(pPrediction_chart.childNodes[0]);
+    }
+
+    pPrediction_chart.appendChild(element);
+
+    // -----------------------------------------
+
+    //source_scene = scenes[rank - 1];
+    target_scene = new THREE.Scene();
+
+    target_scene.userData.element = pPrediction_chart.childNodes[0].querySelector(".scene");
+
+    for (var i = 0; i < source_scene.children.length; i++) {
+
+        var organ = source_scene.children[i].clone();
+
+        if (organ.userData.type == "node") {
+
+            //console.log(organ);
+            //var organ = source_scene.children[i].clone();
+
+            var organAverage = 0;
+
+            for (var x = 1; x <= 5; x++) {
+
+                var scene = scenes[pRankingOrder[x] - 1];
+
+                var node = scene.getObjectByName(organ.name);
+
+                if (node)
+                    organAverage += node.userData.meanDose;
+            }
+
+            organ.userData.volume = undefined;
+            organ.userData.minDose = undefined;
+            organ.userData.meanDose = (organAverage / 5).toFixed(3);
+            organ.userData.maxDose = undefined;
+
+            organ.userData.dosePerVolume = undefined;
+
+            var nodeColor = color(organ.userData.meanDose);
+            organ.material = source_scene.children[i].material.clone();
+            organ.material.color.setStyle(nodeColor);
+
+            target_scene.add(organ);
+
+            var source_model = source_scene.getObjectByName(String(organ.name) + "_model");
+
+            if (source_model != null) {
+                var target_model = source_model.clone();
+                target_model.material = source_model.material.clone();
+                target_model.material.color.setStyle(nodeColor);
+                target_scene.add(target_model);
+            }
+
+        } // else if (organ.userData.type == "node_model") {
+
+        //    console.log(organ);
+
+        //  target_scene.add(organ);
+
+
+        //}
+        else {
+            organ = undefined
+        }
+
+
+
+
+        // if (organ != undefined) {
+
+        //   organ.material.color.setStyle(nodeColor);
+        // var model = scene.getObjectByName(String(event.value) + "_model");
+        //}
+    }
+
+    var scalarVal = 2.4; //4.1
+
+    var target_camera = new THREE.OrthographicCamera(target_scene.userData.element.offsetWidth / -scalarVal, target_scene.userData.element.offsetWidth / scalarVal, target_scene.userData.element.offsetHeight / scalarVal, target_scene.userData.element.offsetHeight / -scalarVal, 1, 100000);
+    target_camera.position.z = cameraDistZ;
+
+    target_camera.updateProjectionMatrix();
+    target_scene.userData.camera = target_camera;
+
+    var MovingCubeMat2 = new THREE.MultiMaterial(materialArray2);
+    var MovingCubeGeom2 = new THREE.CubeGeometry(25, 25, 25, 1, 1, 1, materialArray2);
+    var MovingCube2 = new THREE.Mesh(MovingCubeGeom2, MovingCubeMat2);
+
+    //target_camera.add(MovingCube2);
+    //MovingCube2.position.set(121, -121, -250);
+
+    var target_controls = new THREE.OrbitControls(target_scene.userData.camera, target_scene.userData.element);
+    target_controls.minDistance = 2;
+    target_controls.maxDistance = 5000;
+    target_controls.enablePan = false;
+    target_controls.enableZoom = false;
+
+    target_scene.userData.controls = target_controls;
+
+
+    var light = new THREE.AmbientLight(0xffffff, 1.0); // white light
+    target_scene.add(light);
+
+    scenesRP.push(target_scene);
+
+
+    // -----------------------------------------
+    // -----------------------------------------
+    // make a list item
+    var element = document.createElement("div");
+    element.className = "list-item-RP";
+    //element.id = patients[i].id;
+    element.innerHTML = template.replace('$', "Difference").replace('!', "");
+
+    var tVolumeElement = element.querySelector(".tVolume");
+    tVolumeElement.innerHTML = "";
+
+    var lateralityElement = element.querySelector(".laterality");
+    lateralityElement.innerHTML = "";
+
+    element.value = 3;
+
+    if (pDifference_chart.childNodes.length > 0) {
+        pDifference_chart.removeChild(pDifference_chart.childNodes[0]);
+    }
+
+    pDifference_chart.appendChild(element);
+
+    // -----------------------------------------
+
+    //source_scene = scenes[rank - 1];
+    target_scene = new THREE.Scene();
+
+    target_scene.userData.element = pDifference_chart.childNodes[0].querySelector(".scene");
+
+    for (var i = 0; i < source_scene.children.length; i++) {
+
+        var organ = source_scene.children[i].clone();
+
+        if (organ.userData.type == "node") {
+
+            //console.log(organ);
+            //var organ = source_scene.children[i].clone();
+
+            var organSum = 0;
+
+
+            var scene1 = scenesRP[0];
+            var scene2 = scenesRP[1];
+
+            var node1 = scene1.getObjectByName(organ.name);
+            var node2 = scene2.getObjectByName(organ.name);
+
+
+            organSum = Math.abs(node1.userData.meanDose - node2.userData.meanDose);
+
+
+            organ.userData.volume = undefined;
+            organ.userData.minDose = undefined;
+            organ.userData.meanDose = organSum.toFixed(3);
+            organ.userData.maxDose = undefined;
+
+            organ.userData.dosePerVolume = undefined;
+
+            var nodeColor = color2(organ.userData.meanDose);
+            organ.material = source_scene.children[i].material.clone();
+            organ.material.color.setStyle(nodeColor);
+
+            target_scene.add(organ);
+
+            var source_model = source_scene.getObjectByName(String(organ.name) + "_model");
+
+            if (source_model != null) {
+                var target_model = source_model.clone();
+                target_model.material = source_model.material.clone();
+                target_model.material.color.setStyle(nodeColor);
+                target_scene.add(target_model);
+            }
+
+        } // else if (organ.userData.type == "node_model") {
+
+        //    console.log(organ);
+
+        //  target_scene.add(organ);
+
+
+        //}
+        else {
+            organ = undefined
+        }
+
+
+
+
+        // if (organ != undefined) {
+
+        //   organ.material.color.setStyle(nodeColor);
+        // var model = scene.getObjectByName(String(event.value) + "_model");
+        //}
+    }
+
+    var scalarVal = 2.4; //4.1
+
+    var target_camera = new THREE.OrthographicCamera(target_scene.userData.element.offsetWidth / -scalarVal, target_scene.userData.element.offsetWidth / scalarVal, target_scene.userData.element.offsetHeight / scalarVal, target_scene.userData.element.offsetHeight / -scalarVal, 1, 100000);
+    target_camera.position.z = cameraDistZ;
+
+    target_camera.updateProjectionMatrix();
+    target_scene.userData.camera = target_camera;
+
+    var MovingCubeMat2 = new THREE.MultiMaterial(materialArray2);
+    var MovingCubeGeom2 = new THREE.CubeGeometry(25, 25, 25, 1, 1, 1, materialArray2);
+    var MovingCube2 = new THREE.Mesh(MovingCubeGeom2, MovingCubeMat2);
+
+    //target_camera.add(MovingCube2);
+    //MovingCube2.position.set(121, -121, -250);
+
+    var target_controls = new THREE.OrbitControls(target_scene.userData.camera, target_scene.userData.element);
+    target_controls.minDistance = 2;
+    target_controls.maxDistance = 5000;
+    target_controls.enablePan = false;
+    target_controls.enableZoom = false;
+
+    target_scene.userData.controls = target_controls;
+
+
+    var light = new THREE.AmbientLight(0xffffff, 1.0); // white light
+    target_scene.add(light);
+
+    scenesRP.push(target_scene);
 
 
 }
@@ -1476,10 +1959,30 @@ function render() {
     renderer.setClearColor(0xa5a5a5);
     renderer.setScissorTest(true);
 
-    //pRankingOrder = patients[selectedPatient - 1].similarity;
-    pRankingOrder = patients[selectedPatient - 1].similarity_ssim;
+    updateMainView();
+
+
+
+    renderer2.setClearColor(0x444444, 0);
+    renderer2.setScissorTest(false);
+    renderer2.clear();
+
+    renderer2.setClearColor(0xa5a5a5);
+    renderer2.setScissorTest(true);
+
+    updateRiskPView();
+
+
+
+    //renderer.render( currScene, currScene.userData.camera );
+}
+
+function updateMainView(rotMatrix) {
 
     var rotMatrix = new THREE.Matrix4();
+
+    //pRankingOrder = patients[selectedPatient - 1].similarity;
+    pRankingOrder = patients[selectedPatient - 1].similarity_ssim;
 
     pRankingOrder.forEach(function (rank, index) {
 
@@ -1586,7 +2089,125 @@ function render() {
         }
     });
 
-    //renderer.render( currScene, currScene.userData.camera );
+
+}
+
+function updateRiskPView(rotMatrix) {
+
+    var rotMatrix = new THREE.Matrix4();
+
+    scenesRP.forEach(function (scene, index) {
+
+        //console.log(index);
+
+        //if (index <= patientsToShow + 1) {
+
+        var scene = scene;
+        var controls = scene.userData.controls;
+        var camera = scene.userData.camera;
+
+        var orientMarkerCube = camera.children[0];
+
+        // get the element that is a place holder for where we want to
+        // draw the scene
+        var element = scene.userData.element;
+
+
+
+        // get its position relative to the page's viewport
+        var rect = element.getBoundingClientRect();
+
+        // check if it's offscreen. If so skip it
+        if (rect.bottom < 0 || rect.top > renderer2.domElement.clientHeight ||
+            rect.right < 0 || rect.left > renderer2.domElement.clientWidth) {
+
+            return; // it's off screen
+        }
+
+        // update orientation marker
+        rotMatrix.extractRotation(controls.object.matrix);
+        //orientMarkerCube.rotation.setFromRotationMatrix(rotMatrix.transpose());
+
+        // set the viewport
+        var width = rect.right - rect.left;
+        var height = rect.bottom - rect.top;
+        var left = rect.left;
+        var bottom = renderer2.domElement.clientHeight - rect.bottom;
+
+        renderer2.setViewport(left, bottom, width, height);
+        renderer2.setScissor(left, bottom, width, height);
+
+        //controls.update();
+        /*
+                // raycaster
+                //raycaster.setFromCamera(mouseNorm, camera);
+                raycaster.setFromCamera(mouseNorm, currScene.userData.camera);
+
+                //var intersects = raycaster.intersectObjects(scene.children);
+                var intersects = raycaster.intersectObjects(currScene.children);
+
+                if (intersects.length >= 1 && detailsOnRotate) {
+
+                    //for (var i = 0; i < intersects.length; i++) {
+                    for (var i = intersects.length - 1; i >= 0; i--) {
+
+                        if (intersects[i].object.userData.type == "node") {
+
+                            nodeHover = intersects[i].object;
+                            var tempObject = scene.getObjectByName(nodeHover.name + "_outline");
+                            //var tempObject = nodeHover.children[0]; // this breaks something with details?
+
+                            if (INTERSECTED != tempObject) {
+
+                                if (INTERSECTED) {
+                                    INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+                                    //INTERSECTED.scale.multiplyScalar(1);
+                                }
+
+                                INTERSECTED = tempObject;
+
+                                if (INTERSECTED) {
+                                    INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
+                                    INTERSECTED.material.color.setHex(0x00e4ff);
+                                    //INTERSECTED.scale.multiplyScalar(1.3);
+                                }
+
+                                // details
+
+                                populateAndPlaceDetails("SHOW");
+
+                            }
+
+                            break;
+
+                        } else {
+                            populateAndPlaceDetails("HIDE");
+                        }
+
+
+                    }
+                } else {
+
+                    if (INTERSECTED) {
+                        INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+                        //INTERSECTED.scale.multiplyScalar(1);
+
+                        // details
+                        populateAndPlaceDetails("HIDE");
+
+                    }
+
+                    INTERSECTED = null;
+                }
+                
+                */
+
+        renderer2.render(scene, camera);
+
+        //}
+    });
+
+
 }
 
 function updateSize() {
@@ -1596,6 +2217,12 @@ function updateSize() {
 
     if (canvas.width !== width || canvas.height != height)
         renderer.setSize(width, height, false);
+
+    width = canvas2.clientWidth;
+    height = canvas2.clientHeight;
+
+    if (canvas2.width !== width || canvas2.height != height)
+        renderer2.setSize(width, height, false);
 }
 
 function populateAndPlaceDetails(state) {
@@ -1682,7 +2309,12 @@ function handleInputRotate(event) {
 
     if (targ.className == "scene" && syncCameras == true) {
 
-        cameraToCopy = scenes[targ.parentNode.id - 1].userData.camera;
+        if (targ.parentNode.hasAttribute("id")) {
+            cameraToCopy = scenes[targ.parentNode.id - 1].userData.camera;
+
+        } else {
+            cameraToCopy = scenesRP[targ.parentNode.value - 1].userData.camera;
+        }
 
         // 20 milliseconds interval => 50 FPS
         syncCamerasInterval = setInterval(syncAllCameras, 20, cameraToCopy);
@@ -1694,6 +2326,16 @@ function syncAllCameras(cameraToCopy) {
     pRankingOrder.forEach(function (rank, index) {
 
         var scene = scenes[rank - 1];
+        var camera = scene.userData.camera;
+        var controls = scene.userData.controls;
+
+        camera.position.subVectors(cameraToCopy.position, controls.target);
+        camera.position.setLength(cameraDistZ);
+        //camera.position.setLength(2000);
+        camera.lookAt(scene.position);
+    });
+
+    scenesRP.forEach(function (scene, index) {
         var camera = scene.userData.camera;
         var controls = scene.userData.controls;
 
@@ -1726,7 +2368,11 @@ function onDocumentMouseMove(event) {
 
         if (targ.className == "scene") {
 
-            currScene = scenes[targ.parentNode.id - 1];
+            if (targ.parentNode.hasAttribute("id")) {
+                currScene = scenes[targ.parentNode.id - 1];
+            } else {
+                currScene = scenesRP[targ.parentNode.value - 1];
+            }
 
             mouse.x = event.clientX;
             mouse.y = event.clientY;
@@ -1745,6 +2391,23 @@ opacSlider.oninput = function () {
     var opac = (this.value / 100.0);
 
     scenes.forEach(function (scene, index) {
+
+        for (var pOrgan in oAtlas) {
+
+            var tempObject = scene.getObjectByName(pOrgan + "_model");
+
+            if (tempObject)
+                tempObject.material.opacity = opac;
+
+
+            //tempObject.materials[0].opacity = opac;
+
+        }
+
+
+    });
+
+    scenesRP.forEach(function (scene, index) {
 
         for (var pOrgan in oAtlas) {
 

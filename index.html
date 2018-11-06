@@ -24,7 +24,7 @@
             position: absolute;
             top: 0px;
             width: 100%;
-            min-width: 1135px;
+            min-width: 1160px;
             z-index: 1;
             padding: 5em 0 3em 0;
         }
@@ -36,6 +36,14 @@
         #c {
             position: fixed;
             left: 0px;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #c2 {
+            position: absolute;
+            left: 0px;
+            top: -60px;
             width: 100%;
             height: 100%;
         }
@@ -65,6 +73,57 @@
             text-align: center;
             background-color: rgba(68, 68, 68, 0.99);
             z-index: 100;
+        }
+        
+        #lineChartsContainer {
+            display: block;
+            position: fixed;
+            top: 60px;
+            left: 100%;
+            width: 100%;
+            min-width: 1160px;
+            height: 100%;
+            color: #eee;
+            /*font-family: sans-serif;*/
+            /*font-weight: bold;*/
+            /*font-size: large;*/
+            text-align: center;
+            background-color: #a5a5a5;
+            z-index: 9;
+        }
+        
+        #pTarget_chart {
+            
+            display: inline-block;
+            position: relative;
+            top: 40px;
+            margin: auto;
+            border: 0px solid red;
+            text-align: left;
+            width: auto;
+            height: auto;
+        }
+        
+        #pPrediction_chart {
+            
+            display: inline-block;
+            position: relative;
+            top: 40px;
+            margin: auto;
+            border: 0px solid red;
+            text-align: left;
+            width: auto;
+            height: auto;
+        }
+        
+        #pDifference_chart {
+            
+            display: block;
+            
+            border: 2px solid #1f1f1f;
+            text-align: left;
+            width: auto;
+            height: auto;
         }
 
         select {
@@ -105,13 +164,39 @@
             background-color: #444;
             border-bottom: 1px solid rgb(30, 30, 30);
             width: 100%;
-            min-width: 1130px;
+            min-width: 1160px;
             /*height: 80px;*/
             height: 60px;
             z-index: 10;
             box-shadow: 0px 0px 13px 2px rgba(0, 0, 0, 0.7);
             text-align: center;
         }
+        
+        #DP_button {
+            position: absolute;
+            left: 180px;
+            bottom: 5px;
+            width: auto;
+            height: 31px;
+            
+            display: inline-block;
+            height: 31px;
+            background-color: rgb(50, 50, 50);
+            color: #eee;
+            font-family: sans-serif;
+            font-size: medium;
+            cursor: pointer;
+            margin-top: 0px;
+            padding: 5px 5px;
+            margin-left: 0px;
+            user-select: none;
+            border: 2px solid rgb(30, 30, 30);
+        }
+
+        /*#DP_button:hover {
+            background-color: #666;
+            
+        }*/
 
         #sideMenu_button {
             display: inline-block;
@@ -148,7 +233,7 @@
             overflow-y: auto;
             transition: 0.5s;
             padding-top: 20px;
-            z-index: 10;
+            z-index: 15;
             box-shadow: 0px 0px 13px 2px rgba(0, 0, 0, 0.7);
         }
 
@@ -211,17 +296,46 @@
             
             cursor: crosshair;
         }
+        
+        #colorScale2 {
+            position: relative;
+            height: 31px;
+            margin: 2px auto 2px auto;
+            border: 1px solid black;
+            color: #eee;
+            display: inline-block;
+            transition: 0.3s;
+            z-index: 11;
+            
+            cursor: crosshair;
+        }
 
-        .scaleLabels {
+        .scaleLabels1 {
             position: absolute;
             top: -21px;
-            width: 30px;
+            width: 40px;
             height: 20px;
             text-align: left;
             font-family: sans-serif;
             font-size: small;
             color: white;
             background-color: #444;
+            border-left: 1px solid black;
+            padding-left: 5px;
+            padding-top: 3px;
+            z-index: 11;
+        }
+        
+        .scaleLabels2 {
+            position: absolute;
+            top: -21px;
+            width: 40px;
+            height: 20px;
+            text-align: left;
+            font-family: sans-serif;
+            font-size: small;
+            color: #111111;
+            background-color: #a5a5a5;
             border-left: 1px solid black;
             padding-left: 5px;
             padding-top: 3px;
@@ -245,6 +359,24 @@
             cursor: default;
             user-select: none;
         }
+        
+        #unitLabel2 {
+            position: absolute;
+            right: -56px;
+            top: -1px;
+            width: 55px;
+            height: 30px;
+            text-align: left;
+            font-family: sans-serif;
+            font-size: small;
+            line-height: 30px;
+            color: #111111;
+            background-color: #a5a5a5;
+            padding: 0px 5px;
+            z-index: 11;
+            cursor: default;
+            user-select: none;
+        }
 
         #colorScaleDetails {
             position: absolute;
@@ -256,6 +388,24 @@
             font-size: small;
             color: #00e4ff;
             background-color: rgba(68, 68, 68, 0.65);
+            border-left: 1px solid black;
+            padding-left: 5px;
+            padding-top: 3px;
+            z-index: 12;
+            display: none;
+        }
+        
+        #colorScaleDetails2 {
+            position: absolute;
+            top: -21px;
+            width: 60px;
+            height: 20px;
+            text-align: left;
+            font-family: sans-serif;
+            font-size: small;
+            /*color: #00e4ff;*/
+            color: #111111;
+            background-color: rgba(165, 165, 165, 0.5);
             border-left: 1px solid black;
             padding-left: 5px;
             padding-top: 3px;
@@ -391,8 +541,18 @@
             border: 1px solid rgb(30, 30, 30);
             box-shadow: 0px 0px 12px 1px rgba(0, 0, 0, 0.25);
         }
+        
+        .list-item-RP {
+            position: relative;
+            display: inline-block;
+            margin: .5em;
+            padding: 0em;
+            border: 1px solid rgb(30, 30, 30);
+            box-shadow: 0px 0px 12px 1px rgba(0, 0, 0, 0.25);
+        }
 
         .scene {
+            
             cursor: crosshair;
             width: 350px;
             height: 350px;
@@ -562,26 +722,47 @@
 
     <canvas id="c"></canvas>
 
+
     <div id="loadScreen">
         <div style="position: relative; top: 200px;">loading...</div>
         <div style="position: relative; top: 220px;" id="loadProgress">0 %</div>
     </div>
 
     <div id="content">
+        <div id="lineChartsContainer">
+            <canvas id="c2"></canvas>
+            <div id="pTarget_chart"></div>
+            <div id="pPrediction_chart"></div>
+            <div style="display: inline-block; position: relative; top: 40px; margin: auto; margin-left: 15px; width: auto; height: auto; border: 0px solid red;">
+                <div id="colorScale2">
+                    <div id="colorScaleDetails2"></div>
+                    <div id="unitLabel2">(GY)</div>
+
+                    <div class="scaleLabels2" style="left: 0px;">0</div>
+                    <!--<div class="scaleLabels" style="left: 100px;">5</div>
+                <div class="scaleLabels" style="left: 200px;">10</div>
+                <div class="scaleLabels" style="left: 280px;">50</div>-->
+                    <div class="scaleLabels2" style="right: -40px;">20 +</div>
+
+                </div>
+                <div id="pDifference_chart"></div>
+            </div>
+        </div>
         <div id="navbar">
             <div id="dropMenu">
                 <select id="patientMenu" onchange="dropDown(this);">
                 </select>
             </div>
+            <div id="DP_button" onclick="handleDosePrediction(this)" onmouseenter="toggleOn(this)" onmouseleave="toggleOff(this)">Dose Prediction</div>
             <div id="colorScale">
                 <div id="colorScaleDetails"></div>
                 <div id="unitLabel">(GY)</div>
 
-                <div class="scaleLabels" style="left: 0px;">0</div>
+                <div class="scaleLabels1" style="left: 0px;">0</div>
                 <!--<div class="scaleLabels" style="left: 100px;">5</div>
                 <div class="scaleLabels" style="left: 200px;">10</div>
                 <div class="scaleLabels" style="left: 280px;">50</div>-->
-                <div class="scaleLabels" style="right: -30px;">108</div>
+                <div class="scaleLabels1" style="right: -40px;">108 +</div>
 
             </div>
             <div style="position: absolute; right: 10px; bottom: 5px; width: auto; height: 31px; border: 0px solid red;">
@@ -669,8 +850,6 @@
         </div>
     </script>
 
-    <script type="text/javascript" src="camprt.js"></script>
-
     <script>
         window.dropDown = function(e) {
             //console.log(e.value);
@@ -690,6 +869,53 @@
                 sideNav.style.right = "-400px";
 
             sideNavClosed = !sideNavClosed;
+        }
+
+        var toggle = false;
+
+        function handleDosePrediction(e) {
+
+            lineChartsContainer = document.getElementById("lineChartsContainer");
+
+            if (toggle) {
+                //lineChartsContainer.style.display = "none";
+                lineChartsContainer.style.left = window.innerWidth + "px";
+
+                //if (targ)
+                e.style["backgroundColor"] = "#323232";
+
+                toggle = false;
+
+            } else {
+                //lineChartsContainer.style.display = "block";
+                lineChartsContainer.style.left = "0px";
+
+                //if (targ)
+                e.style["backgroundColor"] = "#a5a5a5";
+
+                toggle = true;
+            }
+        }
+
+        function toggleOn(e) {
+            if (!toggle) {
+
+                e.style["backgroundColor"] = "#a5a5a5";
+
+            }
+
+        }
+
+        function toggleOff(e) {
+
+            if (!toggle) {
+
+                e.style["backgroundColor"] = "#323232";
+
+            }
+
+
+
         }
 
 
@@ -739,8 +965,10 @@
 
 
         }
-
     </script>
+
+    <script type="text/javascript" src="camprt.js"></script>
+    <script type="text/javascript" src="multiLineChart.js"></script>
 
 </body>
 
