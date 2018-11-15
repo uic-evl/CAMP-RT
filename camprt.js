@@ -13,6 +13,8 @@ if (!Detector.webgl) {
     Detector.addGetWebGLMessage();
 }
 
+//var d3 = require("d3@5");
+
 var canvas, canvas2;
 
 //console.log(JSON.stringify());
@@ -55,7 +57,7 @@ var mouse = new THREE.Vector2(-500, -500);
 
 var mouseNorm = new THREE.Vector2(-500, -500),
     INTERSECTED = null,
-    nodeHover;
+    nodeHover = null;
 
 var width, height;
 
@@ -120,6 +122,14 @@ d3.queue()
     .await(start);
 */
 
+
+var data_lc,
+    months,
+    monthKeys,
+    monthParse = d3.timeParse("%Y-%m");
+
+
+
 var files = ["data/organAtlas.json", "data/patients_SSIM_noDoses_wTDists_wTVol_lat_3pass_deleteFirst.json"];
 var promises = [];
 
@@ -127,15 +137,28 @@ files.forEach(function (url) {
     promises.push(d3.json(url));
 });
 
+promises.push(d3.tsv("unemployment.tsv", type));
+
 Promise.all(promises).then(function (values) {
-    start(values[0], values[1]);
+    start(values[0], values[1], values[2]);
 });
 
 
 
 //function start(error, organAtlas, patientsData) {
-function start(organAtlas, patientsData) {
+function start(organAtlas, patientsData, lineChartData) {
     //if (error) return alert("Data invalid: " + error);
+
+    data_lc = lineChartData;
+
+
+    console.log(patientsData);
+
+    console.log(data_lc);
+    console.log(data_lc[0]);
+    console.log(data_lc[0].values);
+    console.log(data_lc[0].values[0].value);
+    console.log(data_lc[0].values[0].city);
 
     //organs = organsData;
     oAtlas = organAtlas[0];
@@ -145,8 +168,8 @@ function start(organAtlas, patientsData) {
     //var numPatients = patients.length;
     handlePatientsDisplayed();
 
-    delete oAtlas["GTVn"];
-    delete oAtlas["GTVp"];
+    //delete oAtlas["GTVn"];
+    //delete oAtlas["GTVp"];
 
     selectedPatient = populateDropDownMenu();
 
@@ -402,8 +425,6 @@ function handleCheckBoxSingle(event) {
     //console.log(event.parent.className);
     //console.log(event.parentNode.parentNode.className);
 
-
-
     if (event.checked) {
 
         scenes.forEach(function (scene, index) {
@@ -411,13 +432,29 @@ function handleCheckBoxSingle(event) {
             var node = scene.getObjectByName(event.value);
             var model = scene.getObjectByName(String(event.value) + "_model");
 
-            console.log(event.value);
+            //console.log(event.value);
 
             if (node && model) {
                 node.visible = true;
                 model.visible = true;
             }
         });
+
+        scenesRP.forEach(function (scene, index) {
+
+            var node = scene.getObjectByName(event.value);
+            var model = scene.getObjectByName(String(event.value) + "_model");
+
+            //console.log(event.value);
+
+            if (node && model) {
+                node.visible = true;
+                model.visible = true;
+            }
+        });
+
+        //d3.select("#line_" + event.value).style("opacity", 1.0);
+        d3.select("#line_" + event.value).attr("display", null);
 
     } else {
 
@@ -431,6 +468,20 @@ function handleCheckBoxSingle(event) {
                 model.visible = false;
             }
         });
+
+        scenesRP.forEach(function (scene, index) {
+
+            var node = scene.getObjectByName(event.value);
+            var model = scene.getObjectByName(String(event.value) + "_model");
+
+            if (node && model) {
+                node.visible = false;
+                model.visible = false;
+            }
+        });
+
+        //d3.select("#line_" + event.value).style("opacity", 0.0);
+        d3.select("#line_" + event.value).attr("display", "none");
     }
 
 
@@ -443,10 +494,7 @@ function handleCheckBoxGroup(event) {
 
     //console.log(event.id[0]);
 
-
     var children = master.getElementsByClassName(event.id[0] + "_GroupChildren");
-
-
 
     if (event.checked) {
 
@@ -454,12 +502,14 @@ function handleCheckBoxGroup(event) {
 
             children[i].checked = true;
             //children[i].dispatchEvent(event);
+
+            //d3.select("#line_" + children[i].value).style("opacity", 1.0);
+            d3.select("#line_" + children[i].value).attr("display", null);
         }
 
         scenes.forEach(function (scene, index) {
 
             for (var i = 0; i < children.length; i++) {
-                //children.forEach(function (child, index) {
 
                 var node = scene.getObjectByName(children[i].value);
                 var model = scene.getObjectByName(String(children[i].value) + "_model");
@@ -480,22 +530,37 @@ function handleCheckBoxGroup(event) {
             }
         });
 
+        scenesRP.forEach(function (scene, index) {
+
+            for (var i = 0; i < children.length; i++) {
+
+                var node = scene.getObjectByName(children[i].value);
+                var model = scene.getObjectByName(String(children[i].value) + "_model");
+
+                if (node && model) {
+                    node.visible = true;
+                    model.visible = true;
+                }
+            }
+        });
+
     } else {
 
         for (var i = 0; i < children.length; i++) {
 
             children[i].checked = false;
             //children[i].dispatchEvent(event);
+
+            //d3.select("#line_" + children[i].value).style("opacity", 0.0);
+            d3.select("#line_" + children[i].value).attr("display", "none");
         }
 
         scenes.forEach(function (scene, index) {
 
             for (var i = 0; i < children.length; i++) {
-                //children.forEach(function (child, index) {
 
                 var node = scene.getObjectByName(children[i].value);
                 var model = scene.getObjectByName(String(children[i].value) + "_model");
-
 
                 //children[i].setAttribute("checked", true);
                 //children[i].checked = true;
@@ -508,6 +573,20 @@ function handleCheckBoxGroup(event) {
                 }
                 //node.opacity = 1.0;
 
+            }
+        });
+
+        scenesRP.forEach(function (scene, index) {
+
+            for (var i = 0; i < children.length; i++) {
+
+                var node = scene.getObjectByName(children[i].value);
+                var model = scene.getObjectByName(String(children[i].value) + "_model");
+
+                if (node && model) {
+                    node.visible = false;
+                    model.visible = false;
+                }
             }
         });
     }
@@ -1537,6 +1616,8 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
 
 function updateOrder(updatedPatient) {
 
+    var pNames = [];
+
     selectedPatient = updatedPatient;
     //pRankingOrder = patients[selectedPatient - 1].similarity;
     pRankingOrder = patients[selectedPatient - 1].similarity_ssim;
@@ -1555,6 +1636,7 @@ function updateOrder(updatedPatient) {
     // first patient always has score of 1, clear it
     var pScoreElement = firstPatient.querySelector(".pScore");
     pScoreElement.innerHTML = "";
+
 
     for (var i = (pRankingOrder.length - 2); i >= 0; i--) {
 
@@ -1579,8 +1661,10 @@ function updateOrder(updatedPatient) {
         //}
     }
 
+    var trueFirst = document.getElementById(selectedPatient);
+
     // if there is a tie, fix first patient
-    parent.insertBefore(document.getElementById(selectedPatient), firstPatient);
+    parent.insertBefore(trueFirst, firstPatient);
 
     var pScoreElement1 = document.getElementById(selectedPatient).querySelector(".pScore");
     var pScoreElement2 = firstPatient.querySelector(".pScore");
@@ -1589,15 +1673,39 @@ function updateOrder(updatedPatient) {
     pScoreElement1.innerHTML = "";
 
     for (var j = 0; j < patientsToShow; j++) {
-        document.getElementById(pRankingOrder[j]).style.display = "inline-block";
+        var p = document.getElementById(pRankingOrder[j]);
+        p.style.display = "inline-block";
+        if (j <= 5) {
+
+            var pName = p.querySelector(".description");
+            pNames.push(String(j) + ": " + pName.innerHTML);
+        }
     }
 
-    initializeRiskPrediction(firstPatient, pRankingOrder[0], pRankingOrder);
+    pNames[0] = "0: Prediction";
+
+
+    initializeRiskPrediction(trueFirst, selectedPatient, pNames);
 
 
 }
 
-function initializeRiskPrediction(firstPatient, rank, pRankingOrder) {
+var data = {
+    y: "Dose (GY)",
+    series: [],
+    //dates: [new Date(2013, 2, 28), new Date(2013, 2, 29), new Date(2013, 2, 30), new Date(2013, 2, 31), new Date(2013, 3, 1)]
+    //dates: [...Array(5).keys()]
+    dates: []
+};
+
+
+function initializeRiskPrediction(firstPatient, rank, pNames) {
+
+    data.dates = pNames;
+    data.series = [];
+
+
+    //data.dates.push("p1", "p2", "p3", "p4", "p5");
 
     // remove scenes
     scenesRP.length = 0;
@@ -1662,8 +1770,10 @@ function initializeRiskPrediction(firstPatient, rank, pRankingOrder) {
 
     //var camera = new THREE.PerspectiveCamera(35, scene.userData.element.offsetWidth / scene.userData.element.offsetHeight, 1, 100000);
     var target_camera = new THREE.OrthographicCamera(target_scene.userData.element.offsetWidth / -scalarVal, target_scene.userData.element.offsetWidth / scalarVal, target_scene.userData.element.offsetHeight / scalarVal, target_scene.userData.element.offsetHeight / -scalarVal, 1, 100000);
-    target_camera.position.z = cameraDistZ;
-    //camera.position.z = cameraDistZ; // 2000
+
+    target_camera.position.x = scenes[0].userData.camera.position.x;
+    target_camera.position.y = scenes[0].userData.camera.position.y;
+    target_camera.position.z = scenes[0].userData.camera.position.z;
 
     target_camera.updateProjectionMatrix();
     target_scene.userData.camera = target_camera;
@@ -1718,6 +1828,38 @@ function initializeRiskPrediction(firstPatient, rank, pRankingOrder) {
 
     // -----------------------------------------
 
+    //var p = pRankingOrder.splice(0, 5);
+
+    //data.dates = [];
+
+    //for (var i = 1; i <= 5; i++) {
+    //data.dates[i - 1] = ("p" + String(pRankingOrder[i]));
+    //    data.dates.push("p" + String(pRankingOrder[i]));
+
+    //}
+
+
+
+    /*
+    {
+                name: "Bethesda-Rockville-Frederick MD",
+                values: [2.6, 2.6, 1, 3, 4]
+            },
+            {
+                name: "Boston-Cambridge-Quincy MA",
+                values: [5, 5.6, 5.1, 5.3, 1.4]
+            },
+            {
+                name: "Camden NJ",
+                values: [1, 1.4, 1.1, 1.3, 1.5]
+            }
+    
+    
+    "p1", "p2", "p3", "p4", "p5"
+    */
+
+    // -----------------------------------------
+
     //source_scene = scenes[rank - 1];
     target_scene = new THREE.Scene();
 
@@ -1728,6 +1870,11 @@ function initializeRiskPrediction(firstPatient, rank, pRankingOrder) {
         var organ = source_scene.children[i].clone();
 
         if (organ.userData.type == "node") {
+
+            var organ_lc = {
+                name: organ.name,
+                values: []
+            };
 
             //console.log(organ);
             //var organ = source_scene.children[i].clone();
@@ -1740,13 +1887,29 @@ function initializeRiskPrediction(firstPatient, rank, pRankingOrder) {
 
                 var node = scene.getObjectByName(organ.name);
 
-                if (node)
-                    organAverage += node.userData.meanDose;
+                if (node) {
+
+                    var meanDose = node.userData.meanDose;
+                    if (isNaN(meanDose)) {
+                        console.log(meanDose);
+                        meanDose = 0.0
+                    }
+                    organAverage += meanDose;
+                    organ_lc.values.push(meanDose);
+
+                }
+
             }
+
+            var averageOrganDose = (organAverage / 5).toFixed(3);
+            organ_lc.values.unshift(averageOrganDose);
+
+            data.series.push(organ_lc);
+
 
             organ.userData.volume = undefined;
             organ.userData.minDose = undefined;
-            organ.userData.meanDose = (organAverage / 5).toFixed(3);
+            organ.userData.meanDose = averageOrganDose;
             organ.userData.maxDose = undefined;
 
             organ.userData.dosePerVolume = undefined;
@@ -1791,7 +1954,10 @@ function initializeRiskPrediction(firstPatient, rank, pRankingOrder) {
     var scalarVal = 2.4; //4.1
 
     var target_camera = new THREE.OrthographicCamera(target_scene.userData.element.offsetWidth / -scalarVal, target_scene.userData.element.offsetWidth / scalarVal, target_scene.userData.element.offsetHeight / scalarVal, target_scene.userData.element.offsetHeight / -scalarVal, 1, 100000);
-    target_camera.position.z = cameraDistZ;
+
+    target_camera.position.x = scenes[0].userData.camera.position.x;
+    target_camera.position.y = scenes[0].userData.camera.position.y;
+    target_camera.position.z = scenes[0].userData.camera.position.z;
 
     target_camera.updateProjectionMatrix();
     target_scene.userData.camera = target_camera;
@@ -1915,8 +2081,11 @@ function initializeRiskPrediction(firstPatient, rank, pRankingOrder) {
 
     var scalarVal = 2.4; //4.1
 
-    var target_camera = new THREE.OrthographicCamera(target_scene.userData.element.offsetWidth / -scalarVal, target_scene.userData.element.offsetWidth / scalarVal, target_scene.userData.element.offsetHeight / scalarVal, target_scene.userData.element.offsetHeight / -scalarVal, 1, 100000);
-    target_camera.position.z = cameraDistZ;
+    target_camera = new THREE.OrthographicCamera(target_scene.userData.element.offsetWidth / -scalarVal, target_scene.userData.element.offsetWidth / scalarVal, target_scene.userData.element.offsetHeight / scalarVal, target_scene.userData.element.offsetHeight / -scalarVal, 1, 100000);
+
+    target_camera.position.x = scenes[0].userData.camera.position.x;
+    target_camera.position.y = scenes[0].userData.camera.position.y;
+    target_camera.position.z = scenes[0].userData.camera.position.z;
 
     target_camera.updateProjectionMatrix();
     target_scene.userData.camera = target_camera;
@@ -1942,7 +2111,428 @@ function initializeRiskPrediction(firstPatient, rank, pRankingOrder) {
 
     scenesRP.push(target_scene);
 
+    //console.log(data);
 
+    multiLineChart();
+
+
+}
+
+/*
+var data1 = {
+    y: "Dose (GY)",
+    series: [
+        {
+            name: "Bethesda-Rockville-Frederick MD",
+            values: [2.6, 2.6, 1, 3, 4]
+            },
+        {
+            name: "Boston-Cambridge-Quincy MA",
+            values: [5, 5.6, 5.1, 5.3, 1.4]
+            },
+        {
+            name: "Camden NJ",
+            values: [1, 1.4, 1.1, 1.3, 1.5]
+            }
+        ],
+    //dates: [new Date(2013, 2, 28), new Date(2013, 2, 29), new Date(2013, 2, 30), new Date(2013, 2, 31), new Date(2013, 3, 1)]
+    dates: ["p1", "p2", "p3", "p4", "p5"]
+};
+
+var data2 = [
+
+    {
+        name: "MD",
+        values: [{
+            city: "Bethesda-Rockville-Frederick",
+            date: new Date(2013, 2, 28),
+            value: 2.6
+
+
+            }, {
+            city: "Bethesda-Rockville-Frederick",
+            date: new Date(2013, 2, 29),
+            value: 2.6
+
+
+            }, {
+            city: "Bethesda-Rockville-Frederick",
+            date: new Date(2013, 2, 30),
+            value: 1
+
+
+            }, {
+            city: "Bethesda-Rockville-Frederick",
+            date: new Date(2013, 2, 31),
+            value: 3
+
+
+            }, {
+            city: "Bethesda-Rockville-Frederick",
+            date: new Date(2013, 3, 1),
+            value: 4
+
+
+            }]
+    }
+];
+*/
+
+//var dates = [new Date(2013, 2, 28), new Date(2013, 2, 29), new Date(2013, 2, 30), new Date(2013, 2, 31), new Date(2013, 3, 1)]
+
+
+function multiLineChart() {
+
+    d3.selectAll("#mLineChart > *").remove();
+
+    var svg = d3.select("#mLineChart"),
+        margin = {
+            top: 20,
+            right: 60,
+            bottom: 50,
+            left: 60
+        },
+        width = svg.attr("width") - margin.left - margin.right,
+        height = svg.attr("height") - margin.top - margin.bottom,
+        g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    //var x = d3.scaleTime().range([0, width]);
+    //var x = d3.scaleOrdinal().range(["p1", "p2", "p3", "p4", "p5"]);
+    var x = d3.scalePoint().range([0, width]).padding([.2]);
+    //var x = d3.scaleBand().range([0, width]).paddingInner([0.1]).paddingOuter([0.1]).align([1.0]);
+
+    var y = d3.scaleLinear()
+        .range([height, 0]);
+
+    /*
+    var voronoi = d3.voronoi()
+        .x(function (d) {
+            return x(d.date);
+        })
+        .y(function (d) {
+            return y(d.value);
+        })
+        .extent([[-margin.left, -margin.top], [width + margin.right, height + margin.bottom]]);
+    */
+
+    var line = d3.line()
+        .x(function (d, i) {
+            //return x(d.date);
+            return x(data.dates[i]);
+        })
+        .y(function (d) {
+            //return y(d.value);
+            return y(d);
+        });
+
+    // --------------------------------
+
+    ///d3.tsv("unemployment.tsv", type, function (error, data) {
+    ///    if (error) throw error;
+
+    //x.domain(d3.extent(data.dates));
+    //x.domain(["p1", "p2", "p3", "p4", "p5"]);
+    x.domain(data.dates);
+    x.invert = (function () {
+        var domain = x.domain();
+        var range = x.range();
+        var scale = d3.scaleQuantize().domain(range).range(domain);
+
+        return function (x) {
+            return scale(x);
+        }
+    })();
+    /*
+    y.domain([0, d3.max(data_lc, function (c) {
+        return d3.max(c.values, function (d) {
+            return d.value;
+        });
+    })]).nice();
+    */
+    y.domain([0, d3.max(data.series, d => d3.max(d.values))]).nice();
+
+    g.append("g")
+        .attr("class", "axis axis--x")
+        .attr("transform", "translate(0," + height + ")")
+        .call(d3.axisBottom(x).tickSizeOuter([0]))
+        .append("text")
+        .attr("x", width + 5)
+        .attr("y", 0.5)
+        .attr("dy", "0.32em")
+        .style("text-anchor", "start")
+        .style("fill", "#000")
+        .style("font-weight", "bold")
+        .text("Patients");
+
+    svg.append("text")
+        .attr("transform", "translate(" + (width / 2 + 50) + " ," + (20) + ")")
+        .style("text-anchor", "middle")
+        .text("Organ Dose Across Most Similar Patients");
+
+    g.append("g")
+        .attr("class", "axis axis--y")
+        //.call(d3.axisLeft(y).ticks(10, "%"))
+        .call(d3.axisLeft(y).ticks(10))
+        .append("text")
+        .attr("x", 4)
+        .attr("y", 0.5)
+        .attr("dy", "0.32em")
+        .style("text-anchor", "start")
+        .style("fill", "#000")
+        .style("font-weight", "bold")
+        .text(data.y);
+    /*
+        svg.append("text")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 0)
+            .attr("x", 0 - (height / 2))
+            .attr("dy", "1em")
+            .style("text-anchor", "middle")
+            .text("Dose (GY)");
+    */
+
+
+    const path = g.append("g")
+        .attr("class", "cities")
+        .selectAll("path")
+        //.data(data_lc)
+        .data(data.series)
+        .enter().append("path")
+        .attr("d", function (d) {
+            d.line = this;
+            return line(d.values);
+        })
+        .attr("id", function (d) {
+            return ("line_" + d.name);
+        })
+        .attr("display", function (d) {
+
+            var el = document.getElementById(d.name + "_checkList")
+
+            if (d.name == "GTVp" || d.name == "GTVn")
+                return (null);
+            else if (el && !el.checked)
+                return ("none");
+            else
+                return (null);
+        });
+
+    svg.call(hover, path, x, y, data);
+
+    /*
+    var focus = g.append("g")
+        .attr("transform", "translate(-100,-100)")
+        .attr("class", "focus");
+
+    focus.append("circle")
+        .attr("r", 3.5);
+
+    focus.append("text")
+        .attr("y", -10);
+    */
+
+    //var voronoiGroup = g.append("g").attr("class", "voronoi");
+
+    /*
+    voronoiGroup.selectAll("path")
+        .data(voronoi.polygons(d3.merge(data_lc.map(function (d) {
+            return d.values;
+        }))))
+        .enter().append("path")
+        .attr("d", function (d) {
+            return d ? "M" + d.join("L") + "Z" : null;
+        })
+        .on("mouseover", mouseover)
+        .on("mouseout", mouseout);
+
+    d3.select("#show-voronoi")
+        .property("disabled", false)
+        .on("change", function () {
+            voronoiGroup.classed("voronoi--show", this.checked);
+        });
+
+    function mouseover(d) {
+        d3.select(d.data.city.line).classed("city--hover", true);
+        d.data.city.line.parentNode.appendChild(d.data.city.line);
+        focus.attr("transform", "translate(" + x(d.data.date) + "," + y(d.data.value) + ")");
+        focus.select("text").text(d.data.city.name);
+
+    }
+
+    function mouseout(d) {
+        d3.select(d.data.city.line).classed("city--hover", false);
+        focus.attr("transform", "translate(-100,-100)");
+    }
+    */
+    ///});
+
+
+    //data = [0, 1, 2]
+    //chart = {}
+
+    //d3.select("#mLineChart")
+    //    .datum(data)
+    //    .call(chart);
+
+
+}
+
+function hover(svg, path, x, y) {
+
+    svg
+        .style("position", "relative");
+
+    if ("ontouchstart" in document) svg
+        .style("-webkit-tap-highlight-color", "transparent")
+        .on("touchmove", moved)
+        .on("touchstart", entered)
+        .on("touchend", left)
+    else svg
+        .on("mousemove", moved)
+        .on("mouseenter", entered)
+        .on("mouseleave", left);
+
+    const dot = svg.append("g")
+        .attr("display", "none")
+        .attr("class", "dot");
+
+    //d3.select("#line_" + event.value).style("opacity", 1.0);
+
+    dot.append("circle")
+        .attr("r", 3.5)
+        .style("fill", "#00e4ff");
+
+    dot.append("text")
+        .style("font", "15px sans-serif")
+        .attr("text-anchor", "middle")
+        .attr("y", -8);
+
+    function moved() {
+        d3.event.preventDefault();
+
+        //path.style("stroke", "none");
+
+
+
+        //console.log(d3.event.layerX + "    " + d3.event.layerY);
+        //console.log(d3.event.offsetX + "    " + d3.event.offsetY);
+
+        //event.offsetX / targ.offsetWidth
+
+        var xAxisOrder = [...Array(5).keys()];
+
+        const ym = y.invert(d3.event.offsetY - 20);
+        const xm = x.invert(d3.event.offsetX - 60);
+        const i1 = d3.bisectRight(data.dates, xm, 1);
+        const i0 = i1 - 1;
+        const i = xm - data.dates[i0] > data.dates[i1] - xm ? i1 : i0;
+        //const i = xAxisOrder[data.dates.indexOf(xm)] - xAxisOrder[i0] > xAxisOrder[i1] - xAxisOrder[data.dates.indexOf(xm)] ? i1 : i0;
+        const s = data.series.reduce((a, b) => Math.abs(a.values[i] - ym) < Math.abs(b.values[i] - ym) ? a : b);
+        //path.attr("stroke", d => d === s ? "#00e4ff" : "#afafaf").attr("stroke-width", d => d === s ? "4px" : "2px").filter(d => d === s).raise();
+        path.attr("stroke", d => d === s ? "#00e4ff" : "#d1d1d1").attr("stroke-width", d => d === s ? "4px" : "2px").filter(d => d === s).raise();
+        //path.attr("stroke-width", d => d === s ? "4px" : "2px").filter(d => d === s).raise();
+        //path.classed('cities--hover', d => d === s ? true : false).filter(d => d === s).raise();
+
+        dot.attr("transform", `translate(${x(data.dates[i])+60},${y(s.values[i])+20})`);
+        dot.select("text").text(s.name + " (" + s.values[i] + " GY)");
+
+        scenesRP.forEach(function (scene, index) {
+
+            //var tempObject = scene.getObjectByName(s.name + "_outline");
+            //var tempObject = nodeHover.children[0]; // this breaks something with details?
+
+            //tempObject.material.color.setHex(0x3d3d3d);
+
+            for (var i = 0; i < scene.children.length; i++) {
+
+
+                for (var j = 0; j < scene.children[i].children.length; j++) {
+
+                    //console.log(scene.children[i].children[j].name);
+
+                    if (scene.children[i].children[j].name.includes("_outline")) {
+
+                        var organ = scene.children[i].children[j];
+                        organ.material.color.setHex(0x3d3d3d);
+                    }
+                }
+
+
+            }
+
+
+
+        });
+
+        scenesRP.forEach(function (scene, index) {
+
+            var tempObject = scene.getObjectByName(s.name + "_outline");
+            //var tempObject = nodeHover.children[0]; // this breaks something with details?
+
+            tempObject.material.color.setHex(0x00e4ff);
+
+
+
+        });
+
+        //dot.attr("display", d => d === s ? null : "none").filter(d => d === s).raise();
+
+
+    }
+
+    function entered() {
+
+
+        //path.style("mix-blend-mode", null).attr("stroke", "#f0f0f0").attr("stroke-width", "4px");
+        path.attr("stroke", null).attr("stroke-width", "4px");
+        dot.attr("display", null);
+    }
+
+    function left() {
+
+        //path.style("mix-blend-mode", "multiply").attr("stroke", "#f0f0f0").attr("stroke-width", "2px");
+        //path.attr("stroke", "#f0f0f0").attr("stroke-width", "2px");
+        path.attr("stroke", "#d1d1d1").attr("stroke-width", "2px");
+        dot.attr("display", "none");
+
+        scenesRP.forEach(function (scene, index) {
+
+            for (var i = 0; i < scene.children.length; i++) {
+
+
+                for (var j = 0; j < scene.children[i].children.length; j++) {
+
+                    //console.log(scene.children[i].children[j].name);
+
+                    if (scene.children[i].children[j].name.includes("_outline")) {
+
+                        var organ = scene.children[i].children[j];
+                        organ.material.color.setHex(0x3d3d3d);
+                    }
+                }
+            }
+        });
+
+    }
+
+}
+
+function type(d, i, columns) {
+    if (!months) monthKeys = columns.slice(1), months = monthKeys.map(monthParse);
+    var c = {
+        name: d.name.replace(/ (msa|necta div|met necta|met div)$/i, ""),
+        values: null
+    };
+    c.values = monthKeys.map(function (k, i) {
+        return {
+            city: c,
+            date: months[i],
+            value: d[k] / 100
+        };
+    });
+
+    //console.log(c);
+    return c;
 }
 
 function animate() {
@@ -2115,8 +2705,6 @@ function updateRiskPView(rotMatrix) {
         // draw the scene
         var element = scene.userData.element;
 
-
-
         // get its position relative to the page's viewport
         var rect = element.getBoundingClientRect();
 
@@ -2141,69 +2729,99 @@ function updateRiskPView(rotMatrix) {
         renderer2.setScissor(left, bottom, width, height);
 
         //controls.update();
-        /*
-                // raycaster
-                //raycaster.setFromCamera(mouseNorm, camera);
-                raycaster.setFromCamera(mouseNorm, currScene.userData.camera);
 
-                //var intersects = raycaster.intersectObjects(scene.children);
-                var intersects = raycaster.intersectObjects(currScene.children);
+        // raycaster
+        //raycaster.setFromCamera(mouseNorm, camera);
+        raycaster.setFromCamera(mouseNorm, currScene.userData.camera);
 
-                if (intersects.length >= 1 && detailsOnRotate) {
+        //var intersects = raycaster.intersectObjects(scene.children);
+        var intersects = raycaster.intersectObjects(currScene.children);
 
-                    //for (var i = 0; i < intersects.length; i++) {
-                    for (var i = intersects.length - 1; i >= 0; i--) {
+        if (intersects.length >= 1 && detailsOnRotate) {
 
-                        if (intersects[i].object.userData.type == "node") {
+            //for (var i = 0; i < intersects.length; i++) {
+            for (var i = intersects.length - 1; i >= 0; i--) {
 
-                            nodeHover = intersects[i].object;
-                            var tempObject = scene.getObjectByName(nodeHover.name + "_outline");
-                            //var tempObject = nodeHover.children[0]; // this breaks something with details?
+                if (intersects[i].object.userData.type == "node") {
+                    nodeHover = intersects[i].object;
 
-                            if (INTERSECTED != tempObject) {
+                    var tempObject = scene.getObjectByName(nodeHover.name + "_outline");
+                    //var tempObject = nodeHover.children[0]; // this breaks something with details?
 
-                                if (INTERSECTED) {
-                                    INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
-                                    //INTERSECTED.scale.multiplyScalar(1);
-                                }
+                    if (INTERSECTED != tempObject) {
 
-                                INTERSECTED = tempObject;
+                        if (INTERSECTED) {
+                            INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
 
-                                if (INTERSECTED) {
-                                    INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
-                                    INTERSECTED.material.color.setHex(0x00e4ff);
-                                    //INTERSECTED.scale.multiplyScalar(1.3);
-                                }
+                            for (var organ in oAtlas) {
 
-                                // details
-
-                                populateAndPlaceDetails("SHOW");
-
+                                //d3.select("#line_" + organ).attr("stroke", "#afafaf");
+                                d3.select("#line_" + organ).attr("stroke", "#d1d1d1");
+                                //d3.select("#line_" + organ).attr("stroke", "#afafaf").style("stroke", null).style("stroke-width", null);
+                                d3.select("#line_" + organ).style("stroke", null).style("stroke-width", null);
                             }
-
-                            break;
-
-                        } else {
-                            populateAndPlaceDetails("HIDE");
+                            //d3.select("#line_" + nodeHover.name).classed('cities--hover', false);
+                            //INTERSECTED.scale.multiplyScalar(1);
                         }
 
+                        INTERSECTED = tempObject;
 
-                    }
-                } else {
-
-                    if (INTERSECTED) {
-                        INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
-                        //INTERSECTED.scale.multiplyScalar(1);
+                        if (INTERSECTED) {
+                            INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
+                            INTERSECTED.material.color.setHex(0x00e4ff);
+                            d3.select("#line_" + nodeHover.name).style("stroke", "#00e4ff").style("stroke-width", "4px").raise();
+                            //d3.select("#line_" + nodeHover.name).classed('cities--hover', true);
+                            //INTERSECTED.scale.multiplyScalar(1.3);
+                        }
 
                         // details
-                        populateAndPlaceDetails("HIDE");
+
+                        //populateAndPlaceDetails("SHOW");
 
                     }
 
-                    INTERSECTED = null;
+                    break;
+
+
+                } else {
+                    //populateAndPlaceDetails("HIDE");
+                    //for (var organ in oAtlas) {
+                    //    d3.select("#line_" + organ).attr("stroke", "#f0f0f0");
+                    //}
                 }
-                
-                */
+
+
+
+
+            }
+        } else {
+
+            if (INTERSECTED) {
+                INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+                //INTERSECTED.scale.multiplyScalar(1);
+
+
+
+                // details
+                //populateAndPlaceDetails("HIDE");
+
+            }
+
+            INTERSECTED = null;
+            for (var organ in oAtlas) {
+
+
+                //d3.select("#line_" + organ).attr("stroke", null);
+                //d3.select("#line_" + organ).attr("stroke", null);
+                d3.select("#line_" + organ).style("stroke", null).style("stroke-width", null);
+                //d3.select("#line_" + organ).attr("stroke", "#f0f0f0");
+
+            }
+            //d3.select("#line_" + nodeHover.name).classed('cities--hover', false);
+        }
+
+
+
 
         renderer2.render(scene, camera);
 

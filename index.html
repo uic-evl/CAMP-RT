@@ -37,6 +37,7 @@
             position: fixed;
             left: 0px;
             width: 100%;
+            min-width: 1160px;
             height: 100%;
         }
         
@@ -45,6 +46,7 @@
             left: 0px;
             top: -60px;
             width: 100%;
+            min-width: 1160px;
             height: 100%;
         }
 
@@ -65,6 +67,7 @@
             top: 0;
             left: 0;
             width: 100%;
+            min-width: 1160px;
             height: 100%;
             color: #eee;
             font-family: sans-serif;
@@ -79,10 +82,10 @@
             display: block;
             position: fixed;
             top: 60px;
-            left: 100%;
+            left: -9000px;
             width: 100%;
             min-width: 1160px;
-            height: 100%;
+            height: calc(100vh - 60px);
             color: #eee;
             /*font-family: sans-serif;*/
             /*font-weight: bold;*/
@@ -90,13 +93,14 @@
             text-align: center;
             background-color: #a5a5a5;
             z-index: 9;
+            overflow-y: scroll;
         }
         
         #pTarget_chart {
             
             display: inline-block;
             position: relative;
-            top: 40px;
+            top: 25px;
             margin: auto;
             border: 0px solid red;
             text-align: left;
@@ -108,7 +112,7 @@
             
             display: inline-block;
             position: relative;
-            top: 40px;
+            top: 25px;
             margin: auto;
             border: 0px solid red;
             text-align: left;
@@ -124,6 +128,19 @@
             text-align: left;
             width: auto;
             height: auto;
+        }
+        
+        #pAverages_chart {
+            display: block;
+            position: relative;
+            top: 40px;
+            margin: auto;
+            margin-bottom: 10px;
+            border: 0px solid red;
+            text-align: left;
+            width: 1160px;
+            height: 380px;
+            
         }
 
         select {
@@ -715,6 +732,70 @@
             background: rgb(50, 50, 50);
             cursor: crosshair;
         }
+        
+        
+        .axis--y {
+            color: #000;
+            font-size: 13px;
+        }
+        
+        .axis--x {
+            color: #000000;
+            font-size: 13px;
+        }
+        
+        .axis--y path {
+            /*display: none;*/
+        }
+
+        .cities {
+            fill: none;
+            stroke: #d1d1d1;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+            stroke-width: 2px;
+            cursor: crosshair;
+        }
+        
+        .cities--hover {
+            /*stroke: #00e4ff;
+            stroke-width: 4px;*/
+        }
+
+        .city--hover {
+            stroke: #00e4ff;
+        }
+        
+        .dot {
+            cursor: crosshair;
+            
+        }
+        
+        .dot text {
+            text-anchor: middle;
+            text-shadow: 0 1px 0 #a5a5a5, 1px 0 0 #a5a5a5, 0 -1px 0 #a5a5a5, -1px 0 0 #a5a5a5;
+        }
+
+        /*
+        .voronoi path {
+            fill: none;
+            pointer-events: all;
+        }
+
+        .voronoi--show path {
+            stroke: red;
+            stroke-opacity: 0.2;
+        }
+
+        #form {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+        }
+        */
+        
+        
+        
     </style>
 </head>
 
@@ -733,20 +814,27 @@
             <canvas id="c2"></canvas>
             <div id="pTarget_chart"></div>
             <div id="pPrediction_chart"></div>
-            <div style="display: inline-block; position: relative; top: 40px; margin: auto; margin-left: 15px; width: auto; height: auto; border: 0px solid red;">
+            <div style="display: inline-block; position: relative; top: 25px; margin: auto; margin-left: 15px; width: auto; height: auto; border: 0px solid red;">
                 <div id="colorScale2">
                     <div id="colorScaleDetails2"></div>
                     <div id="unitLabel2">(GY)</div>
 
-                    <div class="scaleLabels2" style="left: 0px;">0</div>
-                    <!--<div class="scaleLabels" style="left: 100px;">5</div>
-                <div class="scaleLabels" style="left: 200px;">10</div>
-                <div class="scaleLabels" style="left: 280px;">50</div>-->
+                    <div class="scaleLabels2" style="left: -1px;">0</div>
                     <div class="scaleLabels2" style="right: -40px;">20 +</div>
 
                 </div>
                 <div id="pDifference_chart"></div>
             </div>
+            <div id="pAverages_chart">
+                <svg id="mLineChart" width="1160" height="380"></svg>
+                <!--<label id="form" for="show-voronoi">
+                    Show Voronoi
+                    <input type="checkbox" id="show-voronoi" disabled>
+                </label>-->
+
+                <!--<div id="mLineChart" style="width: auto; height: auto;"></div>-->
+            </div>
+
         </div>
         <div id="navbar">
             <div id="dropMenu">
@@ -758,7 +846,7 @@
                 <div id="colorScaleDetails"></div>
                 <div id="unitLabel">(GY)</div>
 
-                <div class="scaleLabels1" style="left: 0px;">0</div>
+                <div class="scaleLabels1" style="left: -1px;">0</div>
                 <!--<div class="scaleLabels" style="left: 100px;">5</div>
                 <div class="scaleLabels" style="left: 200px;">10</div>
                 <div class="scaleLabels" style="left: 280px;">50</div>-->
@@ -879,7 +967,8 @@
 
             if (toggle) {
                 //lineChartsContainer.style.display = "none";
-                lineChartsContainer.style.left = window.innerWidth + "px";
+                //lineChartsContainer.style.left = -(window.innerWidth) + "px";
+                lineChartsContainer.style.left = -9000 + "px";
 
                 //if (targ)
                 e.style["backgroundColor"] = "#323232";
@@ -965,6 +1054,7 @@
 
 
         }
+
     </script>
 
     <script type="text/javascript" src="camprt.js"></script>
