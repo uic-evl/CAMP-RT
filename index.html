@@ -611,6 +611,14 @@
             padding: 7px;
         }
         
+        .totDose {
+            
+            float: left;
+            padding-right: 20px;
+            height: 100%;
+            text-align: left;
+        }
+        
         .tVolume {
             float: left;
             height: 100%;
@@ -841,7 +849,7 @@
                 <select id="patientMenu" onchange="dropDown(this);">
                 </select>
             </div>
-            <div id="DP_button" onclick="handleDosePrediction(this)" onmouseenter="toggleOn(this)" onmouseleave="toggleOff(this)">Dose Prediction</div>
+            <div id="DP_button" onclick="handleDosePrediction(this)" onmouseenter="toggleOn(this)" onmouseleave="toggleOff(this)">Dose Estimation</div>
             <div id="colorScale">
                 <div id="colorScaleDetails"></div>
                 <div id="unitLabel">(GY)</div>
@@ -933,6 +941,7 @@
         <div style="clear: both;"></div>
         <div class="scene"></div>
         <div class="info">
+            <div class="totDose"></div>
             <div class="tVolume"></div>
             <div class="laterality"></div>
         </div>

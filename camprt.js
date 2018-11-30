@@ -130,7 +130,8 @@ var data_lc,
 
 
 
-var files = ["data/organAtlas.json", "data/patients_SSIM_noDoses_wTDists_wTVol_lat_3pass_deleteFirst.json"];
+//var files = ["data/organAtlas.json", "data/patients_SSIM_noDoses_wTDists_wTVol_lat_3pass_deleteFirst.json"];
+var files = ["data/organAtlas.json", "data/patients_SSIM_noDoses_wTDists_wTVol_wTotDose_lat_4pass_deleteFirst.json"];
 var promises = [];
 
 files.forEach(function (url) {
@@ -1145,6 +1146,9 @@ function init() {
         //element.id = patients[i].id;
         element.id = patients[i].ID_internal;
         element.innerHTML = template.replace('$', patients[i].name);
+        
+        var totDoseElement = element.querySelector(".totDose");
+        totDoseElement.innerHTML = "Total Dose: " + "<b>" + patients[i].total_Dose + "</b>" + " GY";
 
         var tVolumeElement = element.querySelector(".tVolume");
         tVolumeElement.innerHTML = "GTV: " + "<b>" + patients[i].tumorVolume + "</b>" + " cc";
@@ -1682,7 +1686,7 @@ function updateOrder(updatedPatient) {
         }
     }
 
-    pNames[0] = "0: Prediction";
+    pNames[0] = "0: Estimation";
 
 
     initializeRiskPrediction(trueFirst, selectedPatient, pNames);
@@ -1703,6 +1707,8 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
 
     data.dates = pNames;
     data.series = [];
+    
+    var simScores = patients[rank - 1].scores_ssim;
 
 
     //data.dates.push("p1", "p2", "p3", "p4", "p5");
@@ -1810,7 +1816,10 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
     var element = document.createElement("div");
     element.className = "list-item-RP";
     //element.id = patients[i].id;
-    element.innerHTML = template.replace('$', "Prediction").replace('!', "");
+    element.innerHTML = template.replace('$', "Estimation").replace('!', "");
+    
+    var totDoseElement = element.querySelector(".totDose");
+    totDoseElement.innerHTML = "";
 
     var tVolumeElement = element.querySelector(".tVolume");
     tVolumeElement.innerHTML = "";
@@ -1894,7 +1903,10 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
                         console.log(meanDose);
                         meanDose = 0.0
                     }
-                    organAverage += meanDose;
+                    //organAverage += (meanDose * simScores[x]);
+                    organAverage += (meanDose);
+                    
+                    //console.log(simScores[x]);
                     organ_lc.values.push(meanDose);
 
                 }
@@ -1991,6 +2003,9 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
     element.className = "list-item-RP";
     //element.id = patients[i].id;
     element.innerHTML = template.replace('$', "Difference").replace('!', "");
+    
+    var totDoseElement = element.querySelector(".totDose");
+    totDoseElement.innerHTML = "";
 
     var tVolumeElement = element.querySelector(".tVolume");
     tVolumeElement.innerHTML = "";
