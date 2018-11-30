@@ -3,6 +3,7 @@
 # to run...
 # python2.7 CAMPRTdata.py patients/
 
+
 from collections import OrderedDict
 from scipy.stats.stats import pearsonr
 from scipy.stats.stats import spearmanr
@@ -227,6 +228,21 @@ def FillMatrix(f, organRef, pID):
     return [array2D, array2D_tDist, hasGTVp, hasGTVn]
 
 
+def GetPatientByInternalID(internalID, patients):
+    for p in patients:
+        if internalID == p['ID_internal']:
+            return p
+    
+    return None
+
+def GetOrganDose(organ, organList):
+    for o in organList.items():
+        if o[0] == organ:
+            return o[1]['meanDose']
+    
+    return None
+
+
 def main(argv):
     pIDs = []
     patients = []
@@ -335,6 +351,18 @@ def main(argv):
                         p['laterality_int'] = 0
                     elif str(row[1]) == "Bilateral":
                         p['laterality_int'] = 1
+    
+
+    # read in total dose for each patient
+    with open("Anonymized_644.Updated_cleaned_v1.3.1.csv", 'rb') as csvFile:
+        reader = csv.reader(csvFile)
+        header = next(reader)
+
+        for row in reader:
+            for p in patients:
+                if str(row[0]) == p['ID']:
+                    p['total_Dose'] = float(row[31])
+
 
     # make sure matrices are all same size [check]
     # fill matrix diagonal [check]
@@ -409,11 +437,13 @@ def main(argv):
             #print(organ[0], organ[1]['x'], organ[1]['y'], organ[1]['z'], organ[1]['meanDose'])
 
             if organ[0] != "GTVp" and organ[0] != "GTVn":
-                p['matrix'][organRef.index(organ[0]), organRef.index(organ[0])] = organ[1]['meanDose']
+                ##p['matrix'][organRef.index(organ[0]), organRef.index(organ[0])] = organ[1]['meanDose']
                 #p['matrix'][organRef.index(organ[0]), organRef.index(organ[0])] = 1.0
 
                 #populate dose matrix
-                p['matrix_dose'][organRef.index(organ[0]), organRef.index(organ[0])] = organ[1]['meanDose']
+                # using dose matrix for total dose now
+                #p['matrix_dose'][organRef.index(organ[0]), organRef.index(organ[0])] = organ[1]['meanDose']
+                p['matrix_dose'][organRef.index(organ[0]), organRef.index(organ[0])] = p['total_Dose']
                 p['matrix_TumorVolume'][organRef.index(organ[0]), organRef.index(organ[0])] = p['tumorVolume']
 
                 # populate position matrix
@@ -482,14 +512,14 @@ def main(argv):
         ssimResults = []
         for nextP in patients:
             pCoeff_1 = pearsonr(currP['matrix'].flat, nextP['matrix'].flat)[0]
-            #ssimScor = myssim.ssim(matlab.double(currP['matrix_ssim'].tolist()), matlab.double(nextP['matrix_ssim'].tolist()))
+            ssimScor_totDose = myssim.ssim(matlab.double(currP['matrix_ssim'].tolist()), matlab.double(nextP['matrix_ssim'].tolist()))
             ssimScor_dist = myssim.ssim(matlab.double(currP['matrix_ssim_dist'].tolist()), matlab.double(nextP['matrix_ssim_dist'].tolist()))
             ssimScor_vol = myssim.ssim(matlab.double(currP['matrix_ssim_vol'].tolist()), matlab.double(nextP['matrix_ssim_vol'].tolist()))
 
             if currP['laterality_int'] == nextP['laterality_int']:
-                ssimScor = (ssimScor_dist + ssimScor_vol + 1) / 3.0
+                ssimScor = (ssimScor_totDose + ssimScor_dist + ssimScor_vol + 1) / 4.0
             else:
-                ssimScor = (ssimScor_dist + ssimScor_vol + 0) / 3.0
+                ssimScor = (ssimScor_totDose + ssimScor_dist + ssimScor_vol + 0) / 4.0
             
 
             #ssimScor = 1.0
@@ -534,13 +564,13 @@ def main(argv):
             currP["scores_ssim"].append(score[1])
         
         # array.reshape(-1, 1) if your data has a single feature or array.reshape(1, -1) if it contains a single sample
-        reshaped = np.array(currP["scores_ssim"]).reshape(-1, 1)
-        kmeans = KMeans().fit(reshaped)
-        print ("")
-        print (currP["ID"])
-        print (kmeans.cluster_centers_)
-        print (kmeans.labels_)
-        print ("")
+        #reshaped = np.array(currP["scores_ssim"]).reshape(-1, 1)
+        #kmeans = KMeans().fit(reshaped)
+        #print ("")
+        #print (currP["ID"])
+        #print (kmeans.cluster_centers_)
+        #print (kmeans.labels_)
+        #print ("")
         
 
         # print(correlations)
@@ -548,6 +578,75 @@ def main(argv):
 
     #print (organRef)
     #print (len(organRef))
+
+    # Generate spreadsheet with predictions
+    # missing organ data is replaced with -1
+    spreadsheet = []
+    header = ["ID", "N1_ID", "N2_ID", "N3_ID", "N4_ID", "N5_ID"]
+
+    for organ in organRef:
+        header.append(organ)
+    
+    header.append("Sum")
+    header.append("Average")
+
+    spreadsheet.append(header)
+    
+    for p in patients:
+        row = []
+        row.append(p["ID"])
+
+        ranks = p["similarity_ssim"]
+        scores = p["scores_ssim"]
+
+        difference = []
+
+        # neighbors
+        for i in range(1, 6):
+            neighbor = GetPatientByInternalID(ranks[i], patients)
+
+            if neighbor != None:
+                row.append(neighbor["ID"])
+            else:
+                row.append(-1)
+        
+        # organ differences
+        for organ in organRef:
+
+            organAverage = 0
+
+            for i in range(1, 6):
+
+                neighbor = GetPatientByInternalID(ranks[i], patients)
+
+                if neighbor != None:
+                    organDose = GetOrganDose(organ, neighbor["organData"])
+
+                    if organDose != None:
+                        #organAverage += (organDose * scores[i])
+                        organAverage += (organDose)
+                else:
+                    something=0
+            
+            actualDose = GetOrganDose(organ, p["organData"])
+
+            if actualDose != None:
+                difference.append(round(abs(actualDose - (organAverage / 5.0)), 3))
+            else:
+                difference.append(-1)
+        
+        for value in difference:
+            row.append(value)
+
+        row.append(np.sum(difference))
+        row.append(round(np.average(difference), 3))
+
+        spreadsheet.append(row)
+    
+
+    with open('differences.csv', 'w+') as csvfile:
+        csvWriter = csv.writer(csvfile, delimiter=',')
+        csvWriter.writerows(spreadsheet)
 
 
     #for p in patients:
