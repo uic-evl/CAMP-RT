@@ -59,7 +59,6 @@ var mouseNorm = new THREE.Vector2(-500, -500),
     INTERSECTED = null,
     nodeHover = null;
 
-var width, height;
 
 var cameraDistZ = 500;
 
@@ -123,8 +122,7 @@ d3.queue()
 */
 
 
-var data_lc,
-    months,
+var months,
     monthKeys,
     monthParse = d3.timeParse("%Y-%m");
 
@@ -138,7 +136,7 @@ files.forEach(function (url) {
     promises.push(d3.json(url));
 });
 
-promises.push(d3.tsv("unemployment.tsv", type));
+//promises.push(d3.tsv("unemployment.tsv", type));
 
 Promise.all(promises).then(function (values) {
     start(values[0], values[1], values[2]);
@@ -147,19 +145,19 @@ Promise.all(promises).then(function (values) {
 
 
 //function start(error, organAtlas, patientsData) {
-function start(organAtlas, patientsData, lineChartData) {
+function start(organAtlas, patientsData) {
     //if (error) return alert("Data invalid: " + error);
 
-    data_lc = lineChartData;
+    //data_lc = lineChartData;
 
 
     console.log(patientsData);
 
-    console.log(data_lc);
-    console.log(data_lc[0]);
-    console.log(data_lc[0].values);
-    console.log(data_lc[0].values[0].value);
-    console.log(data_lc[0].values[0].city);
+    //console.log(data_lc);
+    //console.log(data_lc[0]);
+    //console.log(data_lc[0].values);
+    //console.log(data_lc[0].values[0].value);
+    //console.log(data_lc[0].values[0].city);
 
     //organs = organsData;
     oAtlas = organAtlas[0];
@@ -2848,8 +2846,8 @@ function updateRiskPView(rotMatrix) {
 
 function updateSize() {
 
-    width = canvas.clientWidth;
-    height = canvas.clientHeight;
+    var width = canvas.clientWidth;
+    var height = canvas.clientHeight;
 
     if (canvas.width !== width || canvas.height != height)
         renderer.setSize(width, height, false);

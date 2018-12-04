@@ -1,5 +1,5 @@
-#"""Python 2.7.12"""
-# changed 3.5.2 to 2.7.12
+#"""Python 2.7.15"""
+# changed 3.5.2 to 2.7.15
 # to run...
 # python2.7 CAMPRTdata.py patients/
 
@@ -26,8 +26,8 @@ import matlab
 import math
 import numpy as np
 
-import pySSIM
-import matlab
+#import pySSIM
+#import matlab
 
 np.set_printoptions(threshold=np.nan)
 np.seterr(divide='ignore', invalid='ignore')
