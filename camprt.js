@@ -1,23 +1,10 @@
-// paper/publication
-// check the match scores
-
 'use strict';
-
-// SOME QUICK, TEMPORARY NOTES:
-//      update color scale/range
-//      top navbar slides down to show extended view of selected patient?
-//          shows volume rendered detailed models of organs
-//          exploded view
 
 if (!Detector.webgl) {
     Detector.addGetWebGLMessage();
 }
 
-//var d3 = require("d3@5");
-
 var canvas, canvas2;
-
-//console.log(JSON.stringify());
 
 var parent = document.getElementById("content");
 var nodeDetails = document.getElementById("details");
@@ -64,7 +51,6 @@ var cameraDistZ = 500;
 
 // 36 steps
 
-//var domainColorScale = [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 55.0, 60.0, 70.0, 80.0, 90.0, 100.0, 110.0];
 var domainColorScale = [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84, 87, 90, 93, 96, 99, 102, 105];
 var rangeColorScale = ['#ffffe0', '#fff8d2', '#fff0c4', '#ffe9b8', '#ffe2ae', '#ffdaa3', '#ffd39a', '#ffcb91', '#ffc389', '#ffbb82', '#ffb27c', '#ffab77', '#ffa272', '#ff986e', '#fe906a', '#fb8768', '#f98065', '#f67762', '#f26f60', '#ee675d', '#eb5f5b', '#e75758', '#e25055', '#dd4852', '#d8404e', '#d3394a', '#cc3146', '#c62a41', '#c0223b', '#b91c35', '#b3152f', '#ab0e28', '#a40820', '#9b0317', '#93010e', '#8b0000'];
 
@@ -74,9 +60,6 @@ var color = d3.scaleLinear()
 
 
 var domainColorScale2 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
-//var rangeColorScale2 = ['#f7fcfd', '#e6f0f7', '#d6e4f0', '#c6d8e9', '#b6cce3', '#a5c1dc', '#9ab4d6', '#94a7cf', '#8d99c7', '#8d89c0', '#8d7ab8', '#8c6ab1', '#8b59a8', '#8949a0', '#863694', '#832286', '#7b0d77', '#6b0768', '#5c0359', '#4d004b'];
-//var rangeColorScale2 = ['#92a1cc', '#8e99c8', '#8c91c3', '#8d86be', '#8d7dba', '#8c73b5', '#8c6ab0', '#8b60ab', '#8a55a6', '#894aa1', '#883f9c', '#863592', '#84288a', '#821981', '#7d0d78', '#720a6e', '#690665', '#60045c', '#560253', '#4d004b'];
-//var rangeColorScale2 = ['#f768a1', '#f15f9f', '#ec559c', '#e54c9a', '#de4396', '#d83a93', '#d03190', '#c9288c', '#c11e88', '#b81384', '#b1057f', '#a6017d', '#9a007b', '#8f0079', '#830077', '#770075', '#6c0072', '#600070', '#55006d', '#49006a'];
 var rangeColorScale2 = ['#999999', '#98949f', '#968fa5', '#958aaa', '#9384b0', '#9180b5', '#8e7aba', '#8c75bf', '#8971c5', '#856bca', '#8166d0', '#7d61d5', '#795bda', '#7356e0', '#6e50e4', '#674bea', '#5f44ef', '#553ff5', '#4b38fa', '#3d32ff'];
 
 var color2 = d3.scaleLinear()
@@ -97,30 +80,6 @@ var pRankingOrder, pScores;
 var listItems, arrayOfDivs = [],
     currScene;
 
-//does the secondary tumor become the primary interest when the primary is eradicated. 
-// in that case do we substitue the secondary for the primary
-
-/*
-d3.queue()
-    //.defer(d3.json, "data/organs.json")
-    .defer(d3.json, "data/organAtlas.json")
-    //.defer(d3.json, "data/links.json")
-    //.defer(d3.json, "data/patients_4.json")
-    //.defer(d3.json, "data/patients_SSIM_noDoses_Weighted_v2.json")
-    //.defer(d3.json, "data/patients_SSIM_wDoses_Weighted_v2.json")
-    //.defer(d3.json, "data/patients_SSIM_noDoses_wTDists.json")
-    ///.defer(d3.json, "data/patients_SSIM_noDoses_wTDists_subGTVp.json")
-    //.defer(d3.json, "data/patients_SSIM_noDoses_wTDists_wTVol.json")
-    //.defer(d3.json, "data/patients_SSIM_noDoses_wTDists_wTVol_subGTVp.json")
-    ///.defer(d3.json, "data/patients_SSIM_noDoses_wTDists_wTVol_subGTVp_v2.json")
-    ///.defer(d3.json, "data/patients_SSIM_wDoses_wTDists_wTVol_subGTVp.json")
-    ///.defer(d3.json, "data/patients_SSIM_noDoses_wTDists_wTVol_subGTVp_2pass.json")
-    .defer(d3.json, "data/patients_SSIM_noDoses_wTDists_wTVol_lat_3pass_deleteFirst.json")
-    ///.defer(d3.json, "data/patients_SSIM_noDoses_wTDists_wTVol_subGTVp_2pass_deleteFirst.json")
-    ///.defer(d3.json, "data/patients_SSIM_wDoses_wTDists_wTVol_subGTVp_2pass.json")
-    .await(start);
-*/
-
 
 var months,
     monthKeys,
@@ -128,7 +87,6 @@ var months,
 
 
 
-//var files = ["data/organAtlas.json", "data/patients_SSIM_noDoses_wTDists_wTVol_lat_3pass_deleteFirst.json"];
 var files = ["data/organAtlas.json", "data/patients_SSIM_noDoses_wTDists_wTVol_wTotDose_lat_4pass_deleteFirst.json"];
 var promises = [];
 
@@ -136,36 +94,20 @@ files.forEach(function (url) {
     promises.push(d3.json(url));
 });
 
-//promises.push(d3.tsv("unemployment.tsv", type));
-
 Promise.all(promises).then(function (values) {
-    start(values[0], values[1], values[2]);
+    start(values[0], values[1]);
 });
 
 
 
-//function start(error, organAtlas, patientsData) {
 function start(organAtlas, patientsData) {
-    //if (error) return alert("Data invalid: " + error);
 
-    //data_lc = lineChartData;
+    //console.log(patientsData);
 
-
-    console.log(patientsData);
-
-    //console.log(data_lc);
-    //console.log(data_lc[0]);
-    //console.log(data_lc[0].values);
-    //console.log(data_lc[0].values[0].value);
-    //console.log(data_lc[0].values[0].city);
-
-    //organs = organsData;
     oAtlas = organAtlas[0];
-    //links = linksData;
     patients = patientsData;
 
-    //var numPatients = patients.length;
-    handlePatientsDisplayed();
+    //handlePatientsDisplayed();
 
     //delete oAtlas["GTVn"];
     //delete oAtlas["GTVp"];
@@ -207,14 +149,8 @@ function start(organAtlas, patientsData) {
 
     document.addEventListener("mousemove", onDocumentMouseMove, false);
 
-    //updateOrder(selectedPatient); // update order in GUI
-
-    //document.getElementById("loadScreen").style.display = "none";
 
     animate(); // render
-
-    //document.getElementById("loadScreen").style.display = "none";
-
 }
 
 // ----------------------------------------------------------------
@@ -358,7 +294,6 @@ function populateDropDownMenu() {
 
         var tempOption = document.createElement("option");
 
-        //tempOption.value = index + 1;
         tempOption.value = patient.ID_internal;
 
         tempOption.innerHTML = patient.name;
@@ -388,9 +323,6 @@ function populateDropDownMenu() {
     patients_sorted.length = 0;
 
     return firstPatient;
-
-    //sortDropDown();
-
 }
 
 function getInternalID(searchString) {
@@ -548,9 +480,7 @@ function handleCheckBoxGroup(event) {
         for (var i = 0; i < children.length; i++) {
 
             children[i].checked = false;
-            //children[i].dispatchEvent(event);
-
-            //d3.select("#line_" + children[i].value).style("opacity", 0.0);
+            
             d3.select("#line_" + children[i].value).attr("display", "none");
         }
 
@@ -561,16 +491,12 @@ function handleCheckBoxGroup(event) {
                 var node = scene.getObjectByName(children[i].value);
                 var model = scene.getObjectByName(String(children[i].value) + "_model");
 
-                //children[i].setAttribute("checked", true);
-                //children[i].checked = true;
-
                 //console.log(children[i].checked);
 
                 if (node && model) {
                     node.visible = false;
                     model.visible = false;
                 }
-                //node.opacity = 1.0;
 
             }
         });
@@ -594,66 +520,6 @@ function handleCheckBoxGroup(event) {
 }
 
 function populateOrganMasterList() {
-
-    //var master = document.getElementById("masterList");
-
-    /*
-        for (var i = 0; i < patients.length; i++) {
-
-            var patientOrganList = patients[i].organData;
-
-            for (var pOrgan in patientOrganList) {
-
-                // pOrgan == string name of organ
-                // patientOrganList[pOrgan] == the properties of current object
-
-                if (!organRef.includes(pOrgan))
-                    organRef.push(pOrgan);
-
-            }
-
-            //organRef.sort();
-            console.log(organRef);
-        }
-
-        organs.forEach(function (organ, index) {
-
-            var tempDiv = document.createElement("div");
-
-            tempDiv.setAttribute("class", "checkboxContainer");
-            tempDiv.setAttribute("id", organ.name + "_Master");
-
-
-            var tempInput = document.createElement("INPUT");
-
-            tempInput.setAttribute("type", "checkbox");
-            tempInput.setAttribute("id", organ.name);
-            tempInput.setAttribute("value", organ.name);
-            tempInput.setAttribute("name", "organMasterList");
-            tempInput.setAttribute("onchange", "handleCheckBox(this)");
-
-            tempInput.setAttribute("checked", true);
-
-
-
-            var tempLabel = document.createElement("label");
-
-            tempLabel.setAttribute("for", organ.name);
-            tempLabel.innerHTML = organ.name;
-
-            // ----------
-
-            tempDiv.appendChild(tempInput);
-            tempDiv.appendChild(tempLabel);
-
-            master.appendChild(tempDiv);
-
-        });
-
-        //checkOrganMasterList(); // to see which organs in the list should be checked initially
-        formatOrganMasterList(); // alternate background color for better reading
-    */
-
 
 
     // make partition input first
@@ -717,8 +583,6 @@ function populateOrganMasterList() {
 
 
     // for loop bad, iterates in an unspecified order!!!!!!!!!!!!!!!!!!!!!!
-    //for (var group in partitions) {
-    //}
 
     // individual organs
     for (var organ in oAtlas) {
@@ -726,8 +590,6 @@ function populateOrganMasterList() {
         if (organ != "GTVn" && organ != "GTVp") {
 
             var parent = document.getElementById(String(oAtlas[organ].partition) + "_single_container");
-
-
 
             var tempDiv = document.createElement("div");
             tempDiv.style.marginRight = "20px";
@@ -737,18 +599,12 @@ function populateOrganMasterList() {
             tempDiv.style.paddingBottom = "1px";
             tempDiv.setAttribute("class", "GroupChildren");
 
-            //tempDiv.setAttribute("class", "checkbox_group");
-            //tempDiv.setAttribute("id", String(i + 1) + "_group_container");
-
             var tempInput = document.createElement("INPUT");
 
             tempInput.setAttribute("type", "checkbox");
             tempInput.setAttribute("id", organ + "_checkList");
             tempInput.setAttribute("class", String(oAtlas[organ].partition) + "_GroupChildren");
-            //tempInput.setAttribute("class", "GroupChildren");
             tempInput.setAttribute("value", organ);
-            //tempInput.setAttribute("name", "organMasterList");
-            //tempInput.setAttribute("onchange", "handleCheckBox(this)");
             tempInput.setAttribute("onchange", "handleCheckBoxSingle(this)");
 
             tempInput.setAttribute("checked", true);
@@ -756,12 +612,6 @@ function populateOrganMasterList() {
 
             var tempLabel = document.createElement("label");
             tempLabel.setAttribute("for", organ + "_checkList");
-            //tempLabel.setAttribute("width", "100%");
-            //tempLabel.style.display = "inline-block";
-            //tempLabel.style.textAlign = "right";
-            //tempLabel.style.float = "right";
-            //tempLabel.style.fontSize = "16px";
-            //tempLabel.style.fontWeight = "bold";
             tempLabel.style.paddingLeft = "15px";
 
             tempLabel.innerHTML = organ;
@@ -780,11 +630,6 @@ function populateOrganMasterList() {
 
 function checkOrganMasterList() {
 
-    //var master = document.getElementById("masterList");
-
-    //var organList = master.getElementsByClassName("list-item");
-    //var organList = master.children;
-
     //console.log(organList.length);
 
     organs.forEach(function (organ, index) {
@@ -792,7 +637,6 @@ function checkOrganMasterList() {
         var tempItem = document.getElementById(organ.name);
 
         if (scenes[selectedPatient - 1].getObjectByName(organ.name).userData.dosePerVolume != null) {
-            //if (scenes[selectedPatient - 1].getObjectByName(organ.name).userData.meanDose != null) {
 
             if (tempItem.checked != true)
                 tempItem.setAttribute("checked", true);
@@ -807,7 +651,6 @@ function checkOrganMasterList() {
 }
 
 function formatOrganMasterList() {
-    //var master = document.getElementById("masterList");
     var organList = master.children;
 
     for (var i = 0; i < organList.length; i++) {
@@ -818,9 +661,7 @@ function formatOrganMasterList() {
             organList[i].style["backgroundColor"] = "#444444";
 
     }
-
 }
-
 
 
 function flipGraph() {
@@ -893,7 +734,6 @@ function computeCenterOfGraphAndShift() {
         //console.log(xyzMin);
         //console.log(xyzMax);
 
-
         sceneCenter = [
             ((xyzMin[0] + xyzMax[0]) / 2),
             ((xyzMin[1] + xyzMax[1]) / 2),
@@ -912,7 +752,6 @@ function computeCenterOfGraphAndShift() {
 
         //console.log(positions);
     }
-
 
 
     var sceneCenter = [0.0, 0.0, 0.0];
@@ -960,9 +799,6 @@ function computeCenterOfGraphAndShift() {
         oAtlas[pOrgan].y = (oAtlas[pOrgan].y - sceneCenter[1]);
         oAtlas[pOrgan].z = (oAtlas[pOrgan].z - sceneCenter[2]);
     }
-
-
-
 }
 
 function getMin(pos) {
@@ -1005,15 +841,7 @@ function getMax(pos) {
     return [x, y, z];
 }
 
-function shiftGraphToOrigin() {
-
-    //organs.forEach(function (organ, index) {
-
-    //    organ.x = (organ.x - sceneCenter[0]);
-    //    organ.y = (organ.y - sceneCenter[1]);
-    //    organ.z = (organ.z - sceneCenter[2]);
-    //});
-}
+function shiftGraphToOrigin() {}
 
 var materialArray2;
 
@@ -1029,7 +857,6 @@ function init() {
     });
     renderer.setClearColor(0xffffff, 1);
     renderer.setPixelRatio(window.devicePixelRatio);
-    //renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.sortObjects = true;
 
 
@@ -1040,7 +867,6 @@ function init() {
     });
     renderer2.setClearColor(0xffffff, 1);
     renderer2.setPixelRatio(window.devicePixelRatio);
-    //renderer.setSize(window.innerWidth, window.innerHeight);
     renderer2.sortObjects = true;
 
     raycaster = new THREE.Raycaster();
@@ -1104,6 +930,7 @@ function init() {
     texture3_2.anisotropy = maxAnisotropy2;
     texture4_2.anisotropy = maxAnisotropy2;
     texture5_2.anisotropy = maxAnisotropy2;
+    
     //getcontext2d. draw image
     materialArray2 = [
             new THREE.MeshBasicMaterial({
@@ -1125,11 +952,7 @@ function init() {
             map: texture5_2
         })
     ];
-    //
-
-    //prepareOrganModels();
-
-    //
+    
 
     for (var i = 0; i < patients.length; i++) {
 
@@ -1141,7 +964,6 @@ function init() {
         // make a list item
         var element = document.createElement("div");
         element.className = "list-item";
-        //element.id = patients[i].id;
         element.id = patients[i].ID_internal;
         element.innerHTML = template.replace('$', patients[i].name);
         
@@ -1165,7 +987,6 @@ function init() {
         //var camera = new THREE.PerspectiveCamera(35, scene.userData.element.offsetWidth / scene.userData.element.offsetHeight, 1, 100000);
         var camera = new THREE.OrthographicCamera(scene.userData.element.offsetWidth / -scalarVal, scene.userData.element.offsetWidth / scalarVal, scene.userData.element.offsetHeight / scalarVal, scene.userData.element.offsetHeight / -scalarVal, 1, 100000);
         camera.position.z = cameraDistZ;
-        //camera.position.z = cameraDistZ; // 2000
 
         camera.updateProjectionMatrix();
         scene.userData.camera = camera;
@@ -1234,7 +1055,6 @@ function init() {
 
             outlineMesh.name = pOrgan + "_outline";
 
-            //if (organSphere.name == "GTVn" || organSphere.name == "GTVp")
             if (organSphere.name == "GTVp")
                 outlineMesh.scale.multiplyScalar(1.6);
             else if (organSphere.name == "GTVn")
@@ -1242,8 +1062,6 @@ function init() {
             else
                 outlineMesh.scale.multiplyScalar(1.3);
 
-
-            //outlineMesh.scale.multiplyScalar(1.15);
 
             // color
             var nodeColor;
@@ -1257,7 +1075,7 @@ function init() {
             organSphere.userData.maxDose = patientOrganList[pOrgan].maxDose;
             //organSphere.userData.dosePerVolume = undefined;
 
-            // do this in python script
+            // do this in python script maybe
             organSphere.userData.dosePerVolume = (patientOrganList[pOrgan].meanDose / patientOrganList[pOrgan].volume).toFixed(3);
 
             if (organSphere.userData.meanDose >= 0.0) //null == -1 in json, pearson problems
@@ -1268,20 +1086,7 @@ function init() {
                 organSphere.userData.dosePerVolume = undefined;
             }
 
-            //if (organSphere.name == "GTVn" || organSphere.name == "GTVp")
-            //    nodeColor = '#000000';
-
             organSphere.material.color.setStyle(nodeColor);
-
-            //} else {
-            //console.log("no");
-
-            //organSphere.userData.dosePerVolume = null;
-            //nodeColor = "rgb(131, 131, 131)";
-            //organSphere.material.color.setStyle(nodeColor);
-
-            //organSphere.visible = false;
-            //}
 
             scene.add(organSphere);
             organSphere.add(outlineMesh);
@@ -1290,7 +1095,6 @@ function init() {
 
         }
 
-        //scene.add(organModels);
 
         var tmp_geo = new THREE.Geometry();
 
@@ -1312,16 +1116,13 @@ function init() {
         }
 
 
-
         // check for missing data
         for (var organ in oAtlas) {
 
-            //if (!patientOrganList.includes(organ)) {
             if (!patientOrganList.hasOwnProperty(organ)) {
 
                 //console.log(patients[i].name);
                 //console.log(organ);
-
 
                 // node
                 var organSphere = new THREE.Mesh(geometry, material.clone());
@@ -1365,20 +1166,7 @@ function init() {
 
                 nodeColor = '#a0a0a0'; //new THREE.Color().setHex(0xa0a0a0)
 
-                //if (organSphere.name == "GTVn" || organSphere.name == "GTVp")
-                //    nodeColor = '#000000';
-
                 organSphere.material.color.setStyle(nodeColor);
-
-                //} else {
-                //console.log("no");
-
-                //organSphere.userData.dosePerVolume = null;
-                //nodeColor = "rgb(131, 131, 131)";
-                //organSphere.material.color.setStyle(nodeColor);
-
-                //organSphere.visible = false;
-                //}
 
                 scene.add(organSphere);
                 organSphere.add(outlineMesh);
@@ -1387,97 +1175,7 @@ function init() {
 
             }
 
-
         }
-
-
-
-
-
-        //scene.add(organModels);
-
-
-        //for (var z = 0; z < patientOrganList.length; z++) {
-        //var organ = patientOrganList[i];
-        //}
-
-
-        /*
-                // nodes, node outline, and color
-                organs.forEach(function (organ, index) {
-
-                    // node
-                    var organSphere = new THREE.Mesh(geometry, material.clone());
-
-                    organSphere.position.x = (organ.x);
-                    organSphere.position.y = (organ.y);
-                    organSphere.position.z = (organ.z);
-
-                    organSphere.name = organ.name;
-                    organSphere.userData.type = "node";
-
-                    // outline
-                    var outlineMesh = new THREE.Mesh(geometry, outlineMaterial.clone());
-
-                    outlineMesh.name = organ.name + "_outline";
-
-                    outlineMesh.scale.multiplyScalar(1.1);
-
-                    // color
-                    var nodeColor;
-
-                    if (patientOrganList[organ.name] != null) {
-                        //console.log(patientOrganList[organ.name]);
-
-                        organSphere.userData.volume = patientOrganList[organ.name].volume;
-                        organSphere.userData.minDose = patientOrganList[organ.name].minDose;
-                        organSphere.userData.meanDose = patientOrganList[organ.name].meanDose;
-                        organSphere.userData.maxDose = patientOrganList[organ.name].maxDose;
-                        organSphere.userData.dosePerVolume = patientOrganList[organ.name].dosePerVolume;
-
-                        nodeColor = color(organSphere.userData.dosePerVolume);
-                        organSphere.material.color.setStyle(nodeColor);
-
-                    } else {
-                        //console.log("no");
-
-                        organSphere.userData.dosePerVolume = null;
-                        nodeColor = "rgb(131, 131, 131)";
-                        organSphere.material.color.setStyle(nodeColor);
-
-                        organSphere.visible = false;
-                    }
-
-                    scene.add(organSphere);
-                    organSphere.add(outlineMesh);
-
-                });
-                
-                */
-
-
-        // links
-        /*
-            links.forEach(function (link, index) {
-
-                var tmp_geo = new THREE.Geometry();
-
-                var source = scene.getObjectByName(link.source);
-                var target = scene.getObjectByName(link.target);
-
-                tmp_geo.vertices.push(source.position);
-                tmp_geo.vertices.push(target.position);
-
-                var line = new THREE.LineSegments(tmp_geo, linkMaterial);
-                line.scale.x = line.scale.y = line.scale.z = 1;
-                line.originalScale = 1;
-
-                //line.frustumCulled = false;
-
-                scene.add(line);
-            });
-        
-            */
 
 
         scene.add(camera);
@@ -1487,30 +1185,12 @@ function init() {
         var light = new THREE.AmbientLight(0xffffff, 1.0); // white light
         //var light = new THREE.DirectionalLight(0xffffff);
         //light.position.set(200, 200, 1000).normalize();
-
-        //camera.add(light);
-        //camera.add(light.target);
+        
 
         scene.add(light);
-
-
         scenes.push(scene);
     }
 
-
-
-
-    ///
-
-
-
-
-
-
-
-
-
-    ///
 
     //renderer.autoClear = false;
 }
@@ -1530,7 +1210,6 @@ manager.onLoad = function () {
 
 var loadProgress = document.getElementById("loadProgress");
 
-//loadProgress.innerHTML = this.value;
 
 manager.onProgress = function (url, itemsLoaded, itemsTotal) {
 
@@ -1555,8 +1234,6 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
             geometry.center();
 
             let material = new THREE.MeshBasicMaterial({
-                //let material = new THREE.MeshLambertMaterial({
-                //let material = new THREE.MeshStandardMaterial({
                 color: nodeColor,
                 opacity: 0.2,
                 transparent: true,
@@ -1569,7 +1246,6 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
             let mesh = new THREE.Mesh(geometry, material);
             mesh.name = (String(pOrgan) + "_model");
             mesh.userData.type = "node_model";
-            //mesh.onAfterRender = onAfterRender;
 
             //console.log(mesh.name);
 
@@ -1602,9 +1278,6 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
             else if (pOrgan == "Supraglottic_Larynx")
                 mesh.renderOrder = -9;
 
-
-
-            //organModels.add(mesh);
 
             scene.add(mesh);
 
@@ -1654,13 +1327,8 @@ function updateOrder(updatedPatient) {
         pScoreElement.innerHTML = pScores[i + 1].toFixed(5);
 
         // hide patients
-        //if (i > patientsToShow) {
-        //    second.style.opacity = 0.0;
+     
         second.style.display = "none";
-        //} else {
-        //    second.style.opacity = 1.0;
-        //second.style.display = "inline-block";
-        //}
     }
 
     var trueFirst = document.getElementById(selectedPatient);
@@ -1689,14 +1357,11 @@ function updateOrder(updatedPatient) {
 
     initializeRiskPrediction(trueFirst, selectedPatient, pNames);
 
-
 }
 
 var data = {
     y: "Dose (GY)",
     series: [],
-    //dates: [new Date(2013, 2, 28), new Date(2013, 2, 29), new Date(2013, 2, 30), new Date(2013, 2, 31), new Date(2013, 3, 1)]
-    //dates: [...Array(5).keys()]
     dates: []
 };
 
@@ -1707,9 +1372,6 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
     data.series = [];
     
     var simScores = patients[rank - 1].scores_ssim;
-
-
-    //data.dates.push("p1", "p2", "p3", "p4", "p5");
 
     // remove scenes
     scenesRP.length = 0;
@@ -1738,17 +1400,10 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
     var source_scene = scenes[rank - 1];
     var target_scene = new THREE.Scene();
 
-    //target_scene.userData.element = cln.querySelector(".scene");
     target_scene.userData.element = pTarget_chart.childNodes[0].querySelector(".scene");
 
     for (var i = 0; i < source_scene.children.length; i++) {
 
-        //if (source_scene.children[i].type == "OrthographicCamera") {
-
-        //console.log(source_scene.children[i].children[0]);
-
-        //target_scene.userData.camera = source_scene.children[i].clone();
-        //} 
         if (source_scene.children[i].userData.type == "node" ||
             source_scene.children[i].userData.type == "node_model") {
 
@@ -1758,17 +1413,6 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
             target_scene.add(organ);
         }
     }
-
-    //var target_camera = source_scene.userData.camera.clone();
-
-    //for (var i = 0; i < source_scene.userData.camera.children.length; i++) {
-    //    console.log("go");
-    //    target_camera.add(source_scene.userData.camera.children[i].clone());
-    //}
-    //target_camera.children[0].position.set(121, -121, -250);
-
-    //target_scene.userData.camera = target_camera;
-
 
     var scalarVal = 2.4; //4.1
 
@@ -1835,38 +1479,7 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
 
     // -----------------------------------------
 
-    //var p = pRankingOrder.splice(0, 5);
-
-    //data.dates = [];
-
-    //for (var i = 1; i <= 5; i++) {
-    //data.dates[i - 1] = ("p" + String(pRankingOrder[i]));
-    //    data.dates.push("p" + String(pRankingOrder[i]));
-
-    //}
-
-
-
-    /*
-    {
-                name: "Bethesda-Rockville-Frederick MD",
-                values: [2.6, 2.6, 1, 3, 4]
-            },
-            {
-                name: "Boston-Cambridge-Quincy MA",
-                values: [5, 5.6, 5.1, 5.3, 1.4]
-            },
-            {
-                name: "Camden NJ",
-                values: [1, 1.4, 1.1, 1.3, 1.5]
-            }
-    
-    
-    "p1", "p2", "p3", "p4", "p5"
-    */
-
-    // -----------------------------------------
-
+   
     //source_scene = scenes[rank - 1];
     target_scene = new THREE.Scene();
 
@@ -1884,7 +1497,6 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
             };
 
             //console.log(organ);
-            //var organ = source_scene.children[i].clone();
 
             var organAverage = 0;
 
@@ -1908,7 +1520,6 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
                     organ_lc.values.push(meanDose);
 
                 }
-
             }
 
             var averageOrganDose = (organAverage / 5).toFixed(3);
@@ -1939,26 +1550,10 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
                 target_scene.add(target_model);
             }
 
-        } // else if (organ.userData.type == "node_model") {
-
-        //    console.log(organ);
-
-        //  target_scene.add(organ);
-
-
-        //}
+        } 
         else {
             organ = undefined
         }
-
-
-
-
-        // if (organ != undefined) {
-
-        //   organ.material.color.setStyle(nodeColor);
-        // var model = scene.getObjectByName(String(event.value) + "_model");
-        //}
     }
 
     var scalarVal = 2.4; //4.1
@@ -2033,7 +1628,6 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
         if (organ.userData.type == "node") {
 
             //console.log(organ);
-            //var organ = source_scene.children[i].clone();
 
             var organSum = 0;
 
@@ -2070,26 +1664,10 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
                 target_scene.add(target_model);
             }
 
-        } // else if (organ.userData.type == "node_model") {
-
-        //    console.log(organ);
-
-        //  target_scene.add(organ);
-
-
-        //}
-        else {
-            organ = undefined
+        } else {
+            organ = undefined;
         }
 
-
-
-
-        // if (organ != undefined) {
-
-        //   organ.material.color.setStyle(nodeColor);
-        // var model = scene.getObjectByName(String(event.value) + "_model");
-        //}
     }
 
     var scalarVal = 2.4; //4.1
@@ -2131,68 +1709,6 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
 
 }
 
-/*
-var data1 = {
-    y: "Dose (GY)",
-    series: [
-        {
-            name: "Bethesda-Rockville-Frederick MD",
-            values: [2.6, 2.6, 1, 3, 4]
-            },
-        {
-            name: "Boston-Cambridge-Quincy MA",
-            values: [5, 5.6, 5.1, 5.3, 1.4]
-            },
-        {
-            name: "Camden NJ",
-            values: [1, 1.4, 1.1, 1.3, 1.5]
-            }
-        ],
-    //dates: [new Date(2013, 2, 28), new Date(2013, 2, 29), new Date(2013, 2, 30), new Date(2013, 2, 31), new Date(2013, 3, 1)]
-    dates: ["p1", "p2", "p3", "p4", "p5"]
-};
-
-var data2 = [
-
-    {
-        name: "MD",
-        values: [{
-            city: "Bethesda-Rockville-Frederick",
-            date: new Date(2013, 2, 28),
-            value: 2.6
-
-
-            }, {
-            city: "Bethesda-Rockville-Frederick",
-            date: new Date(2013, 2, 29),
-            value: 2.6
-
-
-            }, {
-            city: "Bethesda-Rockville-Frederick",
-            date: new Date(2013, 2, 30),
-            value: 1
-
-
-            }, {
-            city: "Bethesda-Rockville-Frederick",
-            date: new Date(2013, 2, 31),
-            value: 3
-
-
-            }, {
-            city: "Bethesda-Rockville-Frederick",
-            date: new Date(2013, 3, 1),
-            value: 4
-
-
-            }]
-    }
-];
-*/
-
-//var dates = [new Date(2013, 2, 28), new Date(2013, 2, 29), new Date(2013, 2, 30), new Date(2013, 2, 31), new Date(2013, 3, 1)]
-
 
 function multiLineChart() {
 
@@ -2209,24 +1725,10 @@ function multiLineChart() {
         height = svg.attr("height") - margin.top - margin.bottom,
         g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-    //var x = d3.scaleTime().range([0, width]);
-    //var x = d3.scaleOrdinal().range(["p1", "p2", "p3", "p4", "p5"]);
     var x = d3.scalePoint().range([0, width]).padding([.2]);
-    //var x = d3.scaleBand().range([0, width]).paddingInner([0.1]).paddingOuter([0.1]).align([1.0]);
 
     var y = d3.scaleLinear()
         .range([height, 0]);
-
-    /*
-    var voronoi = d3.voronoi()
-        .x(function (d) {
-            return x(d.date);
-        })
-        .y(function (d) {
-            return y(d.value);
-        })
-        .extent([[-margin.left, -margin.top], [width + margin.right, height + margin.bottom]]);
-    */
 
     var line = d3.line()
         .x(function (d, i) {
@@ -2240,11 +1742,6 @@ function multiLineChart() {
 
     // --------------------------------
 
-    ///d3.tsv("unemployment.tsv", type, function (error, data) {
-    ///    if (error) throw error;
-
-    //x.domain(d3.extent(data.dates));
-    //x.domain(["p1", "p2", "p3", "p4", "p5"]);
     x.domain(data.dates);
     x.invert = (function () {
         var domain = x.domain();
@@ -2255,13 +1752,7 @@ function multiLineChart() {
             return scale(x);
         }
     })();
-    /*
-    y.domain([0, d3.max(data_lc, function (c) {
-        return d3.max(c.values, function (d) {
-            return d.value;
-        });
-    })]).nice();
-    */
+  
     y.domain([0, d3.max(data.series, d => d3.max(d.values))]).nice();
 
     g.append("g")
@@ -2332,62 +1823,6 @@ function multiLineChart() {
 
     svg.call(hover, path, x, y, data);
 
-    /*
-    var focus = g.append("g")
-        .attr("transform", "translate(-100,-100)")
-        .attr("class", "focus");
-
-    focus.append("circle")
-        .attr("r", 3.5);
-
-    focus.append("text")
-        .attr("y", -10);
-    */
-
-    //var voronoiGroup = g.append("g").attr("class", "voronoi");
-
-    /*
-    voronoiGroup.selectAll("path")
-        .data(voronoi.polygons(d3.merge(data_lc.map(function (d) {
-            return d.values;
-        }))))
-        .enter().append("path")
-        .attr("d", function (d) {
-            return d ? "M" + d.join("L") + "Z" : null;
-        })
-        .on("mouseover", mouseover)
-        .on("mouseout", mouseout);
-
-    d3.select("#show-voronoi")
-        .property("disabled", false)
-        .on("change", function () {
-            voronoiGroup.classed("voronoi--show", this.checked);
-        });
-
-    function mouseover(d) {
-        d3.select(d.data.city.line).classed("city--hover", true);
-        d.data.city.line.parentNode.appendChild(d.data.city.line);
-        focus.attr("transform", "translate(" + x(d.data.date) + "," + y(d.data.value) + ")");
-        focus.select("text").text(d.data.city.name);
-
-    }
-
-    function mouseout(d) {
-        d3.select(d.data.city.line).classed("city--hover", false);
-        focus.attr("transform", "translate(-100,-100)");
-    }
-    */
-    ///});
-
-
-    //data = [0, 1, 2]
-    //chart = {}
-
-    //d3.select("#mLineChart")
-    //    .datum(data)
-    //    .call(chart);
-
-
 }
 
 function hover(svg, path, x, y) {
@@ -2423,10 +1858,6 @@ function hover(svg, path, x, y) {
     function moved() {
         d3.event.preventDefault();
 
-        //path.style("stroke", "none");
-
-
-
         //console.log(d3.event.layerX + "    " + d3.event.layerY);
         //console.log(d3.event.offsetX + "    " + d3.event.offsetY);
 
@@ -2439,22 +1870,13 @@ function hover(svg, path, x, y) {
         const i1 = d3.bisectRight(data.dates, xm, 1);
         const i0 = i1 - 1;
         const i = xm - data.dates[i0] > data.dates[i1] - xm ? i1 : i0;
-        //const i = xAxisOrder[data.dates.indexOf(xm)] - xAxisOrder[i0] > xAxisOrder[i1] - xAxisOrder[data.dates.indexOf(xm)] ? i1 : i0;
         const s = data.series.reduce((a, b) => Math.abs(a.values[i] - ym) < Math.abs(b.values[i] - ym) ? a : b);
-        //path.attr("stroke", d => d === s ? "#00e4ff" : "#afafaf").attr("stroke-width", d => d === s ? "4px" : "2px").filter(d => d === s).raise();
         path.attr("stroke", d => d === s ? "#00e4ff" : "#d1d1d1").attr("stroke-width", d => d === s ? "4px" : "2px").filter(d => d === s).raise();
-        //path.attr("stroke-width", d => d === s ? "4px" : "2px").filter(d => d === s).raise();
-        //path.classed('cities--hover', d => d === s ? true : false).filter(d => d === s).raise();
-
+        
         dot.attr("transform", `translate(${x(data.dates[i])+60},${y(s.values[i])+20})`);
         dot.select("text").text(s.name + " (" + s.values[i] + " GY)");
 
         scenesRP.forEach(function (scene, index) {
-
-            //var tempObject = scene.getObjectByName(s.name + "_outline");
-            //var tempObject = nodeHover.children[0]; // this breaks something with details?
-
-            //tempObject.material.color.setHex(0x3d3d3d);
 
             for (var i = 0; i < scene.children.length; i++) {
 
@@ -2469,18 +1891,13 @@ function hover(svg, path, x, y) {
                         organ.material.color.setHex(0x3d3d3d);
                     }
                 }
-
-
             }
-
-
 
         });
 
         scenesRP.forEach(function (scene, index) {
 
             var tempObject = scene.getObjectByName(s.name + "_outline");
-            //var tempObject = nodeHover.children[0]; // this breaks something with details?
 
             tempObject.material.color.setHex(0x00e4ff);
 
@@ -2488,23 +1905,16 @@ function hover(svg, path, x, y) {
 
         });
 
-        //dot.attr("display", d => d === s ? null : "none").filter(d => d === s).raise();
-
-
     }
 
     function entered() {
 
-
-        //path.style("mix-blend-mode", null).attr("stroke", "#f0f0f0").attr("stroke-width", "4px");
         path.attr("stroke", null).attr("stroke-width", "4px");
         dot.attr("display", null);
     }
 
     function left() {
 
-        //path.style("mix-blend-mode", "multiply").attr("stroke", "#f0f0f0").attr("stroke-width", "2px");
-        //path.attr("stroke", "#f0f0f0").attr("stroke-width", "2px");
         path.attr("stroke", "#d1d1d1").attr("stroke-width", "2px");
         dot.attr("display", "none");
 
@@ -2528,24 +1938,6 @@ function hover(svg, path, x, y) {
 
     }
 
-}
-
-function type(d, i, columns) {
-    if (!months) monthKeys = columns.slice(1), months = monthKeys.map(monthParse);
-    var c = {
-        name: d.name.replace(/ (msa|necta div|met necta|met div)$/i, ""),
-        values: null
-    };
-    c.values = monthKeys.map(function (k, i) {
-        return {
-            city: c,
-            date: months[i],
-            value: d[k] / 100
-        };
-    });
-
-    //console.log(c);
-    return c;
 }
 
 function animate() {
@@ -2578,9 +1970,6 @@ function render() {
 
     updateRiskPView();
 
-
-
-    //renderer.render( currScene, currScene.userData.camera );
 }
 
 function updateMainView(rotMatrix) {
@@ -2630,28 +2019,23 @@ function updateMainView(rotMatrix) {
             //controls.update();
 
             // raycaster
-            //raycaster.setFromCamera(mouseNorm, camera);
             raycaster.setFromCamera(mouseNorm, currScene.userData.camera);
 
-            //var intersects = raycaster.intersectObjects(scene.children);
             var intersects = raycaster.intersectObjects(currScene.children);
 
             if (intersects.length >= 1 && detailsOnRotate) {
 
-                //for (var i = 0; i < intersects.length; i++) {
                 for (var i = intersects.length - 1; i >= 0; i--) {
 
                     if (intersects[i].object.userData.type == "node") {
 
                         nodeHover = intersects[i].object;
                         var tempObject = scene.getObjectByName(nodeHover.name + "_outline");
-                        //var tempObject = nodeHover.children[0]; // this breaks something with details?
 
                         if (INTERSECTED != tempObject) {
 
                             if (INTERSECTED) {
                                 INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
-                                //INTERSECTED.scale.multiplyScalar(1);
                             }
 
                             INTERSECTED = tempObject;
@@ -2659,7 +2043,6 @@ function updateMainView(rotMatrix) {
                             if (INTERSECTED) {
                                 INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
                                 INTERSECTED.material.color.setHex(0x00e4ff);
-                                //INTERSECTED.scale.multiplyScalar(1.3);
                             }
 
                             // details
@@ -2704,10 +2087,6 @@ function updateRiskPView(rotMatrix) {
 
     scenesRP.forEach(function (scene, index) {
 
-        //console.log(index);
-
-        //if (index <= patientsToShow + 1) {
-
         var scene = scene;
         var controls = scene.userData.controls;
         var camera = scene.userData.camera;
@@ -2730,7 +2109,6 @@ function updateRiskPView(rotMatrix) {
 
         // update orientation marker
         rotMatrix.extractRotation(controls.object.matrix);
-        //orientMarkerCube.rotation.setFromRotationMatrix(rotMatrix.transpose());
 
         // set the viewport
         var width = rect.right - rect.left;
@@ -2741,25 +2119,19 @@ function updateRiskPView(rotMatrix) {
         renderer2.setViewport(left, bottom, width, height);
         renderer2.setScissor(left, bottom, width, height);
 
-        //controls.update();
-
         // raycaster
-        //raycaster.setFromCamera(mouseNorm, camera);
         raycaster.setFromCamera(mouseNorm, currScene.userData.camera);
 
-        //var intersects = raycaster.intersectObjects(scene.children);
         var intersects = raycaster.intersectObjects(currScene.children);
 
         if (intersects.length >= 1 && detailsOnRotate) {
 
-            //for (var i = 0; i < intersects.length; i++) {
             for (var i = intersects.length - 1; i >= 0; i--) {
 
                 if (intersects[i].object.userData.type == "node") {
                     nodeHover = intersects[i].object;
 
                     var tempObject = scene.getObjectByName(nodeHover.name + "_outline");
-                    //var tempObject = nodeHover.children[0]; // this breaks something with details?
 
                     if (INTERSECTED != tempObject) {
 
@@ -2768,13 +2140,9 @@ function updateRiskPView(rotMatrix) {
 
                             for (var organ in oAtlas) {
 
-                                //d3.select("#line_" + organ).attr("stroke", "#afafaf");
                                 d3.select("#line_" + organ).attr("stroke", "#d1d1d1");
-                                //d3.select("#line_" + organ).attr("stroke", "#afafaf").style("stroke", null).style("stroke-width", null);
                                 d3.select("#line_" + organ).style("stroke", null).style("stroke-width", null);
                             }
-                            //d3.select("#line_" + nodeHover.name).classed('cities--hover', false);
-                            //INTERSECTED.scale.multiplyScalar(1);
                         }
 
                         INTERSECTED = tempObject;
@@ -2783,62 +2151,33 @@ function updateRiskPView(rotMatrix) {
                             INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
                             INTERSECTED.material.color.setHex(0x00e4ff);
                             d3.select("#line_" + nodeHover.name).style("stroke", "#00e4ff").style("stroke-width", "4px").raise();
-                            //d3.select("#line_" + nodeHover.name).classed('cities--hover', true);
-                            //INTERSECTED.scale.multiplyScalar(1.3);
+                     
                         }
-
-                        // details
-
-                        //populateAndPlaceDetails("SHOW");
-
                     }
 
                     break;
 
 
-                } else {
-                    //populateAndPlaceDetails("HIDE");
-                    //for (var organ in oAtlas) {
-                    //    d3.select("#line_" + organ).attr("stroke", "#f0f0f0");
-                    //}
-                }
-
-
-
+                } 
 
             }
         } else {
 
             if (INTERSECTED) {
                 INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
-                //INTERSECTED.scale.multiplyScalar(1);
-
-
-
-                // details
-                //populateAndPlaceDetails("HIDE");
 
             }
 
             INTERSECTED = null;
             for (var organ in oAtlas) {
 
-
-                //d3.select("#line_" + organ).attr("stroke", null);
-                //d3.select("#line_" + organ).attr("stroke", null);
                 d3.select("#line_" + organ).style("stroke", null).style("stroke-width", null);
-                //d3.select("#line_" + organ).attr("stroke", "#f0f0f0");
-
             }
-            //d3.select("#line_" + nodeHover.name).classed('cities--hover', false);
+            
         }
-
-
-
 
         renderer2.render(scene, camera);
 
-        //}
     });
 
 
@@ -2879,11 +2218,7 @@ function populateAndPlaceDetails(state) {
         } else {
             nodeDetails.style.top = (mouse.y + detailsOffsetY) + "px";
         }
-        //nodeDetails.style.opacity = .95;
-        //nodeDetails.style.opacity = "1.0";
-
-        //nodeDetails.style["borderColor"] = "#" + nodeHover.material.color.getHexString();
-
+       
         // POPULATE
 
         // Organ name
@@ -3020,7 +2355,6 @@ function onDocumentMouseMove(event) {
 var opacSlider = document.getElementById("opacSlider");
 
 opacSlider.oninput = function () {
-    //output.innerHTML = this.value;
 
     var opac = (this.value / 100.0);
 
@@ -3032,9 +2366,6 @@ opacSlider.oninput = function () {
 
             if (tempObject)
                 tempObject.material.opacity = opac;
-
-
-            //tempObject.materials[0].opacity = opac;
 
         }
 
@@ -3050,21 +2381,10 @@ opacSlider.oninput = function () {
             if (tempObject)
                 tempObject.material.opacity = opac;
 
-
-            //tempObject.materials[0].opacity = opac;
-
         }
 
 
     });
 }
 
-var onAfterRender = function (renderer, scene, camera, geometry, material, group) {
-
-    //geometry.setDrawRange( 0, Infinity );
-
-
-
-    //console.log(loaded);
-
-};
+var onAfterRender = function (renderer, scene, camera, geometry, material, group) {};
