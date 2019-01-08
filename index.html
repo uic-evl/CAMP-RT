@@ -872,9 +872,6 @@
             </div>
         </div>
         <div id="mySidenav" class="sidenav">
-            <!--<div class="navText">Color Scale</div>
-            <div id="colorScale"></div>
-            <div class="navText">Organs</div> -->
             <div id="masterList"></div>
             <div style="height: 200px; width: 100%;"></div>
         </div>
@@ -975,51 +972,31 @@
             lineChartsContainer = document.getElementById("lineChartsContainer");
 
             if (toggle) {
-                //lineChartsContainer.style.display = "none";
-                //lineChartsContainer.style.left = -(window.innerWidth) + "px";
                 lineChartsContainer.style.left = -9000 + "px";
-
-                //if (targ)
                 e.style["backgroundColor"] = "#323232";
-
                 toggle = false;
 
             } else {
-                //lineChartsContainer.style.display = "block";
                 lineChartsContainer.style.left = "0px";
-
-                //if (targ)
                 e.style["backgroundColor"] = "#a5a5a5";
-
                 toggle = true;
             }
         }
 
         function toggleOn(e) {
+            
             if (!toggle) {
-
                 e.style["backgroundColor"] = "#a5a5a5";
-
             }
-
         }
 
         function toggleOff(e) {
 
             if (!toggle) {
-
                 e.style["backgroundColor"] = "#323232";
-
             }
-
-
-
         }
 
-
-        function onHideDetails() {}
-
-        //handlePatientsDisplayed();
 
         function showPatients() {
 
@@ -1034,8 +1011,6 @@
                 document.getElementById(pRankingOrder[j]).style.display = "inline-block";
                 handlePatientsDisplayed();
             }
-
-
         }
 
         function hidePatients() {
@@ -1051,17 +1026,11 @@
                 patientsToShow -= 1;
                 handlePatientsDisplayed();
             }
-
-
         }
-
-
 
         function handlePatientsDisplayed() {
 
             pDisplayed.innerHTML = "Showing " + patientsToShow + " out of " + patients.length + " patients";
-
-
         }
 
     </script>
