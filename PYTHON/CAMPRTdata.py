@@ -6,14 +6,8 @@
 
 from collections import OrderedDict
 from scipy.stats.stats import pearsonr
-from scipy.stats.stats import spearmanr
-from scipy import spatial
-from sklearn.cluster import KMeans
 from operator import itemgetter
-
-#import matplotlib.pyplot as plt
-
-import operator
+import ssim
 
 import sys
 import os
@@ -21,15 +15,16 @@ import glob
 import csv
 import json
 
-import pyssim
+#import pyssim
 import matlab
 import math
 import numpy as np
 
+
 np.set_printoptions(threshold=np.nan)
 np.seterr(divide='ignore', invalid='ignore')
 
-myssim = pyssim.initialize()
+#myssim = pyssim.initialize()
 
 # replace this with reading in CSV file of partitions
 # modify other code relating to checking partition/master organs as well
@@ -163,8 +158,6 @@ def FillMatrix(f, organRef, pID):
     hasGTVn = False
 
     for row in rows:
-        #organ1 = row[0]
-        #organ2 = row[1]
 
         organ1 = RunTestCases(row[0])
         organ2 = RunTestCases(row[1])
@@ -186,8 +179,7 @@ def FillMatrix(f, organRef, pID):
 
             if organ2 not in organRef:  # list keeps reference to main
                 organRef += [organ2]
-
-    #array2D = np.zeros((len(organRef), len(organRef)))
+                
     array2D = np.ones((len(organRef), len(organRef)))
 
     array2D_tDist = np.zeros((len(organRef), len(organRef)))
@@ -229,19 +221,10 @@ def GetOrganDose(organ, organList):
     
     return None
 
-
-def main(argv):
-    pIDs = []
-    patients = []
-
-    organRef = []
-    organRef += ['GTVn']
-    organRef += ['GTVp']
-
+def get_CSVs(file_location, patients, organRef, pIDs):
     count = 1
-
-    # go through each file path from directories
-    for fpath in glob.glob(argv + '**/*.csv'):
+        # go through each file path from directories
+    for fpath in glob.glob(file_location + '**/*.csv'):
         with open(fpath, 'r') as f:  # open current file
             fname = os.path.basename(f.name)
             pID = fname[0:fname.index('_')]
@@ -315,10 +298,22 @@ def main(argv):
                         pEntry['matrix_tumorDistances'] = data[1]
                         pEntry['hasGTVp'] = data[2]
                         pEntry['hasGTVn'] = data[3]
+        return patients
+
+
+def main(argv = "E:\\EVL\\CAMP-RT\\PYTHON\\patients_v2\\"):
+    pIDs = []
+    patients = []
+
+    organRef = []
+    organRef += ['GTVn']
+    organRef += ['GTVp']
+
+    patients = get_CSVs(argv, patients, organRef, pIDs)
 
     # alg compares tumor distances, then for laterality left and right are equal? is this right?
     # read in laterality
-    with open("laterality.csv", 'rb') as csvFile:
+    with open("laterality.csv", 'r') as csvFile:
         reader = csv.reader(csvFile)
         header = next(reader)
 
@@ -335,7 +330,7 @@ def main(argv):
     
 
     # read in total dose for each patient
-    with open("Anonymized_644.Updated_cleaned_v1.3.1.csv", 'rb') as csvFile:
+    with open("Anonymized_644.Updated_cleaned_v1.3.1.csv", 'r') as csvFile:
         reader = csv.reader(csvFile)
         header = next(reader)
 
@@ -426,9 +421,10 @@ def main(argv):
         ssimResults = []
         for nextP in patients:
             pCoeff_1 = pearsonr(currP['matrix'].flat, nextP['matrix'].flat)[0]
-            ssimScor_totDose = myssim.ssim(matlab.double(currP['matrix_ssim'].tolist()), matlab.double(nextP['matrix_ssim'].tolist()))
-            ssimScor_dist = myssim.ssim(matlab.double(currP['matrix_ssim_dist'].tolist()), matlab.double(nextP['matrix_ssim_dist'].tolist()))
-            ssimScor_vol = myssim.ssim(matlab.double(currP['matrix_ssim_vol'].tolist()), matlab.double(nextP['matrix_ssim_vol'].tolist()))
+            #print(currP['matrix_ssim'])
+            ssimScor_totDose = ssim.compute_ssim(currP['matrix_ssim'], nextP['matrix_ssim'])
+            ssimScor_dist = ssim.compute_ssim(currP['matrix_ssim_dist'], nextP['matrix_ssim_dist'])
+            ssimScor_vol = ssim.compute_ssim(currP['matrix_ssim_vol'], nextP['matrix_ssim_vol'])
 
             if currP['laterality_int'] == nextP['laterality_int']:
                 ssimScor = (ssimScor_totDose + ssimScor_dist + ssimScor_vol + 1) / 4.0
@@ -439,10 +435,7 @@ def main(argv):
             #ssimScor = 1.0
             if (ssimScor <= 0.0):
                 #ssimScor = 0
-                print (currP['name'])
-                print (nextP['name'])
-                print (currP['matrix_ssim'])
-                print (nextP['matrix_ssim'])
+                print(ssimScor)
             
             pSimMatrix[currP['ID_internal'], nextP['ID_internal']] = ssimScor
             pSimMatrix[0, currP['ID_internal']] = int(currP['ID'])
@@ -540,7 +533,7 @@ def main(argv):
         csvWriter = csv.writer(my_csv, delimiter=',')
         csvWriter.writerows(pSimMatrix)
 
-    myssim.terminate()
+    #myssim.terminate()
 
     for p in patients:  # json can't handle too many matrices, delete the matrices
         del p['matrix']
@@ -558,7 +551,7 @@ def main(argv):
 if __name__ == '__main__':
     # command-line argument specifies
     # patients parent directory
-    main(sys.argv[1])
+    main()#sys.argv[1])
 
 
 # ---------------------------------------------------------------------
@@ -602,8 +595,5 @@ def corr2(a,b):
     return r
 
 def scale_linear_bycolumn(rawpoints, high, low):
-    #mins = np.min(rawpoints, axis=0)
-    #maxs = np.max(rawpoints, axis=0)
     rng = high - low
     return 1.0 - (((1.0 - 0.0) * (high - rawpoints)) / rng)
-    #return high - (((high - low) * (maxs - rawpoints)) / rng)
