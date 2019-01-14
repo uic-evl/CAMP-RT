@@ -21,18 +21,15 @@ import glob
 import csv
 import json
 
-import pySSIM
+import pyssim
 import matlab
 import math
 import numpy as np
 
-#import pySSIM
-#import matlab
-
 np.set_printoptions(threshold=np.nan)
 np.seterr(divide='ignore', invalid='ignore')
 
-myssim = pySSIM.initialize()
+myssim = pyssim.initialize()
 
 # replace this with reading in CSV file of partitions
 # modify other code relating to checking partition/master organs as well
@@ -205,25 +202,15 @@ def FillMatrix(f, organRef, pID):
                 print (str(pID) + " missing distance")
 
             array2D[organRef.index(organ1), organRef.index(organ2)] = row[2]
-            #array2D[organRef.index(organ1), organRef.index(organ2)] = 0.0
 
             # flip over diagonal
             array2D[organRef.index(organ2), organRef.index(organ1)] = row[2]
-            #array2D[organRef.index(organ2), organRef.index(organ1)] = 0.0
 
             if hasGTVp:
                 if organ1 == 'GTVp':
                     array2D_tDist[organRef.index(organ2), organRef.index(organ2)] = row[2]
                 elif organ2 == 'GTVp':
                     array2D_tDist[organRef.index(organ1), organRef.index(organ1)] = row[2]
-            #elif hasGTVn:
-            #    if organ1 == 'GTVn':
-            #        array2D_tDist[organRef.index(organ2), organRef.index(organ2)] = row[2]
-            #    elif organ2 == 'GTVn':
-            #        array2D_tDist[organRef.index(organ1), organRef.index(organ1)] = row[2]
-
-    # print(array2D)
-    # print(array2D.shape)
 
     return [array2D, array2D_tDist, hasGTVp, hasGTVn]
 
@@ -329,12 +316,6 @@ def main(argv):
                         pEntry['hasGTVp'] = data[2]
                         pEntry['hasGTVn'] = data[3]
 
-    #print (organRef)
-    #organRef.sort()
-    #print ("Organ Reference: ")
-    #print("\n")
-    #print ("\nLength", len(organRef))
-
     # alg compares tumor distances, then for laterality left and right are equal? is this right?
     # read in laterality
     with open("laterality.csv", 'rb') as csvFile:
@@ -405,12 +386,7 @@ def main(argv):
 
         organs = p['organData']
 
-        ##posMatrix = np.zeros((3, len(organRef)))
-        #posMatrix = np.zeros((1, len(organRef)))
-
         matrixCopy = np.copy(p['matrix'])
-
-        #print(p['matrix'])
 
         # initiliaze dose matrix
         p['matrix_dose'] = np.zeros((len(organRef), len(organRef)))
@@ -418,31 +394,14 @@ def main(argv):
         # initiliaze tumor volume matrix
         p['matrix_TumorVolume'] = np.zeros((len(organRef), len(organRef)))
 
-        #print(p['name'])
-
         if p['hasGTVp']:
-            #print(p['organData']['GTVp']['volume'])
             p['tumorVolume'] = p['organData']['GTVp']['volume']
-        #elif p['hasGTVn']:
-        #    #print('GTVn: ' + str(p['organData']['GTVn']['volume']))
-        #    p['tumorVolume'] = p['organData']['GTVn']['volume']
-        #else:
-            #print("neither")
-        
 
         for organ in organs.items():  # populate diagonal of matrix with mean dose data
-            #if p['ID'] == "222":
-            # print(organ)
-            #print (organ[1]['meanDose'])
-            #print(organ[0], organ[1]['x'], organ[1]['y'], organ[1]['z'], organ[1]['meanDose'])
 
             if organ[0] != "GTVp" and organ[0] != "GTVn":
-                ##p['matrix'][organRef.index(organ[0]), organRef.index(organ[0])] = organ[1]['meanDose']
-                #p['matrix'][organRef.index(organ[0]), organRef.index(organ[0])] = 1.0
-
                 #populate dose matrix
                 # using dose matrix for total dose now
-                #p['matrix_dose'][organRef.index(organ[0]), organRef.index(organ[0])] = organ[1]['meanDose']
                 p['matrix_dose'][organRef.index(organ[0]), organRef.index(organ[0])] = p['total_Dose']
                 p['matrix_TumorVolume'][organRef.index(organ[0]), organRef.index(organ[0])] = p['tumorVolume']
 
@@ -451,63 +410,18 @@ def main(argv):
                 ##posMatrix[1, organRef.index(organ[0])] = organ[1]['y']
                 ##posMatrix[2, organRef.index(organ[0])] = organ[1]['z']
         
-        #if p['ID'] == "2007":
-        #    for x in range(47):
-        #        print(p['matrix'][x, x])
-        #        #posMatrix[0, x] = int(p['ID'])
-        
-        ##p['matrix_pos'] = posMatrix
-        #print(p['matrix_dose'])
-        #print(matrixCopy)
-
-        #p['matrix_ssim'] = np.matmul(matrixCopy, p['matrix_dose'])
         p['matrix_ssim'] = np.dot(matrixCopy, p['matrix_dose'])
 
-        ####
         # SHOULD WE DELETE ROWS/COLS first before dot product?
-        #p['matrix_ssim'] = np.dot(matrixCopy, p['matrix_tumorDistances'])
 
         p['matrix_ssim_dist'] = np.dot(matrixCopy, p['matrix_tumorDistances'])
         p['matrix_ssim_vol'] = np.dot(matrixCopy, p['matrix_TumorVolume'])
 
-        #p['matrix_ssim_dist'] = np.dot(p['matrix_ssim_dist'], p['matrix_dose'])
-        #p['matrix_ssim_vol'] = np.dot(p['matrix_ssim_vol'], p['matrix_dose'])
-
-        #print(p['name'])
-        #print(p['matrix_tumorDistances'])
-
-        #p['matrix_ssim'] = np.dot(p['matrix_ssim'], p['matrix_TumorVolume'])
-
-        #p['matrix_ssim'] = np.dot(p['matrix_ssim'], p['matrix_dose'])
-
-        ####
-
-        #print(p['name'])
-        #print(p['matrix_TumorVolume'])
-
-        #p['matrix_ssim'] = np.copy(p['matrix'])
-        #print(p['matrix_ssim'])
-
-    ###########
-    print (len(organRef))
-    print (organRef)
-
-    ###########
-
-    # delete positions of organs except for GTVp until better method found (e.g. vectors instead of positions)
-    #for currP in patients:
-    #    currP['matrix_pos'] = currP['matrix_pos'][:,0]
-    #    #print (currP['matrix_pos'])
-    
-
-    
     pSimMatrix = np.zeros((len(patients) + 1, len(patients) + 1))
 
     # Calculate Pearson correlation coefficients
     # calculate ssim score
     for currP in patients:
-        print(currP['ID_internal'])
-        # currP['ID_internal']
         correlations = []
         ssimResults = []
         for nextP in patients:
@@ -533,22 +447,7 @@ def main(argv):
             pSimMatrix[currP['ID_internal'], nextP['ID_internal']] = ssimScor
             pSimMatrix[0, currP['ID_internal']] = int(currP['ID'])
             pSimMatrix[currP['ID_internal'], 0] = int(currP['ID'])
-            #pSimMatrix[nextP['ID_internal'], currP['ID_internal']] = ssimScor
-            #pCoeff_1 = spatial.distance.correlation(currP['matrix'].flat, nextP['matrix'].flat)
-            #pCoeff_1 = np.cov(currP['matrix'].flat, nextP['matrix'].flat)[0][1]
-            ##pCoeff_1 = ( np.cov(currP['matrix'].flat, bias=True) - 1 ) * ( np.cov(currP['matrix'].flat, nextP['matrix'].flat, bias=True)[0][1] )
-            #pCoeff_1 = spearmanr(currP['matrix'].flat, nextP['matrix'].flat)[0]
-            #pCoeff_1 = ( currP['matrix'] - 1 ) * ( np.cov(currP['matrix'].flat, nextP['matrix'].flat, bias=True)[0][1] )
-            #pCoeff_2 = pearsonr(currP['matrix_pos'].flat, nextP['matrix_pos'].flat)[0]
-            #print(pCoeff_1)
-
-            #if math.isnan(pCoeff_2):
-            #    pCoeff_2 = 0.0
-
-            #if (pCoeff_1 > 1.0):
-            #    pCoeff_1 = 2 - pCoeff_1
-
-            #correlations.append((nextP['ID_internal'], (5*pCoeff_1 + pCoeff_2)/6.0 ))
+        
             correlations.append((nextP['ID_internal'], pCoeff_1))
             ssimResults.append((nextP['ID_internal'], ssimScor))
 
@@ -562,22 +461,6 @@ def main(argv):
         for score in ssimResults:
             currP["similarity_ssim"].append(score[0])
             currP["scores_ssim"].append(score[1])
-        
-        # array.reshape(-1, 1) if your data has a single feature or array.reshape(1, -1) if it contains a single sample
-        #reshaped = np.array(currP["scores_ssim"]).reshape(-1, 1)
-        #kmeans = KMeans().fit(reshaped)
-        #print ("")
-        #print (currP["ID"])
-        #print (kmeans.cluster_centers_)
-        #print (kmeans.labels_)
-        #print ("")
-        
-
-        # print(correlations)
-        # print('\n')
-
-    #print (organRef)
-    #print (len(organRef))
 
     # Generate spreadsheet with predictions
     # missing organ data is replaced with -1
@@ -648,17 +531,6 @@ def main(argv):
         csvWriter = csv.writer(csvfile, delimiter=',')
         csvWriter.writerows(spreadsheet)
 
-
-    #for p in patients:
-    #    with open("patients_dose/" + p['ID'] + "_dose.csv", "w+") as my_csv:
-    #        csvWriter = csv.writer(my_csv, delimiter=',')
-    #        csvWriter.writerows(p['matrix'])
-
-    #with open("matrix_p206_ssim.csv", "w+") as my_csv:
-    #    csvWriter = csv.writer(my_csv, delimiter=',')
-    #    csvWriter.writerows(patients[101]['matrix_ssim'])
-    #    #print("ID", patients[50]['ID']) # patients[50]['ID'] corresponds to patient 248
-
     with open("matrix_p222_ssim_noDoses.csv", "w+") as my_csv:
         csvWriter = csv.writer(my_csv, delimiter=',')
         csvWriter.writerows(patients[0]['matrix_ssim'])
@@ -667,12 +539,6 @@ def main(argv):
     with open("pSimMatrix_noDoses.csv", "w+") as my_csv:
         csvWriter = csv.writer(my_csv, delimiter=',')
         csvWriter.writerows(pSimMatrix)
-        #print("ID", patients[50]['ID']) # patients[50]['ID'] corresponds to patient 248
-
-    # commented out because deleting all organs except for tumor
-    #with open("matrix_pos_test.csv", "w+") as my_csv:
-    #    csvWriter = csv.writer(my_csv, delimiter=',')
-    #    csvWriter.writerows(patients[50]['matrix_pos'])
 
     myssim.terminate()
 
@@ -685,20 +551,9 @@ def main(argv):
         del p['matrix_dose']
         del p['matrix_tumorDistances']
         del p['matrix_TumorVolume']
-    
-    # sort patient list before outputting to json
-    #sorted_patients = sorted(patients, key=itemgetter('ID_int')) 
-
 
     with open('patients_SSIM_wDoses_wDists.json', 'w+') as f:  # generate JSON
         json.dump(patients, f, indent=4)
-
-    #with open('organAtlas.json', 'w+') as f:  # generate JSON
-    #    json.dump(organRef, f, indent=4)
-
-    #organRef.sort()
-    #print ("\nOrgan Reference Sorted: ")
-
 
 if __name__ == '__main__':
     # command-line argument specifies
