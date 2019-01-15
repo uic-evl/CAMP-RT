@@ -15,6 +15,7 @@ import csv
 import json
 
 import numpy as np
+import re
 
 
 np.set_printoptions(threshold=np.nan)
@@ -223,7 +224,9 @@ class Patient_Set():
     def get_CSVs(self, file_location):
             # go through each file path from directories
         pIDs = []
-        for fpath in glob.glob(file_location + '**/*.csv'):
+        file_list = glob.glob(file_location + '**/*.csv')
+        file_list.sort(key = lambda file: max([int(x) for x in re.findall("[0-9]+", file)]))
+        for fpath in file_list:
             with open(fpath, 'r') as f:  # open current file
                 fname = os.path.basename(f.name)
                 pID = fname[0:fname.index('_')]
@@ -292,7 +295,7 @@ class Patient_Set():
     def read_Laterality(self, file_string = "laterality.csv"):
         # alg compares tumor distances, then for laterality left and right are equal? is this right?
         # read in laterality
-        with open(file_string, 'r') as csvFile:
+        with open(self.data_folder + file_string, 'r') as csvFile:
             reader = csv.reader(csvFile)
             header = next(reader)
 
@@ -310,7 +313,7 @@ class Patient_Set():
 
     def read_total_dosage(self, file_string = "Anonymized_644.Updated_cleaned_v1.3.1.csv"):
         # read in total dose for each patient
-        with open(file_string, 'r') as csvFile:
+        with open(self.data_folder + file_string, 'r') as csvFile:
             reader = csv.reader(csvFile)
             header = next(reader)
 
@@ -392,7 +395,6 @@ class Patient_Set():
             ssimResults = []
             for nextP in self.patients:
                 pCoeff_1 = pearsonr(currP['matrix'].flat, nextP['matrix'].flat)[0]
-                #print(currP['matrix_ssim'])
                 ssimScor_totDose = ssim.compute_ssim(currP['matrix_ssim'], nextP['matrix_ssim'])
                 ssimScor_dist = ssim.compute_ssim(currP['matrix_ssim_dist'], nextP['matrix_ssim_dist'])
                 ssimScor_vol = ssim.compute_ssim(currP['matrix_ssim_vol'], nextP['matrix_ssim_vol'])
@@ -427,7 +429,7 @@ class Patient_Set():
                 currP["scores_ssim"].append(score[1])
         return
 
-    def generate_differences_csv(self, file_path = 'differences.csv'):
+    def generate_differences_csv(self, file_name = 'differences.csv'):
         # Generate spreadsheet with predictions
         # missing organ data is replaced with -1
         spreadsheet = []
@@ -451,7 +453,7 @@ class Patient_Set():
             difference = []
 
             # neighbors
-            for i in range(1, 6):
+            for i in range(1, self.num_comparisons+1):
                 neighbor = GetPatientByInternalID(ranks[i], self.patients)
 
                 if neighbor != None:
@@ -489,7 +491,7 @@ class Patient_Set():
             row.append(round(np.average(difference), 3))
             spreadsheet.append(row)
 
-        with open(file_path, 'w+') as csvfile:
+        with open(self.write_folder + file_name, 'w+') as csvfile:
             csvWriter = csv.writer(csvfile, delimiter=',')
             csvWriter.writerows(spreadsheet)
         return
@@ -498,12 +500,11 @@ class Patient_Set():
         self.generate_differences_csv()
 
         #TODO figure out what these are
-        with open("matrix_p222_ssim_noDoses.csv", "w+") as my_csv:
+        with open(self.write_folder + "matrix_p222_ssim_noDoses.csv", "w+") as my_csv:
             csvWriter = csv.writer(my_csv, delimiter=',')
             csvWriter.writerows(self.patients[0]['matrix_ssim'])
-            #print("ID", patients[50]['ID']) # patients[50]['ID'] corresponds to patient 248
 
-        with open("pSimMatrix_noDoses.csv", "w+") as my_csv:
+        with open(self.write_folder + "pSimMatrix_noDoses.csv", "w+") as my_csv:
             csvWriter = csv.writer(my_csv, delimiter=',')
             csvWriter.writerows(self.pSimMatrix)
 
@@ -517,12 +518,13 @@ class Patient_Set():
             del p['matrix_tumorDistances']
             del p['matrix_TumorVolume']
 
-        with open('patients_SSIM_wDoses_wDists.json', 'w+') as f:  # generate JSON
+        with open(self.write_folder + 'patients_SSIM_wDoses_wDists.json', 'w+') as f:  # generate JSON
             json.dump(self.patients, f, indent=4)
 
-    def run(self, argv = "patients_v2\\", num_comparisons = 5, write = False):
+    def run(self, argv = "patients_v2\\", num_comparisons = 5, write = False, write_folder = "latest_results\\", data_folder = "data\\"):
         self.num_comparisons = num_comparisons
-
+        self.write_folder = write_folder
+        self.data_folder = data_folder
         self.organRef = []
         self.organRef += ['GTVn']
         self.organRef += ['GTVp']
@@ -546,7 +548,9 @@ class Patient_Set():
 
         self.pSimMatrix = np.zeros((len(self.patients) + 1, len(self.patients) + 1))
         self.get_SSIM_score()
-        if write:
+        self.patients.sort(key = lambda x: x['ID_int'])
+
+        if write: #writes the results to csv files, default false
             self.write_data()
         return
 
@@ -555,4 +559,4 @@ class Patient_Set():
     # patients parent directory
  #   main()#sys.argv[1])
 data_set = Patient_Set()
-data_set.run()
+data_set.run(write=True)
