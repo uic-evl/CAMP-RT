@@ -411,8 +411,8 @@ class Patient_Set():
                     print(ssimScor)
 
                 self.pSimMatrix[currP['ID_internal'], nextP['ID_internal']] = ssimScor
-                self.pSimMatrix[0, currP['ID_internal']] = int(currP['ID'])
-                self.pSimMatrix[currP['ID_internal'], 0] = int(currP['ID'])
+                self.pSimMatrix[0, currP['ID_internal']] = int(currP['ID_internal'])
+                self.pSimMatrix[currP['ID_internal'], 0] = int(currP['ID_internal'])
 
                 correlations.append((nextP['ID_internal'], pCoeff_1))
                 ssimResults.append((nextP['ID_internal'], ssimScor))
@@ -502,11 +502,26 @@ class Patient_Set():
         #TODO figure out what these are
         with open(self.write_folder + "matrix_p222_ssim_noDoses.csv", "w+") as my_csv:
             csvWriter = csv.writer(my_csv, delimiter=',')
-            csvWriter.writerows(self.patients[0]['matrix_ssim'])
+            csvWriter.writerows(self.matrices[1]['matrix_ssim'])
 
         with open(self.write_folder + "pSimMatrix_noDoses.csv", "w+") as my_csv:
             csvWriter = csv.writer(my_csv, delimiter=',')
             csvWriter.writerows(self.pSimMatrix)
+
+        with open(self.write_folder + 'patients_SSIM_wDoses_wDists.json', 'w+') as f:  # generate JSON
+            json.dump(self.patients, f, indent=4)
+
+    def seperate_matrices(self):
+        self.matrices = {
+                    p['ID_internal']: {'matrix': p['matrix'], 'matrix_pos': p['matrix_pos'],
+                     'matrix_ssim': p['matrix_ssim'],
+                     'matrix_ssim_dist': p['matrix_ssim_dist'],
+                     'matrix_ssim_vol': p['matrix_ssim_vol'],
+                     'matrix_dose':p['matrix_dose'],
+                     'matrix_tumorDistances': p['matrix_tumorDistances'],
+                     'matrix_TumorVolume': p['matrix_TumorVolume']}
+                    for p in self.patients
+                }
 
         for p in self.patients:  # json can't handle too many matrices, delete the matrices
             del p['matrix']
@@ -517,9 +532,8 @@ class Patient_Set():
             del p['matrix_dose']
             del p['matrix_tumorDistances']
             del p['matrix_TumorVolume']
+        return
 
-        with open(self.write_folder + 'patients_SSIM_wDoses_wDists.json', 'w+') as f:  # generate JSON
-            json.dump(self.patients, f, indent=4)
 
     def run(self, argv = "patients_v2\\", num_comparisons = 5, write = False, write_folder = "latest_results\\", data_folder = "data\\"):
         self.num_comparisons = num_comparisons
@@ -549,10 +563,16 @@ class Patient_Set():
         self.pSimMatrix = np.zeros((len(self.patients) + 1, len(self.patients) + 1))
         self.get_SSIM_score()
         self.patients.sort(key = lambda x: x['ID_int'])
-
+        self.seperate_matrices()
         if write: #writes the results to csv files, default false
             self.write_data()
         return
+
+    def get_patients(self):
+        return self.patients
+
+    def get_matrices(self):
+        return self.matrices
 
 # __name__ == '__main__':
     # command-line argument specifies
@@ -560,3 +580,4 @@ class Patient_Set():
  #   main()#sys.argv[1])
 data_set = Patient_Set()
 data_set.run(write=True)
+np.savetxt("latest_results\\all_ssim_scores.csv", data_set.pSimMatrix, delimiter=",")
