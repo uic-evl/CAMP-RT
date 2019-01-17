@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import json
 import ssim
+import random
 
 def load_patient_data(patients_file = "data\\patients_SSIM_wDoses_wDists.json"):
     with open(patients_file) as file:
@@ -26,11 +27,11 @@ def get_ssim_scores(entry1, entry2):
 
 def gen_dose_matrix(data):
     #takes the data from the json file an generates a num_patients by num_organs matrix of
-    #mean radiation dosages. idexes are the internal id - 1
+    #mean radiation dosages. indexes are the internal id - 1
     organ_list = list(data[0]['organData'].keys())
     dose_matrix = np.empty((len(data), len(organ_list)))
     for idx in range(0,len(data)):
-        patient = data[idx - 1]
+        patient = data[idx]
         organ_idx = 0
         for organ in organ_list:
             try:
@@ -90,6 +91,15 @@ def rank_by_laterality(ssim_matrices):
     ssim_score_matrix = ssim_score_matrix + np.transpose(ssim_score_matrix)
     return ssim_score_matrix
 
+def rank_randomly(ssim_matrices):
+    #creates a num_pateintsxnum_patients array of ssim scores.  diagonal is zero here instead of 1 like before
+    ssim_score_matrix = np.zeros((len(ssim_matrices), len(ssim_matrices)))
+    for row in range(0, len(ssim_matrices)):
+        for col in range(row + 1, len(ssim_matrices)): #matrix should be semetric so we take an upper-triangular matrix?
+            ssim_score_matrix[row, col] = random.random()
+    ssim_score_matrix = ssim_score_matrix + np.transpose(ssim_score_matrix)
+    return ssim_score_matrix
+
 def save_rank(ranks):
     np.savetxt('data\\ssim_rank_matrix.csv', ranks, delimiter = ',')
 
@@ -101,31 +111,15 @@ def generate_ssim_rank_csv():
     ssim_matrices = load_matrix_file()
     ranks = rank_by_ssim(ssim_matrices)
     save_rank(ranks)
-
-def run_ssim_metric():
+    
+def run_with_metric(rank_metric):
     data = load_patient_data()
     ssim_matrices = load_matrix_file()
-    ranks= rank_by_ssim(ssim_matrices)
+    ranks= rank_metric(ssim_matrices)
     doses = gen_dose_matrix(data)
     mse_hist = []
     variance_hist = []
-    for count in range(1,len(data) - 1):
-        dose_estimates = generate_dose_estimates(ranks, doses, num_matches = count)
-        differences = dose_estimates - doses
-        variance = np.var(differences)
-        mse = np.sqrt(np.mean((differences)**2))
-        mse_hist.append(mse)
-        variance_hist.append(variance)
-    return mse_hist
-
-def run_laterality_metric():
-    data = load_patient_data()
-    ssim_matrices = load_matrix_file()
-    ranks= rank_by_laterality(ssim_matrices)
-    doses = gen_dose_matrix(data)
-    mse_hist = []
-    variance_hist = []
-    for count in range(1,len(data) - 1):
+    for count in range(1,len(data) + 1):
         dose_estimates = generate_dose_estimates(ranks, doses, num_matches = count)
         differences = dose_estimates - doses
         variance = np.var(differences)
@@ -135,9 +129,13 @@ def run_laterality_metric():
     return mse_hist
 
 def plot():
-    hist1 = run_laterality_metric()
-    hist2 = run_ssim_metric()
-    plt.plot( range(0, len(hist1)), hist1, range(0, len(hist2)), hist2)
+    hist1 = run_with_metric(rank_by_laterality)
+    hist2 = run_with_metric(rank_by_ssim)
+    hist3 = run_with_metric(rank_randomly)
+    print("laterality min: ", np.min(hist1))
+    print('ssim min: ', np.min(hist2))
+    print('random min: ', np.min(hist3))
+    plt.plot( range(0, len(hist1)), hist1, range(0, len(hist2)), hist2, range(0, len(hist3)), hist3)
     plt.show()
 
 plot()
