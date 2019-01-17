@@ -45,13 +45,12 @@ def generate_dose_estimates(ranks, doses, num_matches = 6):
     for patient_idx in range(0, len(doses)):
         #get index of the scores in ascending order
         top_matches = np.argsort(-ranks[patient_idx,:]) #ranks is negative so the result is in decending order
-        top_matches = top_matches[0:num_matches]        
+        top_matches = top_matches[0:num_matches]
         scores = ranks[patient_idx, top_matches] #scores, can be used later for figuring out scaling
         matched_dosages = doses[top_matches, :]
         for match_idx in range(0, num_matches):
             matched_dosages[match_idx, :] = scores[match_idx]*matched_dosages[match_idx, :]
         estimates[patient_idx, :] = np.mean(matched_dosages, axis = 0)/np.mean(scores)
-        print(np.mean(scores))
     return estimates
 
 def load_matrix_file(matrix_file = "latest_results\\matrices.json"):
@@ -80,9 +79,20 @@ def rank_by_ssim(ssim_matrices):
     ssim_score_matrix = ssim_score_matrix + np.transpose(ssim_score_matrix)
     return ssim_score_matrix
 
+def rank_by_laterality(ssim_matrices):
+    #creates a num_pateintsxnum_patients array of ssim scores.  diagonal is zero here instead of 1 like before
+    ssim_score_matrix = np.zeros((len(ssim_matrices), len(ssim_matrices)))
+    for row in range(0, len(ssim_matrices)):
+        for col in range(row + 1, len(ssim_matrices)): #matrix should be semetric so we take an upper-triangular matrix?
+            person1 = ssim_matrices[row + 1]
+            person2 = ssim_matrices[col + 1]
+            ssim_score_matrix[row, col] = 1 if person1['laterality'] == person2['laterality'] else 0
+    ssim_score_matrix = ssim_score_matrix + np.transpose(ssim_score_matrix)
+    return ssim_score_matrix
+
 def save_rank(ranks):
     np.savetxt('data\\ssim_rank_matrix.csv', ranks, delimiter = ',')
-    
+
 def load_rank():
     ranks = np.loadtxt('data\\ssim_rank_matrix.csv', delimiter=',')
     return ranks
@@ -91,18 +101,43 @@ def generate_ssim_rank_csv():
     ssim_matrices = load_matrix_file()
     ranks = rank_by_ssim(ssim_matrices)
     save_rank(ranks)
-    
-data = load_patient_data()
-ranks= load_rank()
-doses = gen_dose_matrix(data)
-mse_hist = []
-variance_hist = []
-for count in range(1,len(data) - 1):
-    dose_estimates = generate_dose_estimates(ranks, doses, num_matches = count)
-    differences = dose_estimates - doses
-    variance = np.var(differences)
-    mse = np.sqrt(np.mean((differences)**2))
-    mse_hist.append(mse)
-    variance_hist.append(variance)
-plt.plot(mse_hist)
-plt.show()
+
+def run_ssim_metric():
+    data = load_patient_data()
+    ssim_matrices = load_matrix_file()
+    ranks= rank_by_ssim(ssim_matrices)
+    doses = gen_dose_matrix(data)
+    mse_hist = []
+    variance_hist = []
+    for count in range(1,len(data) - 1):
+        dose_estimates = generate_dose_estimates(ranks, doses, num_matches = count)
+        differences = dose_estimates - doses
+        variance = np.var(differences)
+        mse = np.sqrt(np.mean((differences)**2))
+        mse_hist.append(mse)
+        variance_hist.append(variance)
+    return mse_hist
+
+def run_laterality_metric():
+    data = load_patient_data()
+    ssim_matrices = load_matrix_file()
+    ranks= rank_by_laterality(ssim_matrices)
+    doses = gen_dose_matrix(data)
+    mse_hist = []
+    variance_hist = []
+    for count in range(1,len(data) - 1):
+        dose_estimates = generate_dose_estimates(ranks, doses, num_matches = count)
+        differences = dose_estimates - doses
+        variance = np.var(differences)
+        mse = np.sqrt(np.mean((differences)**2))
+        mse_hist.append(mse)
+        variance_hist.append(variance)
+    return mse_hist
+
+def plot():
+    hist1 = run_laterality_metric()
+    hist2 = run_ssim_metric()
+    plt.plot( range(0, len(hist1)), hist1, range(0, len(hist2)), hist2)
+    plt.show()
+
+plot()
