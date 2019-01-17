@@ -225,7 +225,7 @@ class Patient_Set():
             # go through each file path from directories
         pIDs = []
         file_list = glob.glob(file_location + '**/*.csv')
-        file_list.sort(key = lambda file: max([int(x) for x in re.findall("[0-9]+", file)]))
+        #file_list.sort(key = lambda file: max([int(x) for x in re.findall("[0-9]+", file)]))
         for fpath in file_list:
             with open(fpath, 'r') as f:  # open current file
                 fname = os.path.basename(f.name)
@@ -500,9 +500,9 @@ class Patient_Set():
         self.generate_differences_csv()
 
         #TODO figure out what these are
-        with open(self.write_folder + "matrix_p222_ssim_noDoses.csv", "w+") as my_csv:
-            csvWriter = csv.writer(my_csv, delimiter=',')
-            csvWriter.writerows(self.matrices[1]['matrix_ssim'])
+#        with open(self.write_folder + "matrix_p222_ssim_noDoses.csv", "w+") as my_csv:
+#            csvWriter = csv.writer(my_csv, delimiter=',')
+#            csvWriter.writerows(self.matrices[1]['matrix_ssim'])
 
         with open(self.write_folder + "pSimMatrix_noDoses.csv", "w+") as my_csv:
             csvWriter = csv.writer(my_csv, delimiter=',')
@@ -585,6 +585,6 @@ class Patient_Set():
     # patients parent directory
  #   main()#sys.argv[1])
 data_set = Patient_Set()
-data_set.run(write=False)
-data_set.save_matrices()
+data_set.run(write=True)
+#data_set.save_matrices()
 #np.savetxt("latest_results\\all_ssim_scores.csv", data_set.pSimMatrix, delimiter=",")

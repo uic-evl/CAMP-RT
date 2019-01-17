@@ -19,7 +19,7 @@ import numpy as np
 import scipy.ndimage
 
 
-def compute_ssim(im1, im2, l=1):
+def compute_ssim(im1, im2, l=20):
     # k1,k2 & c1,c2 depend on L (width of color map)
     k_1 = 0.01
     c_1 = (k_1*l)**2
