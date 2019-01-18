@@ -4,24 +4,39 @@ Created on Tue Jan 15 09:19:09 2019
 
 @author: Andrew
 """
+from IPython import get_ipython
+get_ipython().magic('reset -sf')
+
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import json
-import ssim
+import skimage.measure
 import random
 
 def load_patient_data(patients_file = "data\\patients_SSIM_wDoses_wDists.json"):
     with open(patients_file) as file:
         data = json.load(file)
+    organs = data[0]['organData'].keys()
+    for entry in data:
+        for organ in organs:
+            if organ not in entry['organData'] and organ != 'GTVp':
+                #print('entry ', data.index(entry), ' is missing organ ', organ)
+                break
     return data
 
 def get_ssim_scores(entry1, entry2):
     #takes two entries (formatted as dictionaries) and returns an array of the ssim scores
     scores = np.empty((4,))
-    scores[0] = ssim.compute_ssim(entry1['matrix_ssim'], entry2['matrix_ssim'])
-    scores[1] = ssim.compute_ssim(entry1['matrix_ssim_dist'], entry2['matrix_ssim_dist'])
-    scores[2] = ssim.compute_ssim(entry1['matrix_ssim_vol'], entry2['matrix_ssim_vol'])
+    scores[0] = skimage.measure.compare_ssim(entry1['matrix_ssim'], entry2['matrix_ssim'], 
+          data_range = entry2['matrix_ssim'].max() - entry2['matrix_ssim'].min(),
+          gaussian_weights = True)
+    scores[1] = skimage.measure.compare_ssim(entry1['matrix_ssim_dist'], entry2['matrix_ssim_dist'], 
+          data_range = entry2['matrix_ssim_dist'].max() - entry2['matrix_ssim_dist'].min(),
+          gaussian_weights = True)
+    scores[2] = skimage.measure.compare_ssim(entry1['matrix_ssim_vol'], entry2['matrix_ssim_vol'], 
+          data_range = entry2['matrix_ssim_vol'].max() - entry2['matrix_ssim_vol'].min(),
+          gaussian_weights = True)
     scores[3] = 1 if (entry1['laterality'] == entry2['laterality']) else 0
     return scores
 
@@ -30,6 +45,7 @@ def gen_dose_matrix(data):
     #mean radiation dosages. indexes are the internal id - 1
     organ_list = list(data[0]['organData'].keys())
     dose_matrix = np.empty((len(data), len(organ_list)))
+    bad_entries = []
     for idx in range(0,len(data)):
         patient = data[idx]
         organ_idx = 0
@@ -38,7 +54,11 @@ def gen_dose_matrix(data):
                 dose_matrix[idx, organ_idx] = patient['organData'][organ]['meanDose']
             except:
                 dose_matrix[idx, organ_idx] = 0
+                bad_entries.append((idx, organ_idx))
             organ_idx += 1
+    #replace missing entries with the mean value?
+    for (idx, organ_idx) in bad_entries:
+        dose_matrix[idx, organ_idx] = np.mean(dose_matrix[:, organ_idx])
     return dose_matrix
 
 def generate_dose_estimates(ranks, doses, num_matches = 6):
@@ -51,7 +71,7 @@ def generate_dose_estimates(ranks, doses, num_matches = 6):
         matched_dosages = doses[top_matches, :]
         for match_idx in range(0, num_matches):
             matched_dosages[match_idx, :] = scores[match_idx]*matched_dosages[match_idx, :]
-        estimates[patient_idx, :] = np.mean(matched_dosages, axis = 0)/np.mean(scores)
+        estimates[patient_idx, :] = np.nanmean(matched_dosages, axis = 0)/np.nanmean(scores)
     return estimates
 
 def load_matrix_file(matrix_file = "latest_results\\matrices.json"):
@@ -68,12 +88,28 @@ def load_matrix_file(matrix_file = "latest_results\\matrices.json"):
                      }
     return ssim_matrices
 
+def load_features(matrix_file = "latest_results\\features.json"):
+    with open(matrix_file) as file:
+        ssim_matrices = json.load(file)    
+    ssim_matrices = {
+                        int(key): {
+                            'laterality': value['laterality'], #'L', 'R', or whatever middle is
+                            'organ_distances': np.asarray(value['organ_distances']), #45x45 matrix
+                            'tumor_volumes': value['tumor_volumes'], #single value
+                            'total_doses': value['total_doses'], #single value
+                            'tumor_distances': np.asarray(value['tumor_distances']) #len 45 array
+                        }
+                        for key, value in ssim_matrices.items()
+                     }
+    return ssim_matrices
+
+
 def rank_by_ssim(ssim_matrices):
     #creates a num_pateintsxnum_patients array of ssim scores.  diagonal is zero here instead of 1 like before
     ssim_score_matrix = np.zeros((len(ssim_matrices), len(ssim_matrices)))
     for row in range(0, len(ssim_matrices)):
         for col in range(row + 1, len(ssim_matrices)): #matrix should be semetric so we take an upper-triangular matrix?
-            person1 = ssim_matrices[row + 1]
+            person1 = ssim_matrices[row + 1] #ids start at one for some reason so they're offset
             person2 = ssim_matrices[col + 1]
             scores = get_ssim_scores(person1, person2) #returns a 4x0 array so I can dot it with scalars later
             ssim_score_matrix[row, col] = np.mean(scores)
@@ -119,23 +155,55 @@ def run_with_metric(rank_metric):
     doses = gen_dose_matrix(data)
     mse_hist = []
     variance_hist = []
-    for count in range(1,len(data) + 1):
+    for count in range(2,len(data)):
         dose_estimates = generate_dose_estimates(ranks, doses, num_matches = count)
         differences = dose_estimates - doses
         variance = np.var(differences)
-        mse = np.sqrt(np.mean((differences)**2))
+        mse = np.sqrt(np.mean(differences**2))
         mse_hist.append(mse)
         variance_hist.append(variance)
     return mse_hist
 
 def plot():
-    hist1 = run_with_metric(rank_by_laterality)
     hist2 = run_with_metric(rank_by_ssim)
     hist3 = run_with_metric(rank_randomly)
-    print("laterality min: ", np.min(hist1))
     print('ssim min: ', np.min(hist2))
     print('random min: ', np.min(hist3))
-    plt.plot( range(0, len(hist1)), hist1, range(0, len(hist2)), hist2, range(0, len(hist3)), hist3)
+    plt.plot(range(0, len(hist2)), hist2, range(0, len(hist3)), hist3)
     plt.show()
+    
+def percent_different(x1, x2):
+    return abs(x1 - x2)/(max([x1,x2]) + .00001)
 
-plot()
+def main(data, features, weights = np.array([1,1])):
+    #ranks features with a weighting
+    ranks = np.zeros((len(features),len(features)))
+    for row in range(0, len(features)):
+        for col in range(row, len(features)):
+            if(col == row):
+                ranks[row, col] = -np.inf
+                continue
+            person1 = features[row + 1]
+            person2 = features[col + 1]
+            scores = np.array([
+                    skimage.measure.compare_ssim(person1['organ_distances'], person2['organ_distances']),
+                    skimage.measure.compare_ssim(person1['tumor_distances'], person2['tumor_distances'])
+                ])
+            ranks[row, col] = np.mean(scores*weights)
+    ranks = ranks + np.transpose(ranks)
+    doses = gen_dose_matrix(data)
+    mse_hist = []
+    for count in range(1, len(data)):
+        dose_estimates = generate_dose_estimates(ranks, doses, num_matches = count)
+        differences = dose_estimates - doses
+        mse = np.sqrt(np.mean(differences**2))
+        mse_hist.append(mse)
+    print('min of: ', min(mse_hist), " at ", np.argmin(mse_hist) + 2)
+    return(min(mse_hist))
+
+data = load_patient_data()
+features = load_features()
+main(data, features)
+#plt.plot(mse_hist)
+    
+        

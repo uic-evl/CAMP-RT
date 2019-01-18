@@ -532,13 +532,27 @@ class Patient_Set():
                     'laterality': p['laterality'], #right, left, or center
                     'matrix_ssim': p['matrix_ssim'].tolist(), #dose for ssim?
                     'matrix_ssim_dist': p['matrix_ssim_dist'].tolist(), #distances for ssim
-                    'matrix_ssim_vol': p['matrix_ssim_vol'].tolist(), #volumes for ssim
+                    'matrix_ssim_vol': p['matrix_ssim_vol'].tolist() #volumes for ssim
+                } 
+                for p in self.patients
+            }
+            
+        #saves the original data before dot-products
+        feature_arrays = {
+            p['ID_internal']: {
+                    'laterality': p['laterality'], #right, left, or center
+                    'organ_distances': p['matrix'].tolist(), #matrix of organ-organ distances
+                    'tumor_volumes': p['matrix_TumorVolume'][0,0], #GTVp Volume
+                    'tumor_distances': np.diag(p['matrix_tumorDistances']).tolist(), #tumor to organ distance
+                    'total_doses': p['matrix_dose'][0,0] #total dose
                 } 
                 for p in self.patients
             }
                     
         with open(self.write_folder + "matrices.json", 'w+') as f:
             json.dump(ssim_inputs, f, indent = 4)
+        with open(self.write_folder + 'features.json', 'w+') as f:
+            json.dump(feature_arrays, f, indent = 4)
         return
 
 
@@ -585,6 +599,6 @@ class Patient_Set():
     # patients parent directory
  #   main()#sys.argv[1])
 data_set = Patient_Set()
-data_set.run(write=True)
-#data_set.save_matrices()
+data_set.run(write=False)
+data_set.save_matrices()
 #np.savetxt("latest_results\\all_ssim_scores.csv", data_set.pSimMatrix, delimiter=",")
