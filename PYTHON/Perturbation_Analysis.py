@@ -26,17 +26,14 @@ def load_patient_data(patients_file = "data\\patients_SSIM_wDoses_wDists.json"):
 
 def get_ssim_scores(entry1, entry2):
     #takes two entries (formatted as dictionaries) and returns an array of the ssim scores
-    scores = np.empty((4,))
-    scores[0] = skimage.measure.compare_ssim(entry1['matrix_ssim'], entry2['matrix_ssim'],
-          data_range = entry2['matrix_ssim'].max() - entry2['matrix_ssim'].min(),
+    scores = np.empty((3,))
+#    scores[3] = skimage.measure.compare_ssim(entry1['matrix_ssim'], entry2['matrix_ssim'],
+#          gaussian_weights = True)
+    scores[0] = skimage.measure.compare_ssim(entry1['matrix_ssim_dist'], entry2['matrix_ssim_dist'],
           gaussian_weights = True)
-    scores[1] = skimage.measure.compare_ssim(entry1['matrix_ssim_dist'], entry2['matrix_ssim_dist'],
-          data_range = entry2['matrix_ssim_dist'].max() - entry2['matrix_ssim_dist'].min(),
+    scores[1] = skimage.measure.compare_ssim(entry1['matrix_ssim_vol'], entry2['matrix_ssim_vol'],
           gaussian_weights = True)
-    scores[2] = skimage.measure.compare_ssim(entry1['matrix_ssim_vol'], entry2['matrix_ssim_vol'],
-          data_range = entry2['matrix_ssim_vol'].max() - entry2['matrix_ssim_vol'].min(),
-          gaussian_weights = True)
-    scores[3] = 1 if (entry1['laterality'] == entry2['laterality']) else 0
+    scores[2] = 1 if (entry1['laterality'] == entry2['laterality']) else 0
     return scores
 
 def generate_dose_estimates(ranks, doses, num_matches = 6):
@@ -52,7 +49,7 @@ def generate_dose_estimates(ranks, doses, num_matches = 6):
         score_ratios = scores/scores.max()
         for match_idx in range(0, num_matches):
             matched_dosages[match_idx, :] = score_ratios[match_idx]*matched_dosages[match_idx, :]
-        estimates[patient_idx, :] = np.nanmean(matched_dosages, axis = 0)/np.nanmean(score_ratios)
+        estimates[patient_idx, :] = np.mean(matched_dosages, axis = 0)/np.mean(score_ratios)
     return estimates
 
 def load_matrix_file(matrix_file = "latest_results\\matrices.json"):
@@ -135,23 +132,20 @@ def run_with_metric(rank_metric):
     ranks= rank_metric(ssim_matrices)
     doses = gen_dose_matrix(data)
     mse_hist = []
-    variance_hist = []
-    for count in range(2,len(data)):
+    for count in range(2,len(data)//2):
         dose_estimates = generate_dose_estimates(ranks, doses, num_matches = count)
         differences = dose_estimates - doses
-        variance = np.var(differences)
         mse = np.sqrt(np.mean(differences**2))
         mse_hist.append(mse)
-        variance_hist.append(variance)
+    print('min of: ', min(mse_hist), "at ", np.argmin(mse_hist))
     return mse_hist
 
-def plot():
+def run_old_plot():
     hist2 = run_with_metric(rank_by_ssim)
     hist3 = run_with_metric(rank_randomly)
     print('ssim min: ', np.min(hist2))
     print('random min: ', np.min(hist3))
-    plt.plot(range(0, len(hist2)), hist2, range(0, len(hist3)), hist3)
-    plt.show()
+    return((hist2, hist3))
 
 def gen_dose_matrix(data):
     #takes the data from the json file an generates a num_patients by num_organs matrix of
@@ -176,21 +170,10 @@ def gen_dose_matrix(data):
         dose_matrix[idx, organ_idx] = np.mean(dose_matrix[:, organ_idx])
     return dose_matrix
 
-def to_symmetric_array(vector):
-    #helper to convert a vector to an upper symmetric matrix
-    x = 45#number of sides for the matrix
-    matrix = np.zeros((x,x))
-    for row in range(1,x): #start at 1 so diagonal is empty
-        for col in range(1,x):
-            matrix[row, col] = vector[ (row - 1)*x + (col - 1)]
-    matrix = matrix + np.transpose(matrix)
-    matrix = matrix + np.diag( vector[(x-1)*x + (x-1):])
-    return(matrix)
-
-def main(data, features,rank_function = None, weights = np.ones((1037,))):
+def main(data, features,rank_function = None, weights = np.ones((3,))):
     #ranks features with a weighting
     ranks = np.zeros((len(features),len(features)))
-    organ_weights = weights[2:]
+    #organ_weights = weights[3:]
     if rank_function == None or rank_function == 'mse':
         rank_function = lambda x, y: -1*skimage.measure.compare_mse(x,y)
     if rank_function == 'ssim':
@@ -204,14 +187,16 @@ def main(data, features,rank_function = None, weights = np.ones((1037,))):
                 continue
             person1 = features[row + 1]
             person2 = features[col + 1]
-            get_distances = lambda x: organ_weights*(
+            get_distances = lambda x: (
                     (x['organ_distances'] + np.diag(x['tumor_distances']))[upper_triangle_indicies]
-                    )
+                    ) #* organ_weights
+            #get_distances = lambda x: x['organ_distances'] + np.diag(x['tumor_distances'])
             scores = np.array([
                     rank_function(get_distances(person1), get_distances(person2)),
-                    percent_difference(person1['tumor_volumes'], person2['tumor_volumes'])
+                    percent_difference(person1['tumor_volumes'], person2['tumor_volumes']),
+                    (1 if person1['laterality'] == person2['laterality'] else 0)
                 ])
-            ranks[row, col] = np.mean(scores*weights[0:2])
+            ranks[row, col] = np.mean(scores*weights[0:3])
     ranks = ranks + np.transpose(ranks)
     doses = gen_dose_matrix(data)
     mse_hist = []
@@ -220,13 +205,17 @@ def main(data, features,rank_function = None, weights = np.ones((1037,))):
         differences = dose_estimates - doses
         mse = np.sqrt(np.mean(differences**2))
         mse_hist.append((mse))
-    print('weights: ', weights[0:2])
     print('min of: ', min(mse_hist), " at ", np.argmin(mse_hist) + 2)
-    plt.plot(mse_hist)
-    plt.show()
     return(mse_hist)
 
 data = load_patient_data()
 features = load_features()
-#hist = main(data, features, weights = np.random.random((1037,)))
-
+mse_hist = main(data, features, rank_function = 'ssim', weights = np.array([1,.1,.8]))
+ssim_hist = run_with_metric(rank_by_ssim)
+rand_hist = run_with_metric(rank_randomly)
+x = np.linspace(1, len(mse_hist), len(mse_hist))
+plt.plot(x, mse_hist[:len(x)], x, ssim_hist[:len(x)], x, rand_hist[:len(x)])
+plt.legend(['mse_new','ssim_old','random'])
+plt.xlabel('Matches')
+plt.ylabel('Average Mean-Squared Error')
+plt.title('Error vs Number of Matches')
