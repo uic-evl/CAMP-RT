@@ -225,7 +225,7 @@ class Patient_Set():
             # go through each file path from directories
         pIDs = []
         file_list = glob.glob(file_location + '**/*.csv')
-        #file_list.sort(key = lambda file: max([int(x) for x in re.findall("[0-9]+", file)]))
+        file_list.sort(key = lambda file: max([int(x) for x in re.findall("[0-9]+", file)]))
         for fpath in file_list:
             with open(fpath, 'r') as f:  # open current file
                 fname = os.path.basename(f.name)
@@ -524,7 +524,7 @@ class Patient_Set():
             del p['matrix_tumorDistances']
             del p['matrix_TumorVolume']
         return patients
-    
+
     def save_matrices(self):
         #saves data relevant for the ssim inputs to matrices.json
         ssim_inputs = {
@@ -533,10 +533,10 @@ class Patient_Set():
                     'matrix_ssim': p['matrix_ssim'].tolist(), #dose for ssim?
                     'matrix_ssim_dist': p['matrix_ssim_dist'].tolist(), #distances for ssim
                     'matrix_ssim_vol': p['matrix_ssim_vol'].tolist() #volumes for ssim
-                } 
+                }
                 for p in self.patients
             }
-            
+
         #saves the original data before dot-products
         feature_arrays = {
             p['ID_internal']: {
@@ -545,10 +545,10 @@ class Patient_Set():
                     'tumor_volumes': p['matrix_TumorVolume'][0,0], #GTVp Volume
                     'tumor_distances': np.diag(p['matrix_tumorDistances']).tolist(), #tumor to organ distance
                     'total_doses': p['matrix_dose'][0,0] #total dose
-                } 
+                }
                 for p in self.patients
             }
-                    
+
         with open(self.write_folder + "matrices.json", 'w+') as f:
             json.dump(ssim_inputs, f, indent = 4)
         with open(self.write_folder + 'features.json', 'w+') as f:
