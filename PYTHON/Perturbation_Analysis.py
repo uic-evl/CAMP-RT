@@ -13,6 +13,13 @@ import json
 import skimage.measure
 import random
 
+#rows in the sorted matrix where the mean error is > 8 for the original-ish algorithm
+outlier_rows_v1 = [0, 8, 12, 15, 22, 27, 31, 37, 42, 43, 51, 56, 59, 62, 67, 83, 86, 88, 91, 96]
+#rows where error > 8 for the new-ish algorithm (ssim, weights 1, .05, 1)
+outlier_rows_v2 = [0, 8, 9, 12, 22, 27, 37, 42, 43, 56, 62, 67, 87, 89, 91, 96]
+#outliers > mean + 2*std for both variants above
+consisten_outliers = [12, 22, 37, 88]
+
 def load_patient_data(patients_file = "data\\patients_SSIM_wDoses_wDists.json"):
     with open(patients_file) as file:
         data = json.load(file)
@@ -27,8 +34,6 @@ def load_patient_data(patients_file = "data\\patients_SSIM_wDoses_wDists.json"):
 def get_ssim_scores(entry1, entry2):
     #takes two entries (formatted as dictionaries) and returns an array of the ssim scores
     scores = np.empty((3,))
-#    scores[3] = skimage.measure.compare_ssim(entry1['matrix_ssim'], entry2['matrix_ssim'],
-#          gaussian_weights = True)
     scores[0] = skimage.measure.compare_ssim(entry1['matrix_ssim_dist'], entry2['matrix_ssim_dist'],
           gaussian_weights = True)
     scores[1] = skimage.measure.compare_ssim(entry1['matrix_ssim_vol'], entry2['matrix_ssim_vol'],
@@ -46,10 +51,10 @@ def generate_dose_estimates(ranks, doses, num_matches = 6):
         matched_dosages = doses[tuple(top_matches), :]
         #scale based on scores, I don't feel like this does much
         #does this actually make sense for mse?
-        score_ratios = scores/scores.max()
-        for match_idx in range(0, num_matches):
-            matched_dosages[match_idx, :] = score_ratios[match_idx]*matched_dosages[match_idx, :]
-        estimates[patient_idx, :] = np.mean(matched_dosages, axis = 0)/np.mean(score_ratios)
+        #score_ratios = scores/scores.max()
+        #for match_idx in range(0, num_matches):
+        #    matched_dosages[match_idx, :] = score_ratios[match_idx]*matched_dosages[match_idx, :]
+        estimates[patient_idx, :] = np.mean(matched_dosages, axis = 0)#/np.mean(score_ratios)
     return estimates
 
 def load_matrix_file(matrix_file = "latest_results\\matrices.json"):
@@ -132,13 +137,15 @@ def run_with_metric(rank_metric):
     ranks= rank_metric(ssim_matrices)
     doses = gen_dose_matrix(data)
     mse_hist = []
+    diff_hist = []
     for count in range(2,len(data)//2):
         dose_estimates = generate_dose_estimates(ranks, doses, num_matches = count)
-        differences = dose_estimates - doses
+        differences = np.abs(dose_estimates - doses)
         mse = np.sqrt(np.mean(differences**2))
         mse_hist.append(mse)
+        diff_hist.append(differences)
     print('min of: ', min(mse_hist), "at ", np.argmin(mse_hist))
-    return mse_hist
+    return((mse_hist, diff_hist[np.argmin(mse_hist)]))
 
 def run_old_plot():
     hist2 = run_with_metric(rank_by_ssim)
@@ -164,7 +171,8 @@ def gen_dose_matrix(data):
                 bad_entries.append((idx, organ_idx))
             organ_idx += 1
         #normalize to total dose, can we assume this is a given?
-        dose_matrix[idx, :] = (patient['total_Dose']/np.sum(dose_matrix[idx, :]))*dose_matrix[idx, :]
+        #'no' - Liz
+        #dose_matrix[idx, :] = (patient['total_Dose']/np.sum(dose_matrix[idx, :]))*dose_matrix[idx, :]
     #replace missing entries with the mean value?
     for (idx, organ_idx) in bad_entries:
         dose_matrix[idx, organ_idx] = np.mean(dose_matrix[:, organ_idx])
@@ -177,7 +185,7 @@ def main(data, features,rank_function = None, weights = np.ones((3,))):
     if rank_function == None or rank_function == 'mse':
         rank_function = lambda x, y: -1*skimage.measure.compare_mse(x,y)
     if rank_function == 'ssim':
-        rank_function = lambda x, y: skimage.measure.compare_ssim(x,y, gaussian_weights = True)
+        rank_function = lambda x, y: skimage.measure.compare_ssim(x,y)
     percent_difference = lambda x, y: 1- abs((x-y)/(x+y+.000001))
     upper_triangle_indicies = np.triu_indices(45)
     for row in range(0, len(features)):
@@ -200,19 +208,24 @@ def main(data, features,rank_function = None, weights = np.ones((3,))):
     ranks = ranks + np.transpose(ranks)
     doses = gen_dose_matrix(data)
     mse_hist = []
+    diff_hist = []
     for count in range(2, len(data)//2):
         dose_estimates = generate_dose_estimates(ranks, doses, num_matches = count)
-        differences = dose_estimates - doses
+        differences = np.abs(dose_estimates - doses)
         mse = np.sqrt(np.mean(differences**2))
         mse_hist.append((mse))
+        diff_hist.append(differences)
     print('min of: ', min(mse_hist), " at ", np.argmin(mse_hist) + 2)
-    return(mse_hist)
+    #returns histor of error and difference for the lowest point
+    return((mse_hist, diff_hist[np.argmin(mse_hist)]))
 
 data = load_patient_data()
 features = load_features()
-mse_hist = main(data, features, rank_function = 'ssim', weights = np.array([1,.1,.8]))
-ssim_hist = run_with_metric(rank_by_ssim)
-rand_hist = run_with_metric(rank_randomly)
+doses = gen_dose_matrix(data)
+(mse_hist, diffs1) = main(data, features,
+    rank_function = 'ssim', weights = np.array([1,.05,1]))
+(ssim_hist, diff2) = run_with_metric(rank_by_ssim)
+(rand_hist, diff3) = run_with_metric(rank_randomly)
 x = np.linspace(1, len(mse_hist), len(mse_hist))
 plt.plot(x, mse_hist[:len(x)], x, ssim_hist[:len(x)], x, rand_hist[:len(x)])
 plt.legend(['mse_new','ssim_old','random'])
