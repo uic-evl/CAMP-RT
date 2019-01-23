@@ -41,5 +41,5 @@ dose_files = file_sort(glob('patients_v2\\' + '**/*meandoses.csv'))
 #this would be faster if I zipped them maybe?
 ids = [max([int(x) for x in findall('[0-9]+', file)]) for file in distance_files]
 
-patient_distances = pd.read_csv(distance_files[1])
-patient_dose = pd.read_csv(dose_files[1])
+patient_distances = pd.read_csv(distance_files[37])
+patient_dose = pd.read_csv(dose_files[37])
