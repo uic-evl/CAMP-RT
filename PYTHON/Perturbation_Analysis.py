@@ -33,7 +33,7 @@ def load_patient_data(patients_file = "data\\patients_SSIM_wDoses_wDists.json"):
 #                break
     return data
 
-def remove_outliers(data, outliers = [37]):
+def remove_outliers(data, outliers = []):
     data_list = copy.copy(data)
     num_removed = 0
     for idx in outliers:
@@ -54,15 +54,21 @@ def get_ssim_scores(entry1, entry2):
     scores[2] = 1 if (entry1['laterality'] == entry2['laterality']) else 0
     return scores
 
-def generate_dose_estimates(ranks, doses, min_matches = 5, min_rank = .9999999):
+def generate_dose_estimates(ranks, doses, min_matches = 5, min_rank = .99):
     estimates = np.zeros(doses.shape)
     for patient_idx in range(0, len(doses)):
         #get index of the scores in ascending order
         #use either the minimum number of matches for ones above a minimum rank
         num_matches = max([len(np.where(ranks[patient_idx,:] > min_rank)[0]), min_matches])
-        top_matches = np.argsort(-ranks[patient_idx,:]) #ranks is negative so the result is in decending order
-        top_matches = top_matches[0:num_matches] 
+        sorted_matches = np.argsort(-ranks[patient_idx,:]) #ranks is negative so the result is in decending order
+        top_matches = sorted_matches[0:num_matches] 
         scores = ranks[patient_idx, tuple(top_matches)] #scores, can be used later for figuring out scaling
+        #try to use more scores when there are few good matches?
+        #doesnt work good, but is slightly more robust at low match minimums
+        while(np.sum(scores) < 1 and num_matches < len(doses)):
+            num_matches += 1
+            top_matches = sorted_matches[0:num_matches] 
+            scores = ranks[patient_idx, tuple(top_matches)]
         matched_dosages = doses[tuple(top_matches), :]
         #scale based on scores, I don't feel like this does much
         #does the ratio so that non-normalized metrics can be used
@@ -143,7 +149,7 @@ def rank_randomly(ssim_matrices):
     ssim_score_matrix = ssim_score_matrix + np.transpose(ssim_score_matrix)
     return ssim_score_matrix
 
-def modified_rank_by_ssim(dummy, rank_function = None, weights = np.array([1,.05,1])):
+def modified_rank_by_ssim(dummy, rank_function = None, weights = np.array([1,.05,4])):
     #ranks features with a weighting
     features = load_features()
     ranks = np.zeros((len(features),len(features)))
@@ -239,8 +245,6 @@ def gen_dose_matrix(data):
                 dose_matrix[idx, organ_idx] = np.mean(dose_matrix[:idx, organ_idx])
                 bad_entries.append((idx, organ_idx))
             organ_idx += 1
-        #shouldn't this actually not do anything?  It changes it all drastically
-        #dose_matrix[idx, :] = (patient['total_Dose']/np.sum(dose_matrix[idx, :]))*dose_matrix[idx, :]
     #replace missing entries with the mean value?
     for (idx, organ_idx) in bad_entries:
         dose_matrix[idx, organ_idx] = np.mean(dose_matrix[:, organ_idx])
