@@ -311,7 +311,7 @@ class Patient_Set():
                             p['laterality_int'] = 1
         return
 
-    def read_total_dosage(self, file_string = "Anonymized_644.Updated_cleaned_v1.3.1.csv"):
+    def read_total_dosage(self, file_string = "patient_info.csv'"):
         # read in total dose for each patient
         with open(self.data_folder + file_string, 'r') as csvFile:
             reader = csv.reader(csvFile)
