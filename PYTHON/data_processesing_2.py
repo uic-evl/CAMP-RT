@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Jan 21 17:22:31 2019
-
 @author: Andrew
 """
 from glob import glob
@@ -36,7 +35,7 @@ ORGAN_LIST = [
 organ_position = { ORGAN_LIST[x]: x for x in range(0, len(ORGAN_LIST))}
 
 class Patient():
-    
+
     def __init__(self, distances, doses, p_id, position, metadata):
         #patient ID number
         self.id = p_id
@@ -44,18 +43,17 @@ class Patient():
         self.pos = position
         self.distances = self.gen_distance_matrix(distances)
         self.doses = doses
-        
+
     def gen_distance_matrix(self, distances):
         #extracts a 45x45 matrix of the distancess between organs
         #should fill missing values with 0? doesn't include tumors since those aren't always there
         #if an entry is gone idk what to do
         distances = (distances[ distances['Eucledian Distance (mm)'] in ORGAN_LIST ]).set_index(['Reference ROI', 'Target ROI'])
         dist_matrix = distances['Eucledian Distance (mm)']
-        dist_matrix = dist_matrix[dist_matrix['Eucledian Distance (mm)'] in ]
         tumor_names = ['GTV node', 'GTV-N', 'GTV_n', 'GTVn', 'GTVn1', 'GTV primary', 'GTV-P', 'GTV_p', 'GTVp', 'GTVn2']
-        dist_matrix = dist_matrix.drop(tumor_names, 
+        dist_matrix = dist_matrix.drop(tumor_names,
                                        errors = 'ignore', level = 0
-                                       ).drop(tumor_names, 
+                                       ).drop(tumor_names,
                                        errors = 'ignore', level = 1
                                        ).unstack(fill_value = 0).values
         dist_matrix += np.transpose(dist_matrix)
@@ -65,7 +63,7 @@ class Patient():
 
 #sorts by size of largest integer string, which is the id for our files
 file_sort = lambda x: sorted(x, key =
-                             lambda file: 
+                             lambda file:
                                  max([int(x) for x in findall("[0-9]+", file)])
                         )
 distance_files = file_sort(glob('patients_v2\\' + '**/*distances.csv'))
@@ -75,17 +73,17 @@ assert(len(distance_files) == len(dose_files))
 
 #maps a position 0-len(files) to the dummy id for a patient
 ids = [max([int(x) for x in findall('[0-9]+', file)]) for file in distance_files]
-metadata = pd.read_csv(metadata_file, 
+metadata = pd.read_csv(metadata_file,
                        index_col = 0, #index is the "Dummy ID"
                        usecols = [0,1,2,3,4,5,6,7,8,9,10,11]
                        ).loc[ids]
 patients = OrderedDict()
-#putting all the data into a patient object for further objectification 
+#putting all the data into a patient object for further objectification
 for patient_index in range(0, len(distance_files)):
     #these are indexed by name of organ
     distances = pd.read_csv(distance_files[patient_index])
     doses = pd.read_csv(dose_files[patient_index])
     info = metadata.loc[ids[patient_index]]
-    new_patient = Patient(distances, doses, 
+    new_patient = Patient(distances, doses,
                           ids[patient_index], patient_index, info)
     patients[patient_index] = new_patient
