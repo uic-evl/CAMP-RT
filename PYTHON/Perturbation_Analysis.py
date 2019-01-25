@@ -61,13 +61,13 @@ def generate_dose_estimates(ranks, doses, min_matches = 5, min_rank = .99):
         #use either the minimum number of matches for ones above a minimum rank
         num_matches = max([len(np.where(ranks[patient_idx,:] > min_rank)[0]), min_matches])
         sorted_matches = np.argsort(-ranks[patient_idx,:]) #ranks is negative so the result is in decending order
-        top_matches = sorted_matches[0:num_matches] 
+        top_matches = sorted_matches[0:num_matches]
         scores = ranks[patient_idx, tuple(top_matches)] #scores, can be used later for figuring out scaling
         #try to use more scores when there are few good matches?
         #doesnt work good, but is slightly more robust at low match minimums
         while(np.sum(scores) < 1 and num_matches < len(doses)):
             num_matches += 1
-            top_matches = sorted_matches[0:num_matches] 
+            top_matches = sorted_matches[0:num_matches]
             scores = ranks[patient_idx, tuple(top_matches)]
         matched_dosages = doses[tuple(top_matches), :]
         #scale based on scores, I don't feel like this does much
@@ -81,7 +81,7 @@ def generate_dose_estimates(ranks, doses, min_matches = 5, min_rank = .99):
 def load_matrix_file(matrix_file = "latest_results\\matrices.json"):
     with open(matrix_file) as file:
         ssim_matrices = json.load(file)
-    #everything is a list now to make it easier to get outlier removal to work and be consistent with the 
+    #everything is a list now to make it easier to get outlier removal to work and be consistent with the
     #data format used before, should be a dictionary (or array which isn't a thing) if redone for faster lookup which happens a lot
     ssim_matrices = [
                         {
@@ -149,7 +149,20 @@ def rank_randomly(ssim_matrices):
     ssim_score_matrix = ssim_score_matrix + np.transpose(ssim_score_matrix)
     return ssim_score_matrix
 
-def modified_rank_by_ssim(dummy, rank_function = None, weights = np.array([1,.05,4])):
+def rank_by_dose(dummy):
+    data = load_patient_data()
+    doses = gen_dose_matrix(data)
+    score_matrix = np.zeros((len(dummy), len(dummy)))
+    for row1 in range(0, len(dummy)):
+        for row2 in range(row1 + 1, len(dummy)):
+            person1 = doses[row1, :]
+            person2 = doses[row2, :]
+            score_matrix[row1, row2] = 1 - (
+                    np.mean(np.abs(person1 - person2))/max([np.mean(person1),np.mean(person2)]))
+    score_matrix += np.transpose(score_matrix)
+    return(score_matrix)
+
+def modified_rank_by_ssim(dummy, rank_function = None, weights = np.array([1,.05,1])):
     #ranks features with a weighting
     features = load_features()
     ranks = np.zeros((len(features),len(features)))
@@ -250,12 +263,13 @@ def gen_dose_matrix(data):
         dose_matrix[idx, organ_idx] = np.mean(dose_matrix[:, organ_idx])
     return dose_matrix
 
+(best_hist, diff4) = run_with_metric(rank_by_dose)
 (mse_hist, diffs1) = run_with_metric(modified_rank_by_ssim)
 (ssim_hist, diff2) = run_with_metric(rank_by_ssim)
 (rand_hist, diff3) = run_with_metric(rank_randomly)
 x = np.linspace(1, len(mse_hist), len(mse_hist))
-plt.plot(x, mse_hist[:len(x)], x, ssim_hist[:len(x)], x, rand_hist[:len(x)])
-plt.legend(['ssim_unstructured','ssim_old','random'])
+plt.plot(x, best_hist[:len(x)], x, mse_hist[:len(x)], x, ssim_hist[:len(x)], x, rand_hist[:len(x)])
+plt.legend(['min-error (3.43)', 'ssim_unstructured (6.4)','ssim_old (6.6)','random (8.2)'])
 plt.xlabel('Matches')
 plt.ylabel('Mean error')
-plt.title('Organ-Wise Mean Error vs Number of Matches With 16 Outliers Removed')
+plt.title('Organ-Wise Mean Error vs Number of Matches With 0 Outliers Removed')
