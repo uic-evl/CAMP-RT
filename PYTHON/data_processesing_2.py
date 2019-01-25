@@ -15,7 +15,8 @@ class Constants():
     organ_list = [
         'Brainstem','Cricoid_cartilage','Cricopharyngeal_Muscle',
         'Esophagus','Extended_Oral_Cavity','Genioglossus_M',
-        'Glottic_Area','Hard_Palate','Hyoid_bone',
+        #'Glottic_Area',
+        'Hard_Palate','Hyoid_bone',
         'IPC','Larynx','Lower_Lip',
         'Lt_Ant_Digastric_M','Lt_Anterior_Seg_Eyeball',
         'Lt_Brachial_Plexus','Lt_Lateral_Pterygoid_M',
@@ -59,7 +60,7 @@ class Rankings():
             p_ref = patient_2
             p_new = patient_1
         volumes = p_ref.volumes
-        dists = np.sqrt(np.sum(np.abs(p_ref.centroids**2 - p_new.centroids**2), axis = 1))
+        dists = np.sqrt(np.sum((p_ref.centroids - p_new.centroids)**2, axis = 1))
         work = np.sum(dists*volumes)
         #we this to work with the other functions so >0 and high scores = closer
         return(1/(work + .000001))
@@ -84,14 +85,20 @@ class Patient():
         doses.columns = Constants.centroid_file_names
         doses = doses.sort_values(by = ['ROI'])
         centroids = self.center_doses(doses)
-        self.gtvp = doses.loc[doses['ROI'] == 'GTVp']
-        self.gtvn = doses.loc[doses['ROI'] == 'GTVn']
-        if self.gtvp.empty:
-            print('patient ', self.id, 'is missing gtvp')
-            self.gtvp.volume = 0
-            print(self.gtvp.volume)
-        if self.gtvn.empty:
-            self.gtvn.volume = 0
+        gtvp = doses.loc[doses['ROI'] == 'GTVp']
+        gtvn = doses.loc[doses['ROI'] == 'GTVn']
+        if(not gtvp.empty):
+            self.gtvp_volume = gtvp.volume.values[0]
+            self.gtvp_position = gtvp[['x','y','z']].values[0]
+        else:
+            self.gtvp_volume = 0
+            self.gtvp_position = np.array([0,0,0])
+        if(not gtvn.empty):
+            self.gtvp_volume = gtvn.volume.values[0]
+            self.gtvp_position = gtvn[['x','y','z']].values[0]
+        else:
+            self.gtvn_volume = 0
+            self.gtvn_position = np.array([0,0,0])
         centroids = centroids.loc[doses['ROI'].isin(Constants.organ_list)]
         #extracts a vector of the mean dose values with zero for missing organs added in
         missing_organs = set(Constants.organ_list) - set(centroids['ROI'].unique())
@@ -121,9 +128,10 @@ class Patient():
         distances = distances.set_index(['Reference ROI', 'Target ROI'])
         #extracts the matrix of values.  set_index sorts by default
         dist_matrix = distances['Eucledian Distance (mm)'].unstack(fill_value = 0).values
-        #dist_matrix += np.transpose(dist_matrix)
-        if(len(dist_matrix) != 45):
-            print('Patient with id ', self.pos, ' is missing organs')
+        
+#        if(len(dist_matrix) != 45):
+#            print('Patient with id ', self.pos, ' is missing organs')
+
         #so this result is a 45x45 upper triangular.
         #values are more like the upper triangle of a 46x46 matrix with trace = 0
         good_indices = np.triu_indices(len(dist_matrix))
@@ -182,22 +190,59 @@ class PatientSet():
             dose_matrix[patient_index, :] = new_patient.doses
         return((patients, dose_matrix, num_patients))
     
-    def gen_score_matrix(self, score_function = 'ssim'):
+    def gen_score_matrix(self, rank_function = 'ssim', weights = 1):
         #generates a score matrix based on a rank function
         #function should rank more similar people with a higher number
         scores = np.zeros((self.num_patients, self.num_patients))
         for row in range(0, self.num_patients):
             for col in range(row + 1, self.num_patients):
                 scores[row, col] = self.compare_traits(self.patients[row], self.patients[col],
-                      rank_function = score_function, weights = np.array([1,.1,1]))
+                      rank_function = rank_function, weights = weights)
         #formats it as a symetric matrix with a zero diagonal
         scores += scores.transpose()
         #basically normalize the score so the max is 1?
         scores = scores/scores.max()
         return(scores)
     
+    def predict_doses(self, rank_function = 'ssim', weights = 1, num_matches = 5):
+        estimates = np.zeros(self.doses.shape)
+        ranks = self.gen_score_matrix(rank_function = rank_function, weights = weights)
+        for patient_idx in range(0, self.num_patients):
+            sorted_matches = np.argsort(-ranks[patient_idx,:])
+            top_matches = sorted_matches[0:num_matches]
+            scores = ranks[patient_idx, tuple(top_matches)]
+            matched_dosages = self.doses[tuple(top_matches), :]
+            for match_idx in range(0, num_matches):
+                matched_dosages[match_idx, :] = scores[match_idx]*matched_dosages[match_idx, :]
+            estimates[patient_idx, :] = np.mean(matched_dosages, axis = 0)/np.mean(scores)
+        return(estimates)
+            
+#def generate_dose_estimates(ranks, doses, min_matches = 5, min_rank = .99):
+#    estimates = np.zeros(doses.shape)
+#    for patient_idx in range(0, len(doses)):
+#        #get index of the scores in ascending order
+#        #use either the minimum number of matches for ones above a minimum rank
+#        num_matches = max([len(np.where(ranks[patient_idx,:] > min_rank)[0]), min_matches])
+#        sorted_matches = np.argsort(-ranks[patient_idx,:]) #ranks is negative so the result is in decending order
+#        top_matches = sorted_matches[0:num_matches]
+#        scores = ranks[patient_idx, tuple(top_matches)] #scores, can be used later for figuring out scaling
+#        #try to use more scores when there are few good matches?
+#        #doesnt work good, but is slightly more robust at low match minimums
+#        while(np.sum(scores) < 1 and num_matches < len(doses)):
+#            num_matches += 1
+#            top_matches = sorted_matches[0:num_matches]
+#            scores = ranks[patient_idx, tuple(top_matches)]
+#        matched_dosages = doses[tuple(top_matches), :]
+#        #scale based on scores, I don't feel like this does much
+#        #does the ratio so that non-normalized metrics can be used
+#        score_ratios = scores/scores.max()
+#        for match_idx in range(0, num_matches):
+#            matched_dosages[match_idx, :] = score_ratios[match_idx]*matched_dosages[match_idx, :]
+#        estimates[patient_idx, :] = np.mean(matched_dosages, axis = 0)/np.mean(score_ratios)
+#    return estimates
+    
     def compare_traits(self, p1, p2, rank_function = 'ssim', weights = 1):
-        score = np.zeros((3,))
+        score = np.zeros((4,))
         if rank_function == 'ssim':
             score[0] = Rankings.ssim(p1, p1)
         elif rank_function == 'emd':
@@ -206,13 +251,14 @@ class PatientSet():
             print('error, invalid rank method: ', rank_function)
         score[1] = 1 if p1.laterality == p2.laterality else 0
         #try making this also transformation distance?
-        score[2] = 1 - np.abs(p1.gtvp.get('volume') - p2.gtvp.get('volume'))/(
-                np.max([p1.gtvp.get('volume'), p2.gtvp.get('volume')]) + .000001)
-        #gtvn for later?
-        #score[3] = 1 - np.abs(p1.gtvn.volume - p2.gtvn.volume)/(max([p1.gtvn.volume, p2.gtvn.volume]) + .000001)
+        score[2] = 1 - np.abs(p1.gtvp_volume - p2.gtvp_volume)/(
+                np.max([p1.gtvp_volume, p2.gtvp_volume]) + .000001)
+        #something like a distance metric?
+        primary_tumor_emd = np.max([p1.gtvp_volume, p2.gtvp_volume]) * np.sqrt(np.sum((p1.gtvp_position - p2.gtvp_position)**2))
+        score[3] = 1000/(primary_tumor_emd + 1000)
         final_score = np.sum(score*weights)/np.mean(weights)
         return(final_score)
     
 
 db = PatientSet()
-scores = db.gen_score_matrix(Rankings.emd)
+scores = db.predict_doses()
