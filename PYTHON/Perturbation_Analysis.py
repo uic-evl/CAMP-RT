@@ -263,9 +263,10 @@ def gen_dose_matrix(data):
         dose_matrix[idx, organ_idx] = np.mean(dose_matrix[:, organ_idx])
     return dose_matrix
 
+rank_by_mse = lambda x: modified_rank_by_ssim(x, rank_function = 'mse')
 (best_hist, diff4) = run_with_metric(rank_by_dose)
-(mse_hist, diffs1) = run_with_metric(modified_rank_by_ssim)
-(ssim_hist, diff2) = run_with_metric(rank_by_ssim)
+(mse_hist, diffs1) = run_with_metric(rank_by_mse)
+(ssim_hist, diff2) = run_with_metric(modified_rank_by_ssim)
 (rand_hist, diff3) = run_with_metric(rank_randomly)
 x = np.linspace(1, len(mse_hist), len(mse_hist))
 plt.plot(x, best_hist[:len(x)], x, mse_hist[:len(x)], x, ssim_hist[:len(x)], x, rand_hist[:len(x)])
