@@ -11,32 +11,79 @@ from collections import OrderedDict
 from skimage.measure import compare_ssim, compare_mse
 import random
 import matplotlib.pyplot as plt
+import pickle
 
 class Constants():
     #all non-tumor organs being included (some datasets have more)
-    organ_list = [
-        'Brainstem','Cricoid_cartilage','Cricopharyngeal_Muscle',
-        'Esophagus','Extended_Oral_Cavity','Genioglossus_M',
-        #'Glottic_Area',
-        'Hard_Palate','Hyoid_bone',
-        'IPC','Larynx','Lower_Lip',
-        'Lt_Ant_Digastric_M','Lt_Anterior_Seg_Eyeball',
-        'Lt_Brachial_Plexus','Lt_Lateral_Pterygoid_M',
-        'Lt_Masseter_M','Lt_Mastoid',
-        'Lt_Medial_Pterygoid_M','Lt_Parotid_Gland',
-        'Lt_Posterior_Seg_Eyeball','Lt_Sternocleidomastoid_M',
-        'Lt_Submandibular_Gland','Lt_thyroid_lobe',
-        'Mandible','MPC','Mylogeniohyoid_M',
-        'Rt_Ant_Digastric_M','Rt_Anterior_Seg_Eyeball',
-        'Rt_Brachial_Plexus','Rt_Lateral_Pterygoid_M',
-        'Rt_Masseter_M','Rt_Mastoid',
-        'Rt_Medial_Pterygoid_M','Rt_Parotid_Gland',
-        'Rt_Posterior_Seg_Eyeball','Rt_Sternocleidomastoid_M',
-        'Rt_Submandibular_Gland','Rt_thyroid_lobe',
-        'Soft_Palate','SPC','Spinal_Cord',
-        'Supraglottic_Larynx','Thyroid_cartilage','Tongue',
-        'Upper_Lip'
-    ]
+#    organ_list = [
+#        'Brainstem','Cricoid_cartilage','Cricopharyngeal_Muscle',
+#        'Esophagus','Extended_Oral_Cavity','Genioglossus_M',
+#        #'Glottic_Area',
+#        'Hard_Palate','Hyoid_bone',
+#        'IPC','Larynx','Lower_Lip',
+#        'Lt_Ant_Digastric_M','Lt_Anterior_Seg_Eyeball',
+#        'Lt_Brachial_Plexus','Lt_Lateral_Pterygoid_M',
+#        'Lt_Masseter_M','Lt_Mastoid',
+#        'Lt_Medial_Pterygoid_M','Lt_Parotid_Gland',
+#        'Lt_Posterior_Seg_Eyeball','Lt_Sternocleidomastoid_M',
+#        'Lt_Submandibular_Gland','Lt_thyroid_lobe',
+#        'Mandible','MPC','Mylogeniohyoid_M',
+#        'Rt_Ant_Digastric_M','Rt_Anterior_Seg_Eyeball',
+#        'Rt_Brachial_Plexus','Rt_Lateral_Pterygoid_M',
+#        'Rt_Masseter_M','Rt_Mastoid',
+#        'Rt_Medial_Pterygoid_M','Rt_Parotid_Gland',
+#        'Rt_Posterior_Seg_Eyeball','Rt_Sternocleidomastoid_M',
+#        'Rt_Submandibular_Gland','Rt_thyroid_lobe',
+#        'Soft_Palate','SPC','Spinal_Cord',
+#        'Supraglottic_Larynx','Thyroid_cartilage','Tongue',
+#        'Upper_Lip'
+#    ]
+    organ_list = ['Extended_Oral_Cavity',
+                  'Genioglossus_M',
+                  'Hard_Palate',
+                  'Lower_Lip',
+                  'Lt_Ant_Digastric_M',
+                  'Lt_Lateral_Pterygoid_M',
+                  'Lt_Masseter_M',
+                  'Lt_Medial_Pterygoid_M',
+                  'Mandible',
+                  'Mylogeniohyoid_M',
+                  'Rt_Ant_Digastric_M',
+                  'Rt_Lateral_Pterygoid_M',
+                  'Rt_Masseter_M',
+                  'Rt_Medial_Pterygoid_M',
+                  'Soft_Palate',
+                  'Tongue',
+                  'Upper_Lip',
+                  'Cricoid_cartilage',
+                  'Cricopharyngeal_Muscle',
+                  'Esophagus',
+                  'Hyoid_bone',
+                  'IPC',
+                  'Larynx',
+                  'Lt_Sternocleidomastoid_M',
+                  'Lt_thyroid_lobe',
+                  'MPC',
+                  'Rt_Sternocleidomastoid_M',
+                  'Rt_thyroid_lobe',
+                  'SPC',
+                  'Supraglottic_Larynx',
+                  'Thyroid_cartilage',
+                  'Lt_Parotid_Gland',
+                  'Lt_Submandibular_Gland',
+                  'Rt_Parotid_Gland',
+                  'Rt_Submandibular_Gland',
+                  'Lt_Anterior_Seg_Eyeball',
+                  'Lt_Posterior_Seg_Eyeball',
+                  'Rt_Anterior_Seg_Eyeball',
+                  'Rt_Posterior_Seg_Eyeball',
+                  'Brainstem',
+                  'Lt_Brachial_Plexus',
+                  'Rt_Brachial_Plexus',
+                  'Spinal_Cord',
+                  'Lt_Mastoid',
+                  'Rt_Mastoid'
+            ]
     num_organs = len(organ_list)
     #GTVn analgoues: 'GTV node', 'GTV-N', 'GTV_n', 'GTVn2', 'GTVn1'
     #GTVp analogues: 'GTV primary', 'GTV-P', 'GTV_p'
@@ -51,14 +98,25 @@ class Constants():
 
 class Rankings():
     #ranking functions that generate a score, takes in pateint objects
+    old_weights = np.array([3432,32423,1])
+    
     def vector_ssim(p1, p2):
         upper_triangle = np.triu_indices(len((p1.distances)))
         d1 = p1.distances[upper_triangle].ravel()
         d2 = p2.distances[upper_triangle].ravel()
-        return(compare_ssim(d1, d2))
+        return(compare_ssim(d1, d2, win_size = 5))
 
     def ssim(p1, p2):
-        return(compare_ssim(p1.distances, p2.distances))
+        return(compare_ssim(p1.distances, p2.distances, win_size = 3))
+    
+    def ssim_with_laterality(p1, p2, weights = np.array([1,2,.05])):
+        scores = np.zeros((3,))
+        scores[0] = Rankings.ssim(p1,p2)
+        scores[1] = 1 if p1.laterality == p2.laterality else 0
+        scores[2] = 1 - np.abs(p1.gtvp_volume - p2.gtvp_volume)/(
+                np.max([p1.gtvp_volume, p2.gtvp_volume]) + .000001)
+        final_score = np.sum(scores*weights)/np.mean(weights)
+        return(final_score)
 
     def mse(p1,p2):
         return( 1/( compare_mse(p1.distances, p2.distances) + .000001) )
@@ -66,13 +124,8 @@ class Rankings():
     def emd(patient_1, patient_2):
         #simplified earth movers distance - here it's just work done to move organs in the less massive
         #patient into the same positions of the more massive patient
-        p_ref = patient_1
-        p_new = patient_2
-        if(np.sum(patient_1.volumes) > np.sum(patient_2.volumes)):
-            p_ref = patient_2
-            p_new = patient_1
-        volumes = p_ref.volumes
-        dists = np.sqrt(np.sum((p_ref.centroids - p_new.centroids)**2, axis = 1))
+        volumes = np.abs(patient_1.volumes - patient_2.volumes)
+        dists = np.sqrt(np.sum((patient_1.centroids - patient_2.centroids)**2, axis = 1))
         work = np.sum(dists*volumes)
         #we this to work with the other functions so >0 and high scores = closer
         return(1/(work + .000001))
@@ -80,6 +133,21 @@ class Rankings():
     def min_dose_error(p1, p2):
         error = np.mean(np.abs(p1.doses - p2.doses))
         return(1/(error + .000001))
+    
+    def experimental(p1, p2, weights = np.array([1,.5,1,.05,.1])):
+        if not np.array_equal(Rankings.old_weights, weights):
+            Rankings.old_weights = weights
+            print('weights ', weights)
+        scores = np.zeros((5,))
+        scores[0] = compare_ssim(p1.gtvp_dists, p2.gtvp_dists, win_size = 3)
+        scores[1] = Rankings.vector_ssim(p1, p2)
+        scores[2] = 1 if p1.laterality == p2.laterality else 0
+        scores[3] = 1 - np.abs(p1.gtvp_volume - p2.gtvp_volume)/(
+                np.max([p1.gtvp_volume, p2.gtvp_volume]) + .000001)
+        scores[4] = 1/(compare_mse(p1.volumes, p2.volumes) + .000001)
+        final_score = np.sum(scores*weights)/np.mean(weights)
+        return(final_score)
+        
 
 class Patient():
 
@@ -88,6 +156,7 @@ class Patient():
         self.id = p_id
         #basically ordinality of the id, so where it will be in an index
         self.pos = position
+        self.check_missing_organs(distances, doses)
         self.laterality = info['Tm Laterality (R/L)']
         self.age = info['Age at Diagnosis (Calculated)']
         centroid_data = self.get_doses_file_info(doses)
@@ -95,22 +164,30 @@ class Patient():
         self.volumes = centroid_data[:, 3]
         self.centroids = centroid_data[:, 0:3]
         self.distances = self.gen_distance_matrix(distances)
+        (self.gtvp_dists, self.gtvn_dists) = self.get_tumor_distances(distances)
 
-
+    def check_missing_organs(self, distances, doses):
+        organs = set(Constants.organ_list[:])
+        dose_organs = set(doses['ROI'].unique())
+        diff = organs - dose_organs
+        for missing_organ in diff:
+            print('patient ', self.id, ' at index ', self.pos, ' is missing organ ', missing_organ)
+        return
+        
     def get_doses_file_info(self, doses):
         doses.columns = Constants.centroid_file_names
         centroids = self.center_centroids(doses)
         centroids = centroids.set_index('ROI')
         try:
             gtvp = doses.loc['GTVp']
-            self.gtvp_volume = gtvp.volume.values[0]
+            self.gtvp_volume = gtvp.volume
             self.gtvp_position = gtvp[['x','y','z']].values[0]
         except:
             self.gtvp_volume = 0
             self.gtvp_position = np.array([0,0,0])
         try:
             gtvn = doses.loc['GTVp']
-            self.gtvn_volume = gtvn.volume.values[0]
+            self.gtvn_volume = gtvn.volume
             self.gtvn_position = gtvn[['x','y','z']].values[0]
         except:
             self.gtvn_volume = 0
@@ -124,7 +201,8 @@ class Patient():
                 centroid_matrix[idx, 3] = organ_entry.volume
                 centroid_matrix[idx, 4] = organ_entry.mean_dose
             except:
-                print('patient ', self.id, ' is missing organ ', organ, ' centroid data')
+                pass
+                #print('patient ', self.id, ' is missing organ ', organ, ' centroid data')
         return(centroid_matrix)
 
     def center_centroids(self, centroids):
@@ -137,7 +215,7 @@ class Patient():
 
     def gen_distance_matrix(self, dists):
         dist_matrix = np.zeros(( Constants.num_organs, Constants.num_organs))
-        dists = dists.set_index(['Reference ROI', 'Target ROI'])
+        dists = dists.set_index(['Reference ROI', 'Target ROI']).sort_index()
         for row in range(0, Constants.num_organs):
             for col in range(row + 1, Constants.num_organs):
                 organ1 = Constants.organ_list[row]
@@ -147,22 +225,34 @@ class Patient():
                 except:
                     dist_matrix[row, col] = 0
         dist_matrix += np.transpose(dist_matrix)
+        return(dist_matrix)
+    
+    def get_tumor_distances(self, dists):
+        gtvp_dists = np.zeros((Constants.num_organs,))
+        gtvn_dists = np.zeros((Constants.num_organs,))
+        dists = dists.set_index(['Reference ROI', 'Target ROI']).sort_index()
         for idx in range(0, Constants.num_organs):
             try:
                 tumor_row = dists.loc['GTVp', Constants.organ_list[idx]]
-                dist_matrix[idx, idx] = tumor_row['Eucledian Distance (mm)']
+                gtvp_dists[idx] = tumor_row['Eucledian Distance (mm)']
             except:
-                dist_matrix[idx, idx] = 0
-        return(dist_matrix)
+                gtvp_dists[idx] = -1
+            try:
+                tumor_row = dists.loc['GTVn', Constants.organ_list[idx]]
+                gtvn_dists[idx] = tumor_row['Eucledian Distance (mm)']
+            except:
+                gtvn_dists[idx] = -1
+        return((gtvp_dists, gtvn_dists))
 
 class PatientSet():
 
-    def __init__(self, outliers = [12,13,30,55,69]):
+    def __init__(self, outliers = [241, 236, 230, 219,211, 205, 203, #211 and 170 have fatal errors
+                                   199, 190, 184, 177, 175, 173, 
+                                   172, 170, 169, 168, 151, 149, 
+                                   138, 137, 100, 74, 56, 55, 34]):
         self.outliers = outliers
         (self.patients, self.doses, self.num_patients) = self.read_patient_data()
         print('\npatient data loaded...\n')
-
-
 
     def read_patient_data(self):
         #sorts by size of largest integer string, which is the id for our files
@@ -170,8 +260,8 @@ class PatientSet():
                                      lambda file:
                                          max([int(x) for x in findall("[0-9]+", file)])
                                 )
-        distance_files = file_sort(glob('patients_v2\\' + '**/*distances.csv'))
-        dose_files = file_sort(glob('patients_v2\\' + '**/*centroid*.csv'))
+        distance_files = file_sort(glob('patient_files\\' + '**/*distances.csv'))
+        dose_files = file_sort(glob('patient_files\\' + '**/*centroid*.csv'))
         for file_pos in sorted(self.outliers, reverse = True):
             del distance_files[file_pos]
             del dose_files[file_pos]
@@ -212,7 +302,7 @@ class PatientSet():
         #formats it as a symetric matrix with a zero diagonal
         scores += scores.transpose()
         #basically normalize the score so the max is 1?
-        #scores = scores/scores.max()
+        scores = scores/scores.max()
         return(scores)
 
     def predict_doses(self, rank_function = 'ssim', weights = 1, num_matches = 5):
@@ -243,61 +333,50 @@ class PatientSet():
                        'differences': differences}
         return(result_dict)
 
-    def compare_traits(self, p1, p2, rank_function = 'ssim', weights = 1):
+    def compare_traits(self, p1, p2, weights, rank_function = 'ssim'):
         #calculates an overall scores
         #currently: comparison function, if laterality is equal, difference in tumor volume, tumor distances
-        score = np.zeros((4,))
         if rank_function == 'ssim':
-            score[0] = Rankings.ssim(p1, p2)
-        elif rank_function == 'emd':
-            score[0] = Rankings.emd(p1, p2)
+            score = Rankings.ssim_with_laterality(p1, p2, weights = weights)
+        elif rank_function == 'experimental':
+            score = Rankings.experimental(p1,p2,weights = weights)
         elif rank_function == 'min_dose_error':
-            score[0] = Rankings.min_dose_error(p1,p2)
+            score = Rankings.min_dose_error(p1,p2)
         elif rank_function == 'random':
-            score[0] = random.random()
+            score = random.random()
         elif rank_function == 'mse':
-            score[0] = Rankings.mse(p1,p2)
-        elif rank_function == 'unordered ssim':
-            score[0] = Rankings.vector_ssim(p1, p2)
+            score = Rankings.mse(p1,p2)
         else:
-            print('error, invalid rank method: ', rank_function)
-        score[1] = 1 if p1.laterality == p2.laterality else 0
-        #try making this also transformation distance?
-        score[2] = 1 - np.abs(p1.gtvp_volume - p2.gtvp_volume)/(
-                np.max([p1.gtvp_volume, p2.gtvp_volume]) + .000001)
-        #something like a distance metric?
-        primary_tumor_dist = np.sqrt(np.sum((p1.gtvp_position - p2.gtvp_position)**2))
-        score[3] = 100/(primary_tumor_dist + 100)
-        final_score = np.sum(score*weights)/np.mean(weights)
-        return(final_score)
+            print('error, invalid rank method: ', rank_function)    
+        return(score)
 
     def run_study(self, max_matches = 20, rank_function = 'ssim', weights = 1):
         #tests out a metric for a range of difference potential matches and gives a minimum
         error_hist = []
-        for num_matches in range(1, max_matches):
+        for num_matches in range(2, max_matches):
             estimates = self.predict_doses(rank_function, weights, num_matches)
             error = np.mean(np.abs(self.doses - estimates))
             error_hist.append(error)
-        print(rank_function, ': error of', min(error_hist), ' at ', np.argmin(error_hist))
+        print(rank_function, ': error of', min(error_hist), ' at ', np.argmin(error_hist) + 2)
         return(error_hist)
 
+#db = PatientSet()
+#pickle.dump(db, open('data\\patient_data.p', 'wb'))
+db = pickle.load(open('data\\patient_data.p', 'rb'))
+#weights = np.array([1,2,.05])
+#test_weights = np.array([2,0.5,2,.05,1])
+#max_count = 20
+#
+#from scipy.optimize import minimize
+#func = lambda x: max(db.run_study(rank_function = 'experimental', weights = x, max_matches = 8))
+#result = minimize(func, test_weights, method = 'CG', options ={'disp': True, 'eps': 1})
 
-db = PatientSet()
-d = db.patients[1].distances
-
-rand_hist = []
-ssim_hist = []
-min_error_hist = []
-mse_hist = []
-weights = np.array([1,2,.05,.01])
-test_weights = np.array([1,2,.05,.5])
-max_count = 15
-
-rand_hist = db.run_study(rank_function = 'random', weights = weights, max_matches = max_count)
-ssim_hist = db.run_study(rank_function = 'ssim', weights = weights, max_matches = max_count)
-mse_hist = db.run_study(rank_function = 'unordered ssim', weights = weights, max_matches = max_count)
-min_error_hist = db.run_study(rank_function = 'min_dose_error', weights = weights, max_matches = max_count)
-
-x = list(range(1, max_count))
-plt.plot(x, rand_hist, x, ssim_hist, x, mse_hist, x, min_error_hist)
-plt.legend(['random','ssim','test function','min error'])
+#rand_hist = db.run_study(rank_function = 'random', max_matches = max_count, weights = 1)
+#ssim_hist = db.run_study(rank_function = 'ssim', weights = weights, max_matches = max_count)
+#mse_hist = db.run_study(rank_function = 'experimental', weights = test_weights, max_matches = max_count)
+#min_error_hist = db.run_study(rank_function = 'min_dose_error', max_matches = max_count, weights = 1)
+#
+#x = list(range(2, max_count))
+#plt.plot(x, rand_hist, x, ssim_hist, x, mse_hist, x, min_error_hist)
+##plt.plot(x, rand_hist, x, mse_hist, x, min_error_hist)
+#plt.legend(['random','ssim','test function','min error'])
