@@ -90,16 +90,96 @@ class Constants():
     tumor_aliases = {'GTV node': 'GTVn', 'GTV-N': 'GTVn',
                      'GTV_n': 'GTVn', 'GTVn1': 'GTVn',
                      'GTVn2': 'GTVn','GTV primary': 'GTVp',
-                     'GTV-P': 'GTVp', 'GTV_p': 'GTVp'}
+                     'GTV-P': 'GTVp', 'GTV_p': 'GTVp',
+                     'GTV nodes': 'GTVn', 'GTV tongue': 'GTVp',
+                     'GTV-N1': 'GTVn', 'GTV-N2': 'GTVn'}
     #names to use for the dataframe when I read a centroid file.  it's cleaner
     centroid_file_names = ['ROI', 'x', 'y', 'z', 'mean_dose', 'volume', 'min_dose', 'max_dose']
     #patients without organs, using their sorted order (12th patient in the sorted list ect)
-    patients_without_organs = [12,13,30,55,69]
+    missing_organs = {34: {'id': 131, 'organs': {'Lt_Parotid_Gland'}},
+         55: {'id': 174, 'organs': {'Lt_Mastoid'}},
+         56: {'id': 175, 'organs': {'Rt_Ant_Digastric_M'}},
+         74: {'id': 205, 'organs': {'Lt_thyroid_lobe'}},
+         100: {'id': 249, 'organs': {'Spinal_Cord','Supraglottic_Larynx','Thyroid_cartilage','Tongue','Upper_Lip'}},
+         137: {'id': 5001, 'organs': {'Lt_Posterior_Seg_Eyeball'}},
+         138: {'id': 5003, 'organs': {'Rt_Ant_Digastric_M'}},
+         149: {'id': 5042,'organs': {'Lt_Posterior_Seg_Eyeball', 'Rt_Posterior_Seg_Eyeball'}},
+         151: {'id': 5053,'organs': {'Lt_Posterior_Seg_Eyeball','Rt_Anterior_Seg_Eyeball','Rt_Posterior_Seg_Eyeball'}},
+         168: {'id': 10009, 'organs': {'Rt_Lateral_Pterygoid_M'}},
+         169: {'id': 10011, 'organs': {'Cricoid_cartilage'}},
+         170: {'id': 10013, 'organs': {'Rt_Parotid_Gland'}},
+         172: {'id': 10015, 'organs': {'Rt_Brachial_Plexus'}},
+         173: {'id': 10018,'organs': {
+            'Cricopharyngeal_Muscle',
+           'Extended_Oral_Cavity',
+           'Lt_Anterior_Seg_Eyeball',
+           'Lt_Brachial_Plexus',
+           'Lt_Posterior_Seg_Eyeball',
+           'Mylogeniohyoid_M',
+           'Rt_Anterior_Seg_Eyeball',
+           'Rt_Brachial_Plexus',
+           'Rt_Posterior_Seg_Eyeball',
+           'Rt_Sternocleidomastoid_M',
+           'Spinal_Cord',
+           'Supraglottic_Larynx',
+           'Thyroid_cartilage'}},
+         175: {'id': 10020,'organs': {
+            'Cricopharyngeal_Muscle',
+           'Extended_Oral_Cavity',
+           'Lt_Anterior_Seg_Eyeball',
+           'Lt_Brachial_Plexus',
+           'Lt_Posterior_Seg_Eyeball',
+           'Mylogeniohyoid_M',
+           'Rt_Anterior_Seg_Eyeball',
+           'Rt_Brachial_Plexus',
+           'Rt_Posterior_Seg_Eyeball',
+           'Rt_Sternocleidomastoid_M',
+           'Spinal_Cord',
+           'Supraglottic_Larynx'}},
+         177: {'id': 10022,'organs': {
+            'Cricopharyngeal_Muscle',
+           'Extended_Oral_Cavity',
+           'Lt_Anterior_Seg_Eyeball',
+           'Lt_Brachial_Plexus',
+           'Lt_Posterior_Seg_Eyeball',
+           'Mylogeniohyoid_M',
+           'Rt_Anterior_Seg_Eyeball',
+           'Rt_Brachial_Plexus',
+           'Rt_Posterior_Seg_Eyeball',
+           'Rt_Sternocleidomastoid_M',
+           'Spinal_Cord',
+           'Supraglottic_Larynx'}},
+         178: {'id': 10029, 'organs': {'Rt_Ant_Digastric_M'}},
+         184: {'id': 10044,'organs': {
+            'Cricopharyngeal_Muscle',
+           'Extended_Oral_Cavity',
+           'Lt_Anterior_Seg_Eyeball',
+           'Lt_Brachial_Plexus',
+           'Lt_Posterior_Seg_Eyeball',
+           'Mylogeniohyoid_M',
+           'Rt_Anterior_Seg_Eyeball',
+           'Rt_Brachial_Plexus',
+           'Rt_Posterior_Seg_Eyeball',
+           'Rt_Sternocleidomastoid_M',
+           'Spinal_Cord',
+           'Supraglottic_Larynx'}},
+         190: {'id': 10065,'organs': {'Lt_Anterior_Seg_Eyeball', 'Rt_Anterior_Seg_Eyeball'}},
+         199: {'id': 10085, 'organs': {'Lt_Parotid_Gland'}},
+         203: {'id': 10094, 'organs': {'Hyoid_bone'}},
+         205: {'id': 10103, 'organs': {'Hyoid_bone'}},
+         211: {'id': 10130, 'organs': {'Brainstem', 'Cricoid_cartilage'}},
+         213: {'id': 10132, 'organs': {'Thyroid_cartilage'}},
+         219: {'id': 10140, 'organs': {'Rt_Anterior_Seg_Eyeball'}},
+         230: {'id': 10157, 'organs': {'Rt_Posterior_Seg_Eyeball'}},
+         236: {'id': 10176, 'organs': {'Thyroid_cartilage'}},
+         241: {'id': 10191, 'organs': {'Rt_Brachial_Plexus'}}}
+    no_gtvp = []
+    no_gtvn = []
 
 class Rankings():
     #ranking functions that generate a score, takes in pateint objects
     old_weights = np.array([3432,32423,1])
-    
+
     def vector_ssim(p1, p2):
         upper_triangle = np.triu_indices(len((p1.distances)))
         d1 = p1.distances[upper_triangle].ravel()
@@ -108,7 +188,7 @@ class Rankings():
 
     def ssim(p1, p2):
         return(compare_ssim(p1.distances, p2.distances, win_size = 3))
-    
+
     def ssim_with_laterality(p1, p2, weights = np.array([1,2,.05])):
         scores = np.zeros((3,))
         scores[0] = Rankings.ssim(p1,p2)
@@ -133,8 +213,8 @@ class Rankings():
     def min_dose_error(p1, p2):
         error = np.mean(np.abs(p1.doses - p2.doses))
         return(1/(error + .000001))
-    
-    def experimental(p1, p2, weights = np.array([1,.5,1,.05,.1])):
+
+    def experimental(p1, p2, weights = np.array([1,.4,1,.05,.1])):
         if not np.array_equal(Rankings.old_weights, weights):
             Rankings.old_weights = weights
             print('weights ', weights)
@@ -143,11 +223,11 @@ class Rankings():
         scores[1] = Rankings.vector_ssim(p1, p2)
         scores[2] = 1 if p1.laterality == p2.laterality else 0
         scores[3] = 1 - np.abs(p1.gtvp_volume - p2.gtvp_volume)/(
-                np.max([p1.gtvp_volume, p2.gtvp_volume]) + .000001)
+                p1.gtvp_volume + p2.gtvp_volume + .000001)
         scores[4] = 1/(compare_mse(p1.volumes, p2.volumes) + .000001)
         final_score = np.sum(scores*weights)/np.mean(weights)
         return(final_score)
-        
+
 
 class Patient():
 
@@ -159,39 +239,56 @@ class Patient():
         self.check_missing_organs(distances, doses)
         self.laterality = info['Tm Laterality (R/L)']
         self.age = info['Age at Diagnosis (Calculated)']
+        print(len(distances.columns), ' ', self.id)
         centroid_data = self.get_doses_file_info(doses)
         self.doses = centroid_data[:, 4]
         self.volumes = centroid_data[:, 3]
         self.centroids = centroid_data[:, 0:3]
         self.distances = self.gen_distance_matrix(distances)
         (self.gtvp_dists, self.gtvn_dists) = self.get_tumor_distances(distances)
+        #store the entries without gtvp for future study
+        if(self.gtvp_volume == 0):
+            Constants.no_gtvp.append(self.id)
+        if(self.gtvn_volume == 0):
+            Constants.no_gtvn.append(self.id)
 
     def check_missing_organs(self, distances, doses):
+        #check if any organs are missing using the dose file, and store them
         organs = set(Constants.organ_list[:])
         dose_organs = set(doses['ROI'].unique())
         diff = organs - dose_organs
-        for missing_organ in diff:
-            print('patient ', self.id, ' at index ', self.pos, ' is missing organ ', missing_organ)
+        #for missing_organ in diff:
+            #print('patient ', self.id, ' at index ', self.pos, ' is missing organ ', missing_organ)
+        if len(diff) > 0:
+            Constants.missing_organs[self.pos] = {'id': self.id, 'organs': diff}
         return
-        
+
     def get_doses_file_info(self, doses):
+        #rename the columns so they're consistent
         doses.columns = Constants.centroid_file_names
+        #move centroids so the center of the cloud is at zero?
         centroids = self.center_centroids(doses)
         centroids = centroids.set_index('ROI')
+        #extract the primary tumor info.
         try:
-            gtvp = doses.loc['GTVp']
+            gtvp = centroids.loc['GTVp']
             self.gtvp_volume = gtvp.volume
-            self.gtvp_position = gtvp[['x','y','z']].values[0]
+            self.gtvp_position = gtvp[['x','y','z']].values
         except:
             self.gtvp_volume = 0
             self.gtvp_position = np.array([0,0,0])
+        #extract a secondary tumor (only gets the first one?)
+        #several patients have no gtvp but a gtvn
         try:
-            gtvn = doses.loc['GTVp']
+            gtvn = centroids.loc['GTVn']
+            if(len(gtvn.volume) > 1): #there are often multiple gtvns, how do I handle that
+                gtvn = gtvn.iloc[0]
             self.gtvn_volume = gtvn.volume
-            self.gtvn_position = gtvn[['x','y','z']].values[0]
+            self.gtvn_position = gtvn[['x','y','z']].values
         except:
             self.gtvn_volume = 0
             self.gtvn_position = np.array([0,0,0])
+        #get the info the centers, volumes, nad doses for all the things
         centroid_matrix = np.zeros((Constants.num_organs,5)) #row = x,y,z,volume,dose
         for idx in range(0, Constants.num_organs):
             organ = Constants.organ_list[idx]
@@ -214,6 +311,7 @@ class Patient():
         return(centroids)
 
     def gen_distance_matrix(self, dists):
+        #generates a symetric 45x45 matrix of organ-organ distances
         dist_matrix = np.zeros(( Constants.num_organs, Constants.num_organs))
         dists = dists.set_index(['Reference ROI', 'Target ROI']).sort_index()
         for row in range(0, Constants.num_organs):
@@ -226,8 +324,9 @@ class Patient():
                     dist_matrix[row, col] = 0
         dist_matrix += np.transpose(dist_matrix)
         return(dist_matrix)
-    
+
     def get_tumor_distances(self, dists):
+        #gets the tumor-organ distances
         gtvp_dists = np.zeros((Constants.num_organs,))
         gtvn_dists = np.zeros((Constants.num_organs,))
         dists = dists.set_index(['Reference ROI', 'Target ROI']).sort_index()
@@ -246,10 +345,7 @@ class Patient():
 
 class PatientSet():
 
-    def __init__(self, outliers = [241, 236, 230, 219,211, 205, 203, #211 and 170 have fatal errors
-                                   199, 190, 184, 177, 175, 173, 
-                                   172, 170, 169, 168, 151, 149, 
-                                   138, 137, 100, 74, 56, 55, 34]):
+    def __init__(self, outliers = []):
         self.outliers = outliers
         (self.patients, self.doses, self.num_patients) = self.read_patient_data()
         print('\npatient data loaded...\n')
@@ -279,7 +375,8 @@ class PatientSet():
         #putting all the data into a patient object for further objectification
         for patient_index in range(0, num_patients):
             #these are indexed by name of organ
-            distances = pd.read_csv(distance_files[patient_index])
+            #we only use 3 rows but half of them have a comma missing in the header between the last two rows
+            distances = pd.read_csv(distance_files[patient_index], usecols = [0,1,2])
             #renames anything that is equivalent to GTVp/GTVn to the correct format
             distances.replace(Constants.tumor_aliases, inplace = True)
             doses = pd.read_csv(dose_files[patient_index])
@@ -347,7 +444,7 @@ class PatientSet():
         elif rank_function == 'mse':
             score = Rankings.mse(p1,p2)
         else:
-            print('error, invalid rank method: ', rank_function)    
+            print('error, invalid rank method: ', rank_function)
         return(score)
 
     def run_study(self, max_matches = 20, rank_function = 'ssim', weights = 1):
@@ -360,9 +457,9 @@ class PatientSet():
         print(rank_function, ': error of', min(error_hist), ' at ', np.argmin(error_hist) + 2)
         return(error_hist)
 
-#db = PatientSet()
-#pickle.dump(db, open('data\\patient_data.p', 'wb'))
-db = pickle.load(open('data\\patient_data.p', 'rb'))
+db = PatientSet()
+pickle.dump(db, open('data\\patient_data.p', 'wb'))
+#db = pickle.load(open('data\\patient_data.p', 'rb'))
 #weights = np.array([1,2,.05])
 #test_weights = np.array([2,0.5,2,.05,1])
 #max_count = 20
@@ -370,7 +467,7 @@ db = pickle.load(open('data\\patient_data.p', 'rb'))
 #from scipy.optimize import minimize
 #func = lambda x: max(db.run_study(rank_function = 'experimental', weights = x, max_matches = 8))
 #result = minimize(func, test_weights, method = 'CG', options ={'disp': True, 'eps': 1})
-
+#
 #rand_hist = db.run_study(rank_function = 'random', max_matches = max_count, weights = 1)
 #ssim_hist = db.run_study(rank_function = 'ssim', weights = weights, max_matches = max_count)
 #mse_hist = db.run_study(rank_function = 'experimental', weights = test_weights, max_matches = max_count)
