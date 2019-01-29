@@ -178,7 +178,6 @@ class Constants():
 
 class Rankings():
     #ranking functions that generate a score, takes in pateint objects
-    old_weights = np.array([3432,32423,1])
 
     def vector_ssim(p1, p2):
         upper_triangle = np.triu_indices(len((p1.distances)))
@@ -193,8 +192,8 @@ class Rankings():
         scores = np.zeros((3,))
         scores[0] = Rankings.ssim(p1,p2)
         scores[1] = 1 if p1.laterality == p2.laterality else 0
-        scores[2] = 1 - np.abs(p1.gtvp_volume - p2.gtvp_volume)/(
-                np.max([p1.gtvp_volume, p2.gtvp_volume]) + .000001)
+        scores[2] = 1 - np.abs(float(p1.gtvp_volume) - float(p2.gtvp_volume))/(
+                float(p1.gtvp_volume) + float(p2.gtvp_volume) + .000001)
         final_score = np.sum(scores*weights)/np.mean(weights)
         return(final_score)
 
@@ -215,15 +214,14 @@ class Rankings():
         return(1/(error + .000001))
 
     def experimental(p1, p2, weights = np.array([1,.4,1,.05,.1])):
-        if not np.array_equal(Rankings.old_weights, weights):
-            Rankings.old_weights = weights
-            print('weights ', weights)
         scores = np.zeros((5,))
-        scores[0] = compare_ssim(p1.gtvp_dists, p2.gtvp_dists, win_size = 3)
+        (tumor_dists1, tumor_volume1) = p1.get_main_tumor()
+        (tumor_dists2, tumor_volume2) = p2.get_main_tumor()
+        scores[0] = 1/(compare_mse( tumor_dists1, tumor_dists2) + .00001)
         scores[1] = Rankings.vector_ssim(p1, p2)
         scores[2] = 1 if p1.laterality == p2.laterality else 0
-        scores[3] = 1 - np.abs(p1.gtvp_volume - p2.gtvp_volume)/(
-                p1.gtvp_volume + p2.gtvp_volume + .000001)
+        scores[3] = 1 - np.abs(float(tumor_volume1) - float(tumor_volume2))/(
+                float(tumor_volume1) + float(tumor_volume2) + .000001)
         scores[4] = 1/(compare_mse(p1.volumes, p2.volumes) + .000001)
         final_score = np.sum(scores*weights)/np.mean(weights)
         return(final_score)
@@ -239,7 +237,6 @@ class Patient():
         self.check_missing_organs(distances, doses)
         self.laterality = info['Tm Laterality (R/L)']
         self.age = info['Age at Diagnosis (Calculated)']
-        print(len(distances.columns), ' ', self.id)
         centroid_data = self.get_doses_file_info(doses)
         self.doses = centroid_data[:, 4]
         self.volumes = centroid_data[:, 3]
@@ -275,7 +272,7 @@ class Patient():
             self.gtvp_volume = gtvp.volume
             self.gtvp_position = gtvp[['x','y','z']].values
         except:
-            self.gtvp_volume = 0
+            self.gtvp_volume = float(0)
             self.gtvp_position = np.array([0,0,0])
         #extract a secondary tumor (only gets the first one?)
         #several patients have no gtvp but a gtvn
@@ -286,7 +283,7 @@ class Patient():
             self.gtvn_volume = gtvn.volume
             self.gtvn_position = gtvn[['x','y','z']].values
         except:
-            self.gtvn_volume = 0
+            self.gtvn_volume = float(0)
             self.gtvn_position = np.array([0,0,0])
         #get the info the centers, volumes, nad doses for all the things
         centroid_matrix = np.zeros((Constants.num_organs,5)) #row = x,y,z,volume,dose
@@ -294,7 +291,7 @@ class Patient():
             organ = Constants.organ_list[idx]
             try:
                 organ_entry = centroids.loc[organ]
-                centroid_matrix[idx, 0:3] = organ_entry[['x','y','z']].values[0]
+                centroid_matrix[idx, 0:3] = organ_entry[['x','y','z']].values
                 centroid_matrix[idx, 3] = organ_entry.volume
                 centroid_matrix[idx, 4] = organ_entry.mean_dose
             except:
@@ -335,13 +332,19 @@ class Patient():
                 tumor_row = dists.loc['GTVp', Constants.organ_list[idx]]
                 gtvp_dists[idx] = tumor_row['Eucledian Distance (mm)']
             except:
-                gtvp_dists[idx] = -1
+                gtvp_dists[idx] = float(0)
             try:
                 tumor_row = dists.loc['GTVn', Constants.organ_list[idx]]
                 gtvn_dists[idx] = tumor_row['Eucledian Distance (mm)']
             except:
-                gtvn_dists[idx] = -1
+                gtvn_dists[idx] = float(0)
         return((gtvp_dists, gtvn_dists))
+    
+    def get_main_tumor(self):
+        if self.gtvp_volume == 0 and self.gtvn_volume > 0:
+            return( (self.gtvn_dists, self.gtvn_volume) )
+        else:
+            return( (self.gtvp_dists, self.gtvp_volume) )
 
 class PatientSet():
 
@@ -457,11 +460,19 @@ class PatientSet():
         print(rank_function, ': error of', min(error_hist), ' at ', np.argmin(error_hist) + 2)
         return(error_hist)
 
-db = PatientSet()
-pickle.dump(db, open('data\\patient_data.p', 'wb'))
-#db = pickle.load(open('data\\patient_data.p', 'rb'))
-#weights = np.array([1,2,.05])
-#test_weights = np.array([2,0.5,2,.05,1])
+db = pickle.load(open('data\\patient_data.p', 'rb'))
+
+#db = PatientSet(outliers = list(Constants.missing_organs.keys()))
+#pickle.dump(db, open('data\\patient_data.p', 'wb'))
+
+
+ssim_weights = np.array([1,2,.05])
+test_weights = np.array([1,2,2,.05,.2])
+result = db.evaluate(rank_function = 'experimental', weights = test_weights, num_matches = 5)
+print(result['mean_error'])
+print(len(np.where(result['patient_mean_error'] > 8)[0]))
+
+
 #max_count = 20
 #
 #from scipy.optimize import minimize
