@@ -1,5 +1,4 @@
 ROI,x coordinate,y coordinate,z coordinate,Structure Volume,Min Value,Mean Value,Max Value
-GTV-N1,288.5592,210.1046,81.5009,,,,
 GTV-N2,286.5642,170.3211,78.8807,0.5,71.65,72.47,73.79
 GTV-P,261.893,184.0137,77.149,21.7,69.98,71.95,74.61
 Brainstem,253.3752,237.6275,47.342,29.2,3.81,21.33,46.09

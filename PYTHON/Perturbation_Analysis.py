@@ -54,7 +54,7 @@ def get_ssim_scores(entry1, entry2):
     scores[2] = 1 if (entry1['laterality'] == entry2['laterality']) else 0
     return scores
 
-def generate_dose_estimates(ranks, doses, min_matches = 5, min_rank = .99):
+def generate_dose_estimates(ranks, doses, min_matches = 5, min_rank = 1):
     estimates = np.zeros(doses.shape)
     for patient_idx in range(0, len(doses)):
         #get index of the scores in ascending order
@@ -255,7 +255,7 @@ def gen_dose_matrix(data):
             try:
                 dose_matrix[idx, organ_idx] = patient['organData'][organ]['meanDose']
             except:
-                dose_matrix[idx, organ_idx] = np.mean(dose_matrix[:idx, organ_idx])
+                dose_matrix[idx, organ_idx] = 0
                 bad_entries.append((idx, organ_idx))
             organ_idx += 1
     #replace missing entries with the mean value?
@@ -265,7 +265,7 @@ def gen_dose_matrix(data):
 
 rank_by_mse = lambda x: modified_rank_by_ssim(x, rank_function = 'mse')
 (best_hist, diff4) = run_with_metric(rank_by_dose)
-(mse_hist, diffs1) = run_with_metric(rank_by_mse)
+(mse_hist, diffs1) = run_with_metric(rank_by_ssim)
 (ssim_hist, diff2) = run_with_metric(modified_rank_by_ssim)
 (rand_hist, diff3) = run_with_metric(rank_randomly)
 x = np.linspace(1, len(mse_hist), len(mse_hist))
