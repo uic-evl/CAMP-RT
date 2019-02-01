@@ -84,13 +84,18 @@ class Constants():
     num_organs = len(organ_list)
     #GTVn analgoues: 'GTV node', 'GTV-N', 'GTV_n', 'GTVn2', 'GTVn1'
     #GTVp analogues: 'GTV primary', 'GTV-P', 'GTV_p'
-    tumor_aliases = {'GTV node': 'GTVn', 'GTV-N': 'GTVn',
-                     'GTV_n': 'GTVn', 'GTVn1': 'GTVn',
+    tumor_aliases = {'GTV node': 'GTVn', 
+                     'GTV-N': 'GTVn',
+                     'GTV_n': 'GTVn', 
+                     'GTVn1': 'GTVn',
                      #'GTVn2': 'GTVn', #this one is causing issues with getting distance data
                      'GTV primary': 'GTVp',
-                     'GTV-P': 'GTVp', 'GTV_p': 'GTVp',
-                     'GTV nodes': 'GTVn', 'GTV tongue': 'GTVp',
-                     'GTV-N1': 'GTVn', 'GTV-N2': 'GTVn'}
+                     'GTV-P': 'GTVp', 
+                     'GTV_p': 'GTVp',
+                     'GTV nodes': 'GTVn', 
+                     #'GTV tongue': 'GTVp',
+                     'GTV-N1': 'GTVn', 
+                     'GTV-N2': 'GTVn'}
     #names to use for the dataframe when I read a centroid file.  it's cleaner
     centroid_file_names = ['ROI', 'x', 'y', 'z', 'mean_dose', 'volume', 'min_dose', 'max_dose']
     #patients without organs, using their sorted order (12th patient in the sorted list ect)
