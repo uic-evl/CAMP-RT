@@ -92,7 +92,6 @@ class Patient():
         #basically ordinality of the id, so where it will be in an index
         self.pos = position
         self.laterality = info['Tm Laterality (R/L)']
-        self.age = info['Age at Diagnosis (Calculated)']
         self.prescribed_dose = info['Total dose']
         centroid_data = self.get_doses_file_info(doses)
         self.doses = centroid_data[:, 4]
@@ -104,11 +103,12 @@ class Patient():
         self.distances = self.gen_distance_matrix(distances)
         (self.gtvp_dists, self.gtvn_dists) = self.get_tumor_distances(distances)
         #store the entries without gtvp for future study
-        (self.tumor_volume, self.tumor_distances) = self.get_main_tumor()
+        (self.tumor_volume, self.tumor_distances, self.tumor_position) = self.get_main_tumor()
         self.check_missing_organs(distances, doses)
         #report if there is no primary tumor
         if self.tumor_volume == 0 or np.sum(self.tumor_distances) == 0:
             Constants.no_tumor.append(self.id)
+            
 
     def check_missing_organs(self, distances, doses):
         #check if any organs are missing using the dose file, and store them
@@ -128,6 +128,8 @@ class Patient():
         centroids = self.center_centroids(doses)
         centroids = centroids.set_index('ROI')
         #extract the primary tumor info.
+        if 'GTV tongue' in centroids.index:
+            print(self.id, ' has gtv tongue')
         try:
             gtvp = centroids.loc['GTVp']
             self.gtvp_volume = gtvp.volume
@@ -217,21 +219,17 @@ class Patient():
 
     def get_main_tumor(self):
         #basically gives a proxy so we use only the most important tumor?
-        if self.gtvn_volume > 0 and self.gtvp_volume > 0:
-            tumor_volume = (self.gtvn_volume + self.gtvp_volume)
-            tumor_distances = (self.gtvn_dists*self.gtvn_volume + self.gtvp_dists*self.gtvp_volume)/(self.gtvn_volume + self.gtvp_volume)
-        elif self.gtvn_volume > 0 and self.gtvp_volume == 0:
-            tumor_volume = self.gtvn_volume
-            tumor_distances = self.gtvn_dists
-        else:
-            tumor_volume = self.gtvp_volume
-            tumor_distances = self.gtvp_dists
+        tumor_volume = (self.gtvn_volume + self.gtvp_volume)/2
+        tumor_distances = (self.gtvn_dists*self.gtvn_volume + self.gtvp_dists*self.gtvp_volume)/(
+                self.gtvn_volume + self.gtvp_volume)
+        tumor_position = (self.gtvn_position*self.gtvn_volume + self.gtvp_position*self.gtvp_volume)/(
+                self.gtvn_volume + self.gtvp_volume)
         if (self.gtvn_volume != 0 and np.sum(self.gtvn_dists) == 0) or (
                 self.gtvn_volume == 0 and np.sum(self.gtvn_dists) != 0) or (
                         self.gtvp_volume != 0 and np.sum(self.gtvp_dists) == 0) or (
                             self.gtvp_volume == 0 and np.sum(self.gtvp_dists) != 0):
             print('patient ', self.id, 'is having some issues with tumor consistency')
-        return(tumor_volume, tumor_distances)
+        return(tumor_volume, tumor_distances, tumor_position)
 
 class PatientSet():
 
@@ -349,6 +347,22 @@ class PatientSet():
             return(p_avg)
         else:
             return(p_avg[key])
+        
+    def gen_patient_feature_matrix(self):
+        #function to get a matrix I can try some dose prediction on?
+        features = np.zero((self.num_patients,8))
+        #start with postion (probably will use distances later?), tumor volume, laterality, and total dose?
+        laterality_map = {'L': 5, 'R': 6, 'Bilateral': 7} #to make 
+        for patient_idx in db.get_patients():
+            patient = db.patient[patient_idx]
+            features[patient_idx, 0:3] = patient.tumor_position
+            features[patient_idx, 3] = patient.tumor_volume
+            features[patient_idx, 4] = patient.total_dose
+            #categorical, so 1 in one of three positions
+            features[patient_idx, laterality_map[patient.laterality]] = 1
+        #standarization
+        features = (features - np.mean(features, axis = 0))/np.std(features, axis = 0)
+        return(features)
 
     def evaluate(self, rank_function = 'ssim', weights = 1, num_matches = 5):
         #gives a bunch of different metrics for evaluating a given metric
@@ -391,14 +405,13 @@ class PatientSet():
         print(rank_function, ': error of', min(error_hist), ' at ', np.argmin(error_hist) + 2)
         return(error_hist)
 
-#db = pickle.load(open('data\\patient_data_v2_only.p', 'rb'))
 
-#db = PatientSet(root = 'data\\patients_v2\\', outliers = [239,2009, 10034, 10164])
+db = PatientSet( outliers = [239,2009, 10034, 10164])
 #pickle.dump(db, open('data\\patient_data_v2_only.p', 'wb'))
 
 
-weights = np.array([1, .3]) #ssim, tumor_distance ssim, laterality,tumor volume percent similarity, volume vector mse,
-result = db.evaluate(rank_function = 'experimental', weights = weights, num_matches = 5)
-print(result['mean_error'])
-print(len(np.where(result['patient_mean_error'] > 8)[0]))
+#weights = np.array([1, .3]) #ssim, tumor_distance ssim, laterality,tumor volume percent similarity, volume vector mse,
+#result = db.evaluate(rank_function = 'experimental', weights = weights, num_matches = 5)
+#print(result['mean_error'])
+#print(len(np.where(result['patient_mean_error'] > 8)[0]))
 
