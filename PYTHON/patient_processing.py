@@ -66,9 +66,9 @@ class Rankings():
         error = np.mean(np.abs(p1.doses - p2.doses))
         return(1/(error + .000001))
 
-    def experimental(p1, p2, weights = np.array([1,.3, 1])):
+    def experimental(p1, p2, weights = np.array([1, .3, .01, 1])):
         #this is basically just an ensemble of different distances metrics at this point
-        scores = np.zeros((2,))
+        scores = np.zeros((4,))
         #ssim seems to do better than other things?
         scores[0] = Rankings.ssim(p1, p2)
         #this one is the most important
@@ -76,10 +76,10 @@ class Rankings():
         scores[1] = compare_ssim( make_matrix(p1.tumor_distances),
               make_matrix(p2.tumor_distances))
 #        scores[2] = 1 if p1.laterality == p2.laterality else 0
-#        percent_different = lambda x,y: 1- np.abs(x - y)/(x + y + .0000001)
-#        scores[3] = percent_different(p1.tumor_volume, p2.tumor_volume)
+        percent_different = lambda x,y: 1- np.abs(x - y)/(x + y + .0000001)
+        scores[2] = percent_different(p1.tumor_volume, p2.tumor_volume)
 #        scores[4] = Rankings.volume_mse(p1, p2)
-#        scores[5] = percent_different(p1.prescribed_dose, p2.prescribed_dose)
+        scores[3] = percent_different(p1.prescribed_dose, p2.prescribed_dose)
         final_score = np.sum(scores*weights)/np.mean(weights)
         return(final_score)
 
@@ -108,7 +108,7 @@ class Patient():
         #report if there is no primary tumor
         if self.tumor_volume == 0 or np.sum(self.tumor_distances) == 0:
             Constants.no_tumor.append(self.id)
-            
+
 
     def check_missing_organs(self, distances, doses):
         #check if any organs are missing using the dose file, and store them
@@ -235,6 +235,7 @@ class PatientSet():
 
     def __init__(self, outliers = [], root = 'patient_files\\'):
         outliers = outliers
+        self.total_dose_predictor = None
         (self.patients, self.doses, self.total_doses, self.num_patients) = self.read_patient_data(root, outliers)
         print('\npatient data loaded...\n')
 
@@ -320,6 +321,13 @@ class PatientSet():
             for match_idx in range(0, num_matches):
                 matched_dosages[match_idx, :] = scores[match_idx]*matched_dosages[match_idx, :]
             estimates[patient_idx, :] = np.mean(matched_dosages, axis = 0)/np.mean(scores)
+        #if a seprate prediction is set for total dose, use that
+        if self.total_dose_predictor is not None:
+            #normalize the estimates by patient
+            estimates /= np.sum(estimates, axis = 1).reshape((self.num_patients,1))
+            x = self.gen_patient_feature_matrix()
+            total_dose_prediction = self.total_dose_predictor.predict(x)
+            estimates *= total_dose_prediction.reshape((self.num_patients,1))
         return(estimates)
 
     def get_average_patient_data(self, key = 'all'):
@@ -347,20 +355,33 @@ class PatientSet():
             return(p_avg)
         else:
             return(p_avg[key])
-        
+
+    def set_total_dose_prediction(self, predictor):
+        #should be like a skikit model, so takes numppy array with .predict(x)
+        #and returns a 1d numpy array of y
+        self.total_dose_predictor = predictor
+
     def gen_patient_feature_matrix(self):
         #function to get a matrix I can try some dose prediction on?
-        features = np.zero((self.num_patients,8))
-        #start with postion (probably will use distances later?), tumor volume, laterality, and total dose?
-        laterality_map = {'L': 5, 'R': 6, 'Bilateral': 7} #to make 
-        for patient_idx in db.get_patients():
-            patient = db.patient[patient_idx]
-            features[patient_idx, 0:3] = patient.tumor_position
-            features[patient_idx, 3] = patient.tumor_volume
-            features[patient_idx, 4] = patient.total_dose
-            #categorical, so 1 in one of three positions
-            features[patient_idx, laterality_map[patient.laterality]] = 1
-        #standarization
+        features = np.zeros((self.num_patients, 14))
+        laterality_map = {'L': -1, 'R': 1, 'Bilateral': 0}
+#        norm = lambda x: np.sqrt(np.sum(x*x))
+        brainstem_pos = Constants.organ_list.index('Brainstem')
+        lt_thyroid_pos = Constants.organ_list.index('Lt_thyroid_lobe')
+        rt_thyroid_pos = Constants.organ_list.index('Rt_thyroid_lobe')
+        for patient_idx in range(0, self.num_patients):
+            patient = self.patients[patient_idx]
+            features[patient_idx, 0] = patient.gtvp_volume
+            features[patient_idx, 1] = patient.gtvn_volume
+            features[patient_idx, 2] = patient.prescribed_dose
+            features[patient_idx, 3] = laterality_map[patient.laterality]
+            features[patient_idx, 4:7] = patient.gtvp_position[:]
+            features[patient_idx, 7:10] = patient.gtvn_position[:]
+            features[patient_idx, 10] = np.sum(patient.volumes)
+            features[patient_idx, 11] = np.sum(patient.tumor_distances[brainstem_pos])
+            features[patient_idx, 12] = np.sum(patient.tumor_distances[lt_thyroid_pos])
+            features[patient_idx, 13] = np.sum(patient.tumor_distances[rt_thyroid_pos])
+        #standarization, not needed for binary trees though
         features = (features - np.mean(features, axis = 0))/np.std(features, axis = 0)
         return(features)
 
@@ -370,7 +391,7 @@ class PatientSet():
         differences = self.doses - estimates
         patient_mean_error = np.mean(np.abs(differences), axis = 1)
         total_mean_error = np.mean(patient_mean_error)
-        total_rmse = np.sqrt(np.mean(differences**2))
+        total_rmse = np.sqrt(np.mean(differences**2)/self.num_patients)
         result_dict = {'prediction': estimates,
                        'patient_mean_error': patient_mean_error,
                        'mean_error': total_mean_error,
@@ -406,12 +427,40 @@ class PatientSet():
         return(error_hist)
 
 
-db = PatientSet( outliers = [239,2009, 10034, 10164])
+#db = PatientSet(root = 'data\\patients_v2\\', outliers = [239,2009, 10034, 10164])
 #pickle.dump(db, open('data\\patient_data_v2_only.p', 'wb'))
+db.set_total_dose_prediction(None)
+weights = np.array([1, .3, 0.01, 1])
+prediction = db.predict_doses(rank_function = 'experimental', weights = weights, num_matches = 5)
+total_predicted_doses = np.sum(prediction, axis = 1)
+base_rmse = np.sqrt(np.sum((db.total_doses - total_predicted_doses)**2)/db.num_patients)
+print('not decision tree', base_rmse)
+result = db.evaluate(rank_function = 'experimental', weights = weights, num_matches = 5)
+print(result['rmse'], ' ',result['mean_error'])
+print(len(np.where(result['patient_mean_error'] > 8)[0]))
 
 
-#weights = np.array([1, .3]) #ssim, tumor_distance ssim, laterality,tumor volume percent similarity, volume vector mse,
-#result = db.evaluate(rank_function = 'experimental', weights = weights, num_matches = 5)
-#print(result['mean_error'])
-#print(len(np.where(result['patient_mean_error'] > 8)[0]))
+x = db.gen_patient_feature_matrix()
+y = db.total_doses[:].reshape((db.num_patients, 1))
+partition = db.num_patients//3
+x_test = x[:partition, :]
+x_train = x[partition:, :]
+y_test = y[:partition]
+y_train = y[partition:]
+from sklearn.tree import DecisionTreeRegressor
+
+tree = DecisionTreeRegressor(max_depth = 10, criterion = 'mse', min_samples_leaf = 1)
+tree.fit(x_train,y_train)
+
+db.set_total_dose_prediction(tree)
+prediction = db.predict_doses(rank_function = 'experimental', weights = [1,.3,.01,1], num_matches = 5)
+total_predicted_doses = np.sum(prediction, axis = 1)
+base_rmse = np.sqrt(np.sum((db.total_doses - total_predicted_doses)**2)/db.num_patients)
+print('decision tree', base_rmse)
+
+
+weights = np.array([1, .3, 0.01, 0]) #ssim, tumor_distance ssim, laterality,tumor volume percent similarity, volume vector mse,
+result = db.evaluate(rank_function = 'experimental', weights = weights, num_matches = 5)
+print(result['rmse'], ' ',result['mean_error'])
+print(len(np.where(result['patient_mean_error'] > 8)[0]))
 
