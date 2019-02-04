@@ -13,6 +13,7 @@ import random
 import matplotlib.pyplot as plt
 import pickle
 from Constants import Constants
+from Patient import Patient
 
 class Rankings():
     #ranking functions that generate a score, takes in pateint objects
@@ -66,179 +67,48 @@ class Rankings():
         error = np.mean(np.abs(p1.doses - p2.doses))
         return(1/(error + .000001))
 
-    def experimental(p1, p2, weights = np.array([1, .3, .01, 1])):
+    def experimental(p1, p2, weights):
         #this is basically just an ensemble of different distances metrics at this point
-        scores = np.zeros((4,))
-        #ssim seems to do better than other things?
-        scores[0] = Rankings.ssim(p1, p2)
-        #this one is the most important
+        scores = np.zeros((len(weights),))
         make_matrix = lambda x: x.reshape(len(x),1)*x.reshape(1,len(x))
-        scores[1] = compare_ssim( make_matrix(p1.tumor_distances),
-              make_matrix(p2.tumor_distances))
-#        scores[2] = 1 if p1.laterality == p2.laterality else 0
         percent_different = lambda x,y: 1- np.abs(x - y)/(x + y + .0000001)
-        scores[2] = percent_different(p1.tumor_volume, p2.tumor_volume)
-#        scores[4] = Rankings.volume_mse(p1, p2)
-        scores[3] = percent_different(p1.prescribed_dose, p2.prescribed_dose)
-        final_score = np.sum(scores*weights)/np.mean(weights)
-        return(final_score)
-
-
-class Patient():
-
-    def __init__(self, distances, doses, p_id, position, info):
-        #patient ID number
-        self.id = p_id
-        #basically ordinality of the id, so where it will be in an index
-        self.pos = position
-        self.laterality = info['Tm Laterality (R/L)']
-        self.prescribed_dose = info['Total dose']
-        centroid_data = self.get_doses_file_info(doses)
-        self.doses = centroid_data[:, 4]
-        #####normalize to total dose and then dose proportions
-        self.total_dose = np.sum(self.doses)
-        ######################
-        self.volumes = centroid_data[:, 3]
-        self.centroids = centroid_data[:, 0:3]
-        self.distances = self.gen_distance_matrix(distances)
-        (self.gtvp_dists, self.gtvn_dists) = self.get_tumor_distances(distances)
-        #store the entries without gtvp for future study
-        (self.tumor_volume, self.tumor_distances, self.tumor_position) = self.get_main_tumor()
-        self.check_missing_organs(distances, doses)
-        #report if there is no primary tumor
-        if self.tumor_volume == 0 or np.sum(self.tumor_distances) == 0:
-            Constants.no_tumor.append(self.id)
-
-
-    def check_missing_organs(self, distances, doses):
-        #check if any organs are missing using the dose file, and store them
-        organs = set(Constants.organ_list[:])
-        dose_organs = set(doses['ROI'].unique())
-        diff = organs - dose_organs
-        #for missing_organ in diff:
-            #print('patient ', self.id, ' at index ', self.pos, ' is missing organ ', missing_organ)
-        if len(diff) > 0:
-            Constants.missing_organs[self.pos] = {'id': self.id, 'organs': diff}
-        return
-
-    def get_doses_file_info(self, doses):
-        #rename the columns so they're consistent
-        doses.columns = Constants.centroid_file_names
-        #move centroids so the center of the cloud is at zero?
-        centroids = self.center_centroids(doses)
-        centroids = centroids.set_index('ROI')
-        #extract the primary tumor info.
-        if 'GTV tongue' in centroids.index:
-            print(self.id, ' has gtv tongue')
-        try:
-            gtvp = centroids.loc['GTVp']
-            self.gtvp_volume = gtvp.volume
-        except:
-            self.gtvp_volume = float(0)
-        try:
-            self.gtvp_position = gtvp[['x','y','z']].values
-        except:
-            self.gtvp_position = np.array([0,0,0])
-        #extract a secondary tumor (only gets the first one?)
-        #several patients have no gtvp but a gtvn
-        try:
-            gtvn = centroids.loc['GTVn']
-            if not isinstance(gtvn.volume, float):
-                Constants.multiple_gtvn.append(self.id)
-                gtvn = gtvn.iloc[0]
-            self.gtvn_volume = gtvn.volume
-        except:
-            self.gtvn_volume = float(0)
-        try:
-            self.gtvn_position = gtvn[['x','y','z']].values
-        except:
-            self.gtvn_position = np.array([0,0,0])
-        #get the info the centers, volumes, nad doses for all the things
-        centroid_matrix = np.zeros((Constants.num_organs,5)) #row = x,y,z,volume,dose
-        for idx in range(0, Constants.num_organs):
-            organ = Constants.organ_list[idx]
-            try:
-                organ_entry = centroids.loc[organ]
-                centroid_matrix[idx, 0:3] = organ_entry[['x','y','z']].values
-                centroid_matrix[idx, 3] = organ_entry.volume
-                centroid_matrix[idx, 4] = organ_entry.mean_dose
-            except:
-                pass
-                #print('patient ', self.id, ' is missing organ ', organ, ' centroid data')
-        return(centroid_matrix)
-
-    def center_centroids(self, centroids):
-        #subtract off the mean so the pointcloud is centered at 0
-        #should I just use a reference organ instead?  or rotate?
-        centroids.x -= centroids.x.mean()
-        centroids.y -= centroids.y.mean()
-        centroids.z -= centroids.z.mean()
-        return(centroids)
-
-    def gen_distance_matrix(self, dists):
-        #generates a symetric 45x45 matrix of organ-organ distances
-        dist_matrix = np.zeros(( Constants.num_organs, Constants.num_organs))
-        dists = dists.set_index(['Reference ROI', 'Target ROI']).sort_index()
-        for row in range(0, Constants.num_organs):
-            for col in range(row + 1, Constants.num_organs):
-                organ1 = Constants.organ_list[row]
-                organ2 = Constants.organ_list[col]
-                try:
-                    dist_matrix[row, col] = (dists.loc[organ1, organ2])['Eucledian Distance (mm)']
-                except:
-                    dist_matrix[row, col] = 0
-        dist_matrix += np.transpose(dist_matrix)
-        return(dist_matrix)
-
-    def get_tumor_distances(self, dists):
-        #gets the tumor-organ distances
-        gtvp_dists = np.zeros((Constants.num_organs,))
-        gtvn_dists = np.zeros((Constants.num_organs,))
-        dists = dists.set_index(['Reference ROI', 'Target ROI']).sort_index()
-        for idx in range(0, Constants.num_organs):
-            organ = Constants.organ_list[idx]
-            try:
-                tumor_row = dists.loc['GTVp', organ]
-                gtvp_dists[idx] = tumor_row['Eucledian Distance (mm)']
-            except:
-                try:
-                    tumor_row = dists.loc[organ, 'GTVp']
-                    gtvp_dists[idx] = tumor_row['Eucledian Distance (mm)']
-                except:
-                    gtvp_dists[idx] = float(0)
-            try:
-                tumor_row = dists.loc['GTVn', organ]
-                gtvn_dists[idx] = tumor_row['Eucledian Distance (mm)']
-            except:
-                try:
-                    tumor_row = dists.loc[Constants.organ_list[idx], 'GTVn']
-                    gtvn_dists[idx] = tumor_row['Eucledian Distance (mm)']
-                except:
-                    gtvn_dists[idx] = float(0)
-        return((gtvp_dists, gtvn_dists))
-
-    def get_main_tumor(self):
-        #basically gives a proxy so we use only the most important tumor?
-        tumor_volume = (self.gtvn_volume + self.gtvp_volume)/2
-        tumor_distances = (self.gtvn_dists*self.gtvn_volume + self.gtvp_dists*self.gtvp_volume)/(
-                self.gtvn_volume + self.gtvp_volume)
-        tumor_position = (self.gtvn_position*self.gtvn_volume + self.gtvp_position*self.gtvp_volume)/(
-                self.gtvn_volume + self.gtvp_volume)
-        if (self.gtvn_volume != 0 and np.sum(self.gtvn_dists) == 0) or (
-                self.gtvn_volume == 0 and np.sum(self.gtvn_dists) != 0) or (
-                        self.gtvp_volume != 0 and np.sum(self.gtvp_dists) == 0) or (
-                            self.gtvp_volume == 0 and np.sum(self.gtvp_dists) != 0):
-            print('patient ', self.id, 'is having some issues with tumor consistency')
-        return(tumor_volume, tumor_distances, tumor_position)
+        if(weights[0] > 0):
+            #ssim seems to do better than other things?
+            scores[0] = Rankings.ssim(p1, p2)
+        if(weights[1]) > 0:
+            #this one is the most important
+            scores[1] = compare_ssim( make_matrix(p1.tumor_distances),
+                  make_matrix(p2.tumor_distances), win_size = 7)
+        if(weights[2] > 0):
+            #difference in prescribed dose 'total dose' for the tumor
+            scores[2] = percent_different(p1.prescribed_dose, p2.prescribed_dose)
+        if(weights[3] > 0):
+            #differences in tumor volume?
+            scores[3] = percent_different(p1.tumor_volume, p2.tumor_volume)
+        if(weights[4] > 0):
+            scores[4] = Rankings.volume_mse(p1,p2)
+        if(weights[5] > 0):
+            scores[5] = Rankings.emd(p1,p2)
+        #I was normalizing here, but moved it so I can rescale the data
+        #final_score = np.sum(scores*weights)/np.mean(weights)
+        return(scores)
 
 class PatientSet():
 
-    def __init__(self, outliers = [], root = 'patient_files\\'):
-        outliers = outliers
-        self.total_dose_predictor = None
-        (self.patients, self.doses, self.total_doses, self.num_patients) = self.read_patient_data(root, outliers)
+    def __init__(self, patient_set = None, outliers = [], root = 'patient_files\\'):
+        if patient_set is None:
+            outliers = outliers
+            self.total_dose_predictor = None
+            (self.patients, self.doses, self.total_doses, self.num_patients, self.id_map) = self.read_patient_data(root, outliers)
+        else:
+            self.total_dose_predictor = patient_set.total_dose_predictor
+            self.patients = patient_set.patients
+            self.doses = patient_set.doses
+            self.total_doses = patient_set.total_doses
+            self.num_patients = patient_set.num_patients
+            self.id_map = patient_set.id_map
         print('\npatient data loaded...\n')
-
+        
     def read_patient_data(self, root, outliers):
         #sorts by size of largest integer string, which is the id for our files
         file_sort = lambda x: sorted(x, key =
@@ -248,11 +118,12 @@ class PatientSet():
         distance_files = file_sort(glob(root + '**/*distances.csv'))
         dose_files = file_sort(glob(root + '**/*centroid*.csv'))
         #maps ids to position so I can do that too?
-        self.id_map = {max([int(x) for x in findall('[0-9]+', file)]): distance_files.index(file)  for file in distance_files}
-        ids = sorted(list(self.id_map.keys()))
+        id_map = {max([int(x) for x in findall('[0-9]+', file)]): distance_files.index(file)  for file in distance_files}
+        ids = sorted(list(id_map.keys()))
+        #delete patient files with an id in the outliers
         for outlier_id in sorted(outliers, reverse = True):
-            if outlier_id in self.id_map:
-                pos = self.id_map[outlier_id]
+            if outlier_id in id_map:
+                pos = id_map[outlier_id]
                 del distance_files[pos]
                 del dose_files[pos]
                 del ids[pos]
@@ -271,18 +142,23 @@ class PatientSet():
         for patient_index in range(0, num_patients):
             #these are indexed by name of organ
             #we only use 3 rows but half of them have a comma missing in the header between the last two rows
-            distances = pd.read_csv(distance_files[patient_index], usecols = [0,1,2])
+            distances = pd.read_csv(distance_files[patient_index], 
+                                    usecols = [0,1,2]).dropna()
             #renames anything that is equivalent to GTVp/GTVn to the correct format
             distances.replace(Constants.tumor_aliases, inplace = True)
-            doses = pd.read_csv(dose_files[patient_index])
+            doses = pd.read_csv(dose_files[patient_index], 
+                                usecols = [0,1,2,3,4,5,6,7]).dropna()
+            doses.columns = Constants.centroid_file_names
             doses.replace(Constants.tumor_aliases, inplace = True)
+    #            doses = doses.astype({'volume': np.int32, 'mean_dose': np.float32, 
+    #                                         'x': np.float32, 'y': np.float32, 'z': np.float32})
             info = metadata.loc[ids[patient_index]]
             new_patient = Patient(distances, doses,
                                   ids[patient_index], patient_index, info)
             patients[patient_index] = new_patient
             dose_matrix[patient_index, :] = new_patient.doses
             total_dose_vector[patient_index] = new_patient.total_dose
-        return((patients, dose_matrix, total_dose_vector, num_patients))
+        return((patients, dose_matrix, total_dose_vector, num_patients, id_map))
 
     def get_by_id(self, p_id):
         if p_id in self.id_map:
@@ -294,33 +170,45 @@ class PatientSet():
     def get_patients(self):
         return list(self.patients.values())
 
-    def gen_score_matrix(self, rank_function = 'ssim', weights = 1):
+    def gen_score_matrix(self, weights, rank_function = 'ssim'):
         #generates a score matrix based on a rank function
         #function should rank more similar people with a higher number
-        scores = np.zeros((self.num_patients, self.num_patients))
+        scores = np.zeros((self.num_patients, self.num_patients,  len(weights)))
         for row in range(0, self.num_patients):
             for col in range(row + 1, self.num_patients):
-                scores[row, col] = self.compare_traits(self.patients[row], self.patients[col],
+                scores[row, col, :] = self.compare_traits(self.patients[row], self.patients[col],
                       rank_function = rank_function, weights = weights)
+        rescale = lambda x: (x - np.min(x))/(np.max(x) - np.min(x) + .000001)
+        for score_idx in range(0, len(weights)):
+            scores[:, :, score_idx] = rescale(scores[:,:, score_idx])
+        scores *= weights
+        scores = np.sum(scores, axis = 2)/np.mean(weights)
         #formats it as a symetric matrix with a zero diagonal
         scores += scores.transpose()
         #basically normalize the score so the max is 1?
         scores = scores/scores.max()
         return(scores)
+    
+    def estimate_patient_doses(self, ranks, num_matches):
+        sorted_matches = np.argsort(-ranks)
+        top_matches = sorted_matches[0:num_matches]
+        scores = ranks[top_matches]
+        matched_dosages = self.doses[tuple(top_matches), :]
+        #weight things by their scores
+        for match_idx in range(0, num_matches):
+            matched_dosages[match_idx, :] = scores[match_idx]*matched_dosages[match_idx, :]
+        patient_estimates = np.mean(matched_dosages, axis = 0)/np.mean(scores)
+        return(patient_estimates)
 
-    def predict_doses(self, rank_function = 'ssim', weights = 1, num_matches = 5):
+    def predict_doses(self, rank_function = 'ssim', weights = 1, num_matches = 5, 
+                      td_rank_function = None, td_weights = None):
         #generates an ndarray of dose estimates based on algorithm parameters
+        #rank_function and weights are the functions used to match dose
         estimates = np.zeros(self.doses.shape)
         ranks = self.gen_score_matrix(rank_function = rank_function, weights = weights)
         for patient_idx in range(0, self.num_patients):
-            sorted_matches = np.argsort(-ranks[patient_idx,:])
-            top_matches = sorted_matches[0:num_matches]
-            scores = ranks[patient_idx, tuple(top_matches)]
-            matched_dosages = self.doses[tuple(top_matches), :]
-            #weight things by their scores
-            for match_idx in range(0, num_matches):
-                matched_dosages[match_idx, :] = scores[match_idx]*matched_dosages[match_idx, :]
-            estimates[patient_idx, :] = np.mean(matched_dosages, axis = 0)/np.mean(scores)
+            rank_row = ranks[patient_idx, :]
+            estimates[patient_idx, :] = self.estimate_patient_doses(rank_row, num_matches)
         #if a seprate prediction is set for total dose, use that
         if self.total_dose_predictor is not None:
             #normalize the estimates by patient
@@ -328,6 +216,15 @@ class PatientSet():
             x = self.gen_patient_feature_matrix()
             total_dose_prediction = self.total_dose_predictor.predict(x)
             estimates *= total_dose_prediction.reshape((self.num_patients,1))
+        elif td_rank_function is not None and td_weights is not None:
+            estimates /= np.sum(estimates, axis = 1).reshape((self.num_patients,1))
+            total_dose_estimates = np.zeros((self.num_patients,))
+            td_ranks = self.gen_score_matrix(rank_function = td_rank_function, weights = td_weights)
+            for p_idx in range(0,self.num_patients):
+                td_rank_row = td_ranks[p_idx, :]
+                estimates_for_total_dose = self.estimate_patient_doses(td_rank_row, num_matches)
+                total_dose_estimates[p_idx] = np.sum(estimates_for_total_dose)
+            estimates *= total_dose_estimates.reshape((self.num_patients,1))
         return(estimates)
 
     def get_average_patient_data(self, key = 'all'):
@@ -385,9 +282,11 @@ class PatientSet():
         features = (features - np.mean(features, axis = 0))/np.std(features, axis = 0)
         return(features)
 
-    def evaluate(self, rank_function = 'ssim', weights = 1, num_matches = 5):
+    def evaluate(self, rank_function = 'ssim', weights = 1, num_matches = 5,
+                 td_rank_function = None, td_weights = None):
         #gives a bunch of different metrics for evaluating a given metric
-        estimates = self.predict_doses(rank_function, weights, num_matches)
+        estimates = self.predict_doses(rank_function, weights, num_matches, 
+                                       td_rank_function, td_weights)
         differences = self.doses - estimates
         patient_mean_error = np.mean(np.abs(differences), axis = 1)
         total_mean_error = np.mean(patient_mean_error)
@@ -416,51 +315,62 @@ class PatientSet():
             print('error, invalid rank method: ', rank_function)
         return(score)
 
-    def run_study(self, max_matches = 20, rank_function = 'ssim', weights = 1):
+    def run_study(self, max_matches = 20, rank_function = 'ssim', weights = 1,
+                  td_rank_function = None, td_weights = None):
         #tests out a metric for a range of difference potential matches and gives a minimum
         error_hist = []
         for num_matches in range(2, max_matches):
-            estimates = self.predict_doses(rank_function, weights, num_matches)
+            estimates = self.predict_doses(rank_function, weights, num_matches, 
+                                           td_rank_function, td_weights)
             error = np.mean(np.abs(self.doses - estimates))
             error_hist.append(error)
         print(rank_function, ': error of', min(error_hist), ' at ', np.argmin(error_hist) + 2)
         return(error_hist)
 
 
-#db = PatientSet(root = 'data\\patients_v2\\', outliers = [239,2009, 10034, 10164])
+db = PatientSet(patient_set = db, root = 'data\\patients_v2\\', outliers = Constants.v2_bad_entries)
 #pickle.dump(db, open('data\\patient_data_v2_only.p', 'wb'))
 db.set_total_dose_prediction(None)
-weights = np.array([1, .3, 0.01, 1])
-prediction = db.predict_doses(rank_function = 'experimental', weights = weights, num_matches = 5)
+weights = np.array([0, .4, 1, .01, 1, 0])
+td_weights = np.array([0, .4, 1, .01, 1, 0])
+prediction = db.predict_doses(rank_function = 'experimental', 
+                              weights = weights, 
+                              num_matches = 5, 
+                              td_weights = td_weights,
+                              td_rank_function = 'experimental')
 total_predicted_doses = np.sum(prediction, axis = 1)
 base_rmse = np.sqrt(np.sum((db.total_doses - total_predicted_doses)**2)/db.num_patients)
 print('not decision tree', base_rmse)
-result = db.evaluate(rank_function = 'experimental', weights = weights, num_matches = 5)
-print(result['rmse'], ' ',result['mean_error'])
+result = db.evaluate(rank_function = 'experimental', 
+                              weights = weights, 
+                              num_matches = 5, 
+                              td_weights = td_weights,
+                              td_rank_function = 'experimental')
+print(' mean error: ',result['mean_error'],' rmse: ', result['rmse'])
 print(len(np.where(result['patient_mean_error'] > 8)[0]))
 
-
-x = db.gen_patient_feature_matrix()
-y = db.total_doses[:].reshape((db.num_patients, 1))
-partition = db.num_patients//3
-x_test = x[:partition, :]
-x_train = x[partition:, :]
-y_test = y[:partition]
-y_train = y[partition:]
-from sklearn.tree import DecisionTreeRegressor
-
-tree = DecisionTreeRegressor(max_depth = 10, criterion = 'mse', min_samples_leaf = 1)
-tree.fit(x_train,y_train)
-
-db.set_total_dose_prediction(tree)
-prediction = db.predict_doses(rank_function = 'experimental', weights = [1,.3,.01,1], num_matches = 5)
-total_predicted_doses = np.sum(prediction, axis = 1)
-base_rmse = np.sqrt(np.sum((db.total_doses - total_predicted_doses)**2)/db.num_patients)
-print('decision tree', base_rmse)
-
-
-weights = np.array([1, .3, 0.01, 0]) #ssim, tumor_distance ssim, laterality,tumor volume percent similarity, volume vector mse,
-result = db.evaluate(rank_function = 'experimental', weights = weights, num_matches = 5)
-print(result['rmse'], ' ',result['mean_error'])
-print(len(np.where(result['patient_mean_error'] > 8)[0]))
+#
+#x = db.gen_patient_feature_matrix()
+#y = db.total_doses[:].reshape((db.num_patients, 1))
+#partition = db.num_patients//3
+#x_test = x[:partition, :]
+#x_train = x[partition:, :]
+#y_test = y[:partition]
+#y_train = y[partition:]
+#from sklearn.tree import DecisionTreeRegressor
+#
+#tree = DecisionTreeRegressor(max_depth = 10, criterion = 'mse', min_samples_leaf = 1)
+#tree.fit(x_train,y_train)
+#
+#db.set_total_dose_prediction(tree)
+#prediction = db.predict_doses(rank_function = 'experimental', weights = [1,.3,.01,1], num_matches = 5)
+#total_predicted_doses = np.sum(prediction, axis = 1)
+#base_rmse = np.sqrt(np.sum((db.total_doses - total_predicted_doses)**2)/db.num_patients)
+#print('decision tree', base_rmse)
+#
+#
+#weights = np.array([1, .3, 0.01, 0]) #ssim, tumor_distance ssim, laterality,tumor volume percent similarity, volume vector mse,
+#result = db.evaluate(rank_function = 'experimental', weights = weights, num_matches = 5)
+#print(result['rmse'], ' ',result['mean_error'])
+#print(len(np.where(result['patient_mean_error'] > 8)[0]))
 
