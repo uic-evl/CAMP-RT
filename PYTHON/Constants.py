@@ -92,10 +92,21 @@ class Constants():
                      'GTV primary': 'GTVp',
                      'GTV-P': 'GTVp', 
                      'GTV_p': 'GTVp',
+                     'GTV_P': 'GTVp',
+                     'GTV P': 'GTVp',
                      'GTV nodes': 'GTVn', 
                      #'GTV tongue': 'GTVp',
                      'GTV-N1': 'GTVn', 
-                     'GTV-N2': 'GTVn'}
+                     'GTV N': 'GTVn',
+                     'GTV-NR': 'GTVn' #there is also an NL?
+                     #'GTV-N2': 'GTVn'
+                     }
+    v3_bad_entries = [33,55,56,67,69,72,73,74,76,77,79,81,81,17, 
+                      39, 101, 115, 2020, 10011, 10034, 10074,
+                      10080, 10094, 10145, 10148, 10164, 10174, 
+                      10181,10086, 10147]
+    v2_bad_entries = [239,2009, 
+                      10034, 10164]
     #names to use for the dataframe when I read a centroid file.  it's cleaner
     centroid_file_names = ['ROI', 'x', 'y', 'z', 'mean_dose', 'volume', 'min_dose', 'max_dose']
     #patients without organs, using their sorted order (12th patient in the sorted list ect)
