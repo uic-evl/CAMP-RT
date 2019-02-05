@@ -78,7 +78,7 @@ class Rankings():
         if(weights[1]) > 0:
             #this one is the most important
             scores[1] = compare_ssim( make_matrix(p1.tumor_distances),
-                  make_matrix(p2.tumor_distances), win_size = 7)
+                  make_matrix(p2.tumor_distances), win_size = 3)
         if(weights[2] > 0):
             #difference in prescribed dose 'total dose' for the tumor
             scores[2] = percent_different(p1.prescribed_dose, p2.prescribed_dose)
@@ -290,7 +290,7 @@ class PatientSet():
         differences = self.doses - estimates
         patient_mean_error = np.mean(np.abs(differences), axis = 1)
         total_mean_error = np.mean(patient_mean_error)
-        total_rmse = np.sqrt(np.mean(differences**2)/self.num_patients)
+        total_rmse = np.sqrt(np.mean(differences**2))
         result_dict = {'prediction': estimates,
                        'patient_mean_error': patient_mean_error,
                        'mean_error': total_mean_error,
@@ -327,15 +327,42 @@ class PatientSet():
         print(rank_function, ': error of', min(error_hist), ' at ', np.argmin(error_hist) + 2)
         return(error_hist)
 
+def cluster_organs(db):
+    avg = db.get_average_patient_data()
+    centroids = avg['centroids']
+    named_centroids = zip(Constants.organ_list, centroids)
+    from sklearn.cluster import AffinityPropagation
+    estimator = AffinityPropagation()
+    estimator.fit(centroids)
+    organs = [(estimator.labels_[x], centroids[x,:], Constants.organ_list[x]) for x in range(0, Constants.num_organs)]
+    organs = sorted(organs, key = lambda x: x[0])
+    return([x[2] for x in organs])
 
-db = PatientSet(patient_set = db, root = 'data\\patients_v2\\', outliers = Constants.v2_bad_entries)
-#pickle.dump(db, open('data\\patient_data_v2_only.p', 'wb'))
+def train_total_dose_tree(db):
+    x = db.gen_patient_feature_matrix()
+    y = db.total_doses[:].reshape((db.num_patients, 1))
+    partition = db.num_patients//3
+    x_test = x[:partition, :]
+    x_train = x[partition:, :]
+    y_test = y[:partition]
+    y_train = y[partition:]
+    from sklearn.tree import DecisionTreeRegressor
+    
+    tree = DecisionTreeRegressor(max_depth = 10, criterion = 'mae')
+    tree.fit(x_train,y_train)
+    return(tree)
+Constants.organ_list = cluster_organs(db)
+db = PatientSet(patient_set = None, root = 'data\\patients_v2\\', outliers = Constants.v2_bad_entries)
+pickle.dump(db, open('data\\patient_data_v2_only.p', 'wb'))
+
+
 db.set_total_dose_prediction(None)
-weights = np.array([0, .4, 1, .01, 1, 0])
-td_weights = np.array([0, .4, 1, .01, 1, 0])
+weights = np.array([0, .4, 4, .01, 1, 0])
+td_weights = np.array([0, .4, 4, .01, 1, 0])
+num_matches = 5
 prediction = db.predict_doses(rank_function = 'experimental', 
                               weights = weights, 
-                              num_matches = 5, 
+                              num_matches = num_matches, 
                               td_weights = td_weights,
                               td_rank_function = 'experimental')
 total_predicted_doses = np.sum(prediction, axis = 1)
@@ -343,34 +370,22 @@ base_rmse = np.sqrt(np.sum((db.total_doses - total_predicted_doses)**2)/db.num_p
 print('not decision tree', base_rmse)
 result = db.evaluate(rank_function = 'experimental', 
                               weights = weights, 
-                              num_matches = 5, 
+                              num_matches = num_matches, 
                               td_weights = td_weights,
                               td_rank_function = 'experimental')
 print(' mean error: ',result['mean_error'],' rmse: ', result['rmse'])
 print(len(np.where(result['patient_mean_error'] > 8)[0]))
+#
+##
 
-#
-#x = db.gen_patient_feature_matrix()
-#y = db.total_doses[:].reshape((db.num_patients, 1))
-#partition = db.num_patients//3
-#x_test = x[:partition, :]
-#x_train = x[partition:, :]
-#y_test = y[:partition]
-#y_train = y[partition:]
-#from sklearn.tree import DecisionTreeRegressor
-#
-#tree = DecisionTreeRegressor(max_depth = 10, criterion = 'mse', min_samples_leaf = 1)
-#tree.fit(x_train,y_train)
-#
 #db.set_total_dose_prediction(tree)
-#prediction = db.predict_doses(rank_function = 'experimental', weights = [1,.3,.01,1], num_matches = 5)
+#prediction = db.predict_doses(rank_function = 'experimental', weights = weights, num_matches = num_matches)
 #total_predicted_doses = np.sum(prediction, axis = 1)
 #base_rmse = np.sqrt(np.sum((db.total_doses - total_predicted_doses)**2)/db.num_patients)
 #print('decision tree', base_rmse)
 #
 #
-#weights = np.array([1, .3, 0.01, 0]) #ssim, tumor_distance ssim, laterality,tumor volume percent similarity, volume vector mse,
-#result = db.evaluate(rank_function = 'experimental', weights = weights, num_matches = 5)
+#result = db.evaluate(rank_function = 'experimental', weights = weights, num_matches = num_matches)
 #print(result['rmse'], ' ',result['mean_error'])
 #print(len(np.where(result['patient_mean_error'] > 8)[0]))
 
