@@ -70,7 +70,7 @@ class Rankings():
     def experimental(p1, p2, weights):
         #this is basically just an ensemble of different distances metrics at this point
         scores = np.zeros((len(weights),))
-        make_matrix = lambda x: x.reshape(len(x),1)*x.reshape(1,len(x))
+        make_matrix = lambda x: x.reshape(len(x),1)*np.absolute(x.reshape(1,len(x)))
         percent_different = lambda x,y: 1- np.abs(x - y)/(x + y + .0000001)
         if(weights[0] > 0):
             #ssim seems to do better than other things?
@@ -108,7 +108,7 @@ class PatientSet():
             self.num_patients = patient_set.num_patients
             self.id_map = patient_set.id_map
         print('\npatient data loaded...\n')
-        
+
     def read_patient_data(self, root, outliers):
         #sorts by size of largest integer string, which is the id for our files
         file_sort = lambda x: sorted(x, key =
@@ -142,15 +142,15 @@ class PatientSet():
         for patient_index in range(0, num_patients):
             #these are indexed by name of organ
             #we only use 3 rows but half of them have a comma missing in the header between the last two rows
-            distances = pd.read_csv(distance_files[patient_index], 
+            distances = pd.read_csv(distance_files[patient_index],
                                     usecols = [0,1,2]).dropna()
             #renames anything that is equivalent to GTVp/GTVn to the correct format
             distances.replace(Constants.tumor_aliases, inplace = True)
-            doses = pd.read_csv(dose_files[patient_index], 
+            doses = pd.read_csv(dose_files[patient_index],
                                 usecols = [0,1,2,3,4,5,6,7]).dropna()
             doses.columns = Constants.centroid_file_names
             doses.replace(Constants.tumor_aliases, inplace = True)
-    #            doses = doses.astype({'volume': np.int32, 'mean_dose': np.float32, 
+    #            doses = doses.astype({'volume': np.int32, 'mean_dose': np.float32,
     #                                         'x': np.float32, 'y': np.float32, 'z': np.float32})
             info = metadata.loc[ids[patient_index]]
             new_patient = Patient(distances, doses,
@@ -188,7 +188,7 @@ class PatientSet():
         #basically normalize the score so the max is 1?
         scores = scores/scores.max()
         return(scores)
-    
+
     def estimate_patient_doses(self, ranks, num_matches):
         sorted_matches = np.argsort(-ranks)
         top_matches = sorted_matches[0:num_matches]
@@ -200,7 +200,7 @@ class PatientSet():
         patient_estimates = np.mean(matched_dosages, axis = 0)/np.mean(scores)
         return(patient_estimates)
 
-    def predict_doses(self, rank_function = 'ssim', weights = 1, num_matches = 5, 
+    def predict_doses(self, rank_function = 'ssim', weights = 1, num_matches = 5,
                       td_rank_function = None, td_weights = None):
         #generates an ndarray of dose estimates based on algorithm parameters
         #rank_function and weights are the functions used to match dose
@@ -285,7 +285,7 @@ class PatientSet():
     def evaluate(self, rank_function = 'ssim', weights = 1, num_matches = 5,
                  td_rank_function = None, td_weights = None):
         #gives a bunch of different metrics for evaluating a given metric
-        estimates = self.predict_doses(rank_function, weights, num_matches, 
+        estimates = self.predict_doses(rank_function, weights, num_matches,
                                        td_rank_function, td_weights)
         differences = self.doses - estimates
         patient_mean_error = np.mean(np.abs(differences), axis = 1)
@@ -320,7 +320,7 @@ class PatientSet():
         #tests out a metric for a range of difference potential matches and gives a minimum
         error_hist = []
         for num_matches in range(2, max_matches):
-            estimates = self.predict_doses(rank_function, weights, num_matches, 
+            estimates = self.predict_doses(rank_function, weights, num_matches,
                                            td_rank_function, td_weights)
             error = np.mean(np.abs(self.doses - estimates))
             error_hist.append(error)
@@ -347,45 +347,47 @@ def train_total_dose_tree(db):
     y_test = y[:partition]
     y_train = y[partition:]
     from sklearn.tree import DecisionTreeRegressor
-    
+
     tree = DecisionTreeRegressor(max_depth = 10, criterion = 'mae')
     tree.fit(x_train,y_train)
     return(tree)
-Constants.organ_list = cluster_organs(db)
-db = PatientSet(patient_set = None, root = 'data\\patients_v2\\', outliers = Constants.v2_bad_entries)
-pickle.dump(db, open('data\\patient_data_v2_only.p', 'wb'))
+
+#db = pickle.load( open('data\\patient_data_v2_only.p', 'rb' ))
+#db = PatientSet(patient_set = None, root = 'data\\patients_v2\\',
+#                outliers = Constants.v2_bad_entries + Constants.v2_half_dosed)
+#pickle.dump(db, open('data\\patient_data_v2_only.p', 'wb'))
 
 
 db.set_total_dose_prediction(None)
-weights = np.array([0, .4, 4, .01, 1, 0])
-td_weights = np.array([0, .4, 4, .01, 1, 0])
+weights = np.array([1, 1, 0, 0, 1, 0])
+td_weights = np.array([1, 1, 0, 0, 1, 0])
 num_matches = 5
-prediction = db.predict_doses(rank_function = 'experimental', 
-                              weights = weights, 
-                              num_matches = num_matches, 
+prediction = db.predict_doses(rank_function = 'experimental',
+                              weights = weights,
+                              num_matches = num_matches,
                               td_weights = td_weights,
                               td_rank_function = 'experimental')
 total_predicted_doses = np.sum(prediction, axis = 1)
 base_rmse = np.sqrt(np.sum((db.total_doses - total_predicted_doses)**2)/db.num_patients)
 print('not decision tree', base_rmse)
-result = db.evaluate(rank_function = 'experimental', 
-                              weights = weights, 
-                              num_matches = num_matches, 
+result = db.evaluate(rank_function = 'experimental',
+                              weights = weights,
+                              num_matches = num_matches,
                               td_weights = td_weights,
                               td_rank_function = 'experimental')
 print(' mean error: ',result['mean_error'],' rmse: ', result['rmse'])
 print(len(np.where(result['patient_mean_error'] > 8)[0]))
-#
-##
 
-#db.set_total_dose_prediction(tree)
-#prediction = db.predict_doses(rank_function = 'experimental', weights = weights, num_matches = num_matches)
-#total_predicted_doses = np.sum(prediction, axis = 1)
-#base_rmse = np.sqrt(np.sum((db.total_doses - total_predicted_doses)**2)/db.num_patients)
-#print('decision tree', base_rmse)
-#
-#
-#result = db.evaluate(rank_function = 'experimental', weights = weights, num_matches = num_matches)
-#print(result['rmse'], ' ',result['mean_error'])
-#print(len(np.where(result['patient_mean_error'] > 8)[0]))
+
+tree = train_total_dose_tree(db)
+db.set_total_dose_prediction(tree)
+prediction = db.predict_doses(rank_function = 'experimental', weights = weights, num_matches = num_matches)
+total_predicted_doses = np.sum(prediction, axis = 1)
+base_rmse = np.sqrt(np.sum((db.total_doses - total_predicted_doses)**2)/db.num_patients)
+print('decision tree', base_rmse)
+
+
+result = db.evaluate(rank_function = 'experimental', weights = weights, num_matches = num_matches)
+print(result['rmse'], ' ',result['mean_error'])
+print(len(np.where(result['patient_mean_error'] > 8)[0]))
 
