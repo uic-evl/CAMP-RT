@@ -30,7 +30,7 @@ var scenes = [],
     renderer, renderer2;
 
 var selectedPatient = 1,
-    patientsToShow = 15;
+    patientsToShow = 7;
 
 var totalModelCount;
 
@@ -87,7 +87,7 @@ var months,
 
 
 
-var files = ["data/organAtlas.json", "data/patients_SSIM_noDoses_wTDists_wTVol_wTotDose_lat_4pass_deleteFirst.json"];
+var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset.json"];
 var promises = [];
 
 files.forEach(function (url) {
@@ -102,7 +102,7 @@ Promise.all(promises).then(function (values) {
 
 function start(organAtlas, patientsData) {
 
-    //console.log(patientsData);
+    console.log(patientsData);
 
     oAtlas = organAtlas[0];
     patients = patientsData;
