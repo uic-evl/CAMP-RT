@@ -15,6 +15,7 @@ class Patient():
     def __init__(self, distances, doses, p_id, position, info):
         #patient ID number
         self.id = p_id
+        self.full_dose = 0 if p_id in Constants.v2_half_dosed else 1
         #basically ordinality of the id, so where it will be in an index
         self.pos = position
         self.laterality = info['Tm Laterality (R/L)']
@@ -30,11 +31,11 @@ class Patient():
         self.volumes = centroid_data[:, 3]
         self.centroids = centroid_data[:, 0:3]
         #distances is a symetric matrix sorted by the Constants.organ_list
-        self.distances = self.gen_distance_matrix(distances)
+#        self.distances = self.gen_distance_matrix(distances)
         (self.gtvp_dists, self.gtvn_dists) = self.get_tumor_distances(distances)
         #store the entries without gtvp for future study
         (self.tumor_volume, self.tumor_distances, self.tumor_position) = self.get_main_tumor()
-        self.check_missing_organs(distances, doses)
+        self.check_missing_organs(doses)
         #report if there is no primary tumor
         if self.tumor_volume == 0 or np.sum(self.tumor_distances) == 0:
             Constants.no_tumor.append(self.id)
@@ -97,7 +98,7 @@ class Patient():
             data['GTVn'] = gtvn_dict
         return(data)
 
-    def check_missing_organs(self, distances, doses):
+    def check_missing_organs(self, doses):
         #check if any organs are missing using the dose file, and store them
         organs = set(Constants.organ_list[:])
         dose_organs = set(doses['ROI'].unique())
@@ -118,12 +119,10 @@ class Patient():
         try:
             gtvp = centroids.loc['GTVp']
             self.gtvp_volume = gtvp.volume
-        except:
-            self.gtvp_volume = float(0)
-        try:
             self.gtvp_position = gtvp[['x','y','z']].values
             self.gtvp_doses = gtvp[['min_dose','mean_dose','max_dose']]
         except:
+            self.gtvp_volume = float(0)
             self.gtvp_position = np.array([0,0,0])
             self.gtvp_doses = np.array([0,0,0])
         #extract a secondary tumor (only gets the first one?)
@@ -134,12 +133,10 @@ class Patient():
                 Constants.multiple_gtvn.append(self.id)
                 gtvn = gtvn.iloc[0]
             self.gtvn_volume = gtvn.volume
-        except:
-            self.gtvn_volume = float(0)
-        try:
             self.gtvn_position = gtvn[['x','y','z']].values
             self.gtvn_doses = gtvn[['min_dose','mean_dose','max_dose']]
         except:
+            self.gtvn_volume = float(0)
             self.gtvn_position = np.array([0,0,0])
             self.gtvn_doses = np.array([0,0,0])
         #get the info the centers, volumes, nad doses for all the things
