@@ -76,6 +76,10 @@ class Rankings():
     def experimental(p1, p2, weights):
         #this is basically just an ensemble of different distances metrics at this point
         scores = np.zeros((len(weights),))
+        if p1.full_dose != p2.full_dose: #only compare people with full or half radiation with each other
+            return 0
+        if p1.full_dose == 0 and p1.laterality != p2.laterality: #for half radiation, group by laterality
+            return 0
         percent_different = lambda x,y: 1- np.abs(x - y)/(x + y + .0000001)
         if(weights[0] > 0):
             #ssim seems to do better than other things?
@@ -95,12 +99,12 @@ class Rankings():
         if(weights[5] > 0):
             scores[5] = Rankings.emd(p1,p2)
         #I was normalizing here, but moved it so I can rescale the data
-        #final_score = np.sum(scores*weights)/np.mean(weights)
-        return(scores)
+        final_score = np.sum(scores*weights)/np.mean(weights)
+        return(final_score)
 
 class PatientSet():
 
-    def __init__(self, patient_set = None, outliers = [], root = 'data\\patients_v2\\'):
+    def __init__(self, patient_set = None, outliers = [], root = 'data\\patients_v2*\\'):
         if patient_set is None:
             outliers = outliers
             self.total_dose_predictor = None
@@ -163,7 +167,7 @@ class PatientSet():
             total_dose_vector[patient_index] = new_patient.total_dose
         return((patients, dose_matrix, total_dose_vector, num_patients, id_map))
     
-    def export(self, weights = np.array([1,1,0,0,0,0]) , rank_function = 'experimental'):
+    def export(self, weights = np.array([0,1,0,0,0,0]) , rank_function = 'experimental'):
         #exports the dataset into the json format peter is using for the frontend
         data = []
         scores = self.gen_score_matrix(weights, rank_function)
@@ -196,26 +200,30 @@ class PatientSet():
     def get_patients(self):
         return list(self.patients.values())
 
-    def gen_score_matrix(self, weights, rank_function = 'ssim'):
+    def gen_score_matrix(self, weights, rank_function):
         #generates a score matrix based on a rank function
         #function should rank more similar people with a higher number
-        scores = np.zeros((self.num_patients, self.num_patients,  len(weights)))
+        
+        #commented parts are for when I normalized the score 0-1 accross all patients, 
+        #might want to re-implement later, would need ranking to return the raw score vector
+#        scores = np.zeros((self.num_patients, self.num_patients, len(weights)))
+        scores = np.zeros((self.num_patients, self.num_patients))
         for row in range(0, self.num_patients):
             for col in range(row + 1, self.num_patients):
-                scores[row, col, :] = self.compare_traits(self.patients[row], self.patients[col],
+                scores[row, col] = self.compare_traits(self.patients[row], self.patients[col],
                       rank_function = rank_function, weights = weights)
-        rescale = lambda x: (x - np.min(x))/(np.max(x) - np.min(x) + .000001)
-        for score_idx in range(0, len(weights)):
-            scores[:, :, score_idx] = rescale(scores[:,:, score_idx])
-        scores *= weights
-        scores = np.sum(scores, axis = 2)/np.mean(weights)
+#        rescale = lambda x: (x - np.min(x))/(np.max(x) - np.min(x) + .000001)
+#        for score_idx in range(0, len(weights)):
+#            scores[:, :, score_idx] = rescale(scores[:,:, score_idx])
+#        scores *= weights
+#        scores = np.sum(scores, axis = 2)/np.mean(weights)
         #formats it as a symetric matrix with a zero diagonal
         scores += scores.transpose()
         #basically normalize the score so the max is 1?
         scores = scores/scores.max()
         return(scores)
 
-    def predict_doses(self, rank_function = 'ssim', weights = 1, num_matches = 5,
+    def predict_doses(self, rank_function, weights, num_matches = 5,
                       td_rank_function = None, td_weights = None):
         #generates an ndarray of dose estimates based on algorithm parameters
         #rank_function and weights are the functions used to match dose
@@ -345,13 +353,15 @@ class PatientSet():
                                        td_rank_function, td_weights)
         differences = self.doses - estimates
         patient_mean_error = np.mean(np.abs(differences), axis = 1)
+        patient_percent_error = np.sum(np.absolute(differences), axis = 1)/np.sum(self.doses, axis = 1)
         total_mean_error = np.mean(patient_mean_error)
         total_rmse = np.sqrt(np.mean(differences**2))
         result_dict = {'prediction': estimates,
                        'patient_mean_error': patient_mean_error,
                        'mean_error': total_mean_error,
                        'rmse': total_rmse,
-                       'differences': differences}
+                       'differences': differences,
+                       'patient_percent_error': patient_percent_error}
         return(result_dict)
 
 def pca(points):
@@ -404,14 +414,14 @@ def train_total_dose_tree(db):
     return(tree)
 
 #db = pickle.load( open('data\\patient_data_v2_only.p', 'rb' ))
-#db = PatientSet( outliers = Constants.v2_bad_entries + Constants.v2_half_dosed)
+#db = PatientSet(patient_set = db, root = 'data\\patients_v2*\\', outliers = Constants.v2_bad_entries)
 #out = db.export()
 #pickle.dump(db, open('data\\patient_data_v2_only.p', 'wb'))
 
 db.set_total_dose_prediction(None)
-weights = np.array([1, 1, 0, 0, .1, 0])
-td_weights = np.array([0, 1, 1, 0, .1, 0])
-num_matches = 5
+weights = np.array([0, 1, .1, 0, 0, .1])
+td_weights = np.array([0, 1, .1, 0, 0, .1])
+num_matches = 8
 
 result = db.evaluate(rank_function = 'experimental',
                               weights = weights,
@@ -420,17 +430,6 @@ result = db.evaluate(rank_function = 'experimental',
                               td_rank_function = 'experimental')
 print(' mean error: ',result['mean_error'],' rmse: ', result['rmse'])
 print(len(np.where(result['patient_mean_error'] > 8)[0]))
-#
-#
-#tree = train_total_dose_tree(db)
-#db.set_total_dose_prediction(tree)
-#prediction = db.predict_doses(rank_function = 'experimental', weights = weights, num_matches = num_matches)
-#total_predicted_doses = np.sum(prediction, axis = 1)
-#base_rmse = np.sqrt(np.sum((db.total_doses - total_predicted_doses)**2)/db.num_patients)
-#print('decision tree', base_rmse)
-#
-#
-#result = db.evaluate(rank_function = 'experimental', weights = weights, num_matches = num_matches)
-#print(result['rmse'], ' ',result['mean_error'])
-#print(len(np.where(result['patient_mean_error'] > 8)[0]))
+most_erroneous = [(db.patients[x].id, result['patient_mean_error'][x]) for x in np.where(result['patient_mean_error'] > 8)[0]]
+most_erroneous = sorted(most_erroneous, key = lambda x: x[1])
 
