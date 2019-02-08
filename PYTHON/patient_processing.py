@@ -60,7 +60,8 @@ class Rankings():
         #patient into the same positions of the more massive patient
         volumes = np.abs(patient_1.volumes - patient_2.volumes)
         dists = np.sqrt(np.sum((patient_1.centroids - patient_2.centroids)**2, axis = 1))
-        work = np.sum(dists*volumes)
+        organ_indexes =[26, 14, 20, 38, 17, 24, 12, 11, 7, 4, 8]
+        work = np.sum(dists[organ_indexes]*volumes[organ_indexes])
         #we this to work with the other functions so >0 and high scores = closer
         return(1/(work + .000001))
 
@@ -76,7 +77,7 @@ class Rankings():
     def experimental(p1, p2, weights):
         #this is basically just an ensemble of different distances metrics at this point
         scores = np.zeros((len(weights),))
-        if p1.full_dose != p2.full_dose: #only compare people with full or half radiation with each other
+        if p1.full_dose != p2.full_dose or p1.high_throat_dose != p2.high_throat_dose: #only compare people with full or half radiation with each other
             return 0
         if p1.full_dose == 0 and p1.laterality != p2.laterality: #for half radiation, group by laterality
             return 0
@@ -116,6 +117,7 @@ class PatientSet():
             self.total_doses = patient_set.total_doses
             self.num_patients = patient_set.num_patients
             self.id_map = patient_set.id_map
+            self.ids = patient_set.ids
         print('\npatient data loaded...\n')
 
     def read_patient_data(self, root, outliers):
@@ -136,6 +138,7 @@ class PatientSet():
                 del distance_files[pos]
                 del dose_files[pos]
                 del ids[pos]
+        self.ids = ids
         metadata_file = 'data\\patient_info.csv'
         assert(len(distance_files) == len(dose_files))
         #maps a position 0-len(files) to the dummy id for a patient
@@ -324,24 +327,21 @@ class PatientSet():
 
     def gen_patient_feature_matrix(self):
         #function to get a matrix I can try some dose prediction on?
-        features = np.zeros((self.num_patients, 14))
+        features = np.zeros((self.num_patients, 16))
         laterality_map = {'L': -1, 'R': 1, 'Bilateral': 0}
+        subsite_map = {'BOT': 0, 'GPS': 1, 'Tonsil': 2, 'NOS': 3}
 #        norm = lambda x: np.sqrt(np.sum(x*x))
-        brainstem_pos = Constants.organ_list.index('Brainstem')
-        lt_thyroid_pos = Constants.organ_list.index('Lt_thyroid_lobe')
-        rt_thyroid_pos = Constants.organ_list.index('Rt_thyroid_lobe')
         for patient_idx in range(0, self.num_patients):
             patient = self.patients[patient_idx]
             features[patient_idx, 0] = patient.gtvp_volume
             features[patient_idx, 1] = patient.gtvn_volume
             features[patient_idx, 2] = patient.prescribed_dose
             features[patient_idx, 3] = laterality_map[patient.laterality]
-            features[patient_idx, 4:7] = patient.gtvp_position[:]
-            features[patient_idx, 7:10] = patient.gtvn_position[:]
-            features[patient_idx, 10] = np.sum(patient.volumes)
-            features[patient_idx, 11] = np.sum(patient.tumor_distances[brainstem_pos])
-            features[patient_idx, 12] = np.sum(patient.tumor_distances[lt_thyroid_pos])
-            features[patient_idx, 13] = np.sum(patient.tumor_distances[rt_thyroid_pos])
+            features[patient_idx, 4] = np.sum(patient.volumes)
+            features[patient_idx, 5] = patient.prescribed_dose
+            features[patient_idx, 6 + subsite_map[patient.tumor_subsite]] = 1
+            features[patient_idx, 10:13] = patient.gtvp_position[:]
+            features[patient_idx, 13:16] = patient.gtvn_position[:]
         #standarization, not needed for binary trees though
         features = (features - np.mean(features, axis = 0))/np.std(features, axis = 0)
         return(features)
@@ -352,17 +352,28 @@ class PatientSet():
         estimates = self.predict_doses(rank_function, weights, num_matches,
                                        td_rank_function, td_weights)
         differences = self.doses - estimates
-        patient_mean_error = np.mean(np.abs(differences), axis = 1)
-        patient_percent_error = np.sum(np.absolute(differences), axis = 1)/np.sum(self.doses, axis = 1)
-        total_mean_error = np.mean(patient_mean_error)
+        patient_mean_error = self.labeled_mean_error(differences, axis = 1)
+        organ_mean_error = self.labeled_mean_error(differences, axis = 0)
+        total_mean_error = np.mean(np.abs(differences))
         total_rmse = np.sqrt(np.mean(differences**2))
         result_dict = {'prediction': estimates,
                        'patient_mean_error': patient_mean_error,
                        'mean_error': total_mean_error,
                        'rmse': total_rmse,
                        'differences': differences,
-                       'patient_percent_error': patient_percent_error}
+                       'organ_mean_error': organ_mean_error}
         return(result_dict)
+    
+    def labeled_mean_error(self, differences, axis):
+        #gives us a nice sorted list organ or patient total mean error as a labeled tuple
+        error = np.mean(np.abs(differences), axis = axis)
+        if axis == 0: #axis 0 is features, so organs here
+            labels = Constants.organ_list
+        else:
+            labels = self.ids #ids for the patients in sorted order?
+        name_error_tuples = [ (labels[x], error[x] ) for x in range(0, len(error))]
+        name_error_tuples = sorted(name_error_tuples, key = lambda x: x[1])
+        return(name_error_tuples)
 
 def pca(points):
     points -= np.mean(points, axis = 0)
@@ -408,28 +419,33 @@ def train_total_dose_tree(db):
     y_test = y[:partition]
     y_train = y[partition:]
     from sklearn.tree import DecisionTreeRegressor
-
     tree = DecisionTreeRegressor(max_depth = 10, criterion = 'mae')
     tree.fit(x_train,y_train)
     return(tree)
 
 #db = pickle.load( open('data\\patient_data_v2_only.p', 'rb' ))
-#db = PatientSet(patient_set = db, root = 'data\\patients_v2*\\', outliers = Constants.v2_bad_entries)
+db = PatientSet(patient_set = db, root = 'data\\patients_v2*\\', outliers = Constants.v2_bad_entries)
 #out = db.export()
 #pickle.dump(db, open('data\\patient_data_v2_only.p', 'wb'))
 
-db.set_total_dose_prediction(None)
-weights = np.array([0, 1, .1, 0, 0, .1])
-td_weights = np.array([0, 1, .1, 0, 0, .1])
-num_matches = 8
+y = np.array([p.full_dose for p in db.get_patients()])
+x = db.gen_patient_feature_matrix()
+from sklearn.linear_model import LogisticRegressionCV
+model = LogisticRegressionCV()
+model.fit(x,y)
+for value in model.coef_[0]:
+    print(value)
 
-result = db.evaluate(rank_function = 'experimental',
-                              weights = weights,
-                              num_matches = num_matches,
-                              td_weights = td_weights,
-                              td_rank_function = 'experimental')
-print(' mean error: ',result['mean_error'],' rmse: ', result['rmse'])
-print(len(np.where(result['patient_mean_error'] > 8)[0]))
-most_erroneous = [(db.patients[x].id, result['patient_mean_error'][x]) for x in np.where(result['patient_mean_error'] > 8)[0]]
-most_erroneous = sorted(most_erroneous, key = lambda x: x[1])
-
+#db.set_total_dose_prediction(None)
+#weights = np.array([0, 1, 0, 0, 0, 1])
+#td_weights = np.array([0, 1, 0, 0, 0, 1])
+#num_matches = 9
+#
+#result = db.evaluate(rank_function = 'experimental',
+#                              weights = weights,
+#                              num_matches = num_matches,
+#                              td_weights = td_weights,
+#                              td_rank_function = 'experimental')
+#print(' mean error: ',result['mean_error'],' rmse: ', result['rmse'])
+#print(result['patient_mean_error'][80:])
+##print(result['organ_mean_error'][30:])

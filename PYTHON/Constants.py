@@ -126,10 +126,10 @@ class Constants():
                       81, 17, 39, 101, 115, 2020, 10011, 10034, 10074,
                       10080, 10094, 10145, 10148, 10164, 10174, 10181,
                       10086, 10147]
-    v2_bad_entries = [239, 2009, 5059, 10034, 10164, 5077]
+    v2_bad_entries = [239, 10034, 10164, 174, 175, 205, 249, 2009, 5059]
     v2_half_dosed = [160, 5077, 178, 155, 221, 251, 2007, 212, 234,154]
-    #patients in v2 with full-head radiation that are still >~7.9 mean error on 2/7/2019
-    v2_most_wrong = [213, 175, 197, 5084, 246, 10159, 5068] 
+    #pateints with like, really high neck radation, chosen manually
+    v2_high_throat_dose = [184, 276, 5084, 265, 246, 289, 283, 5068, 197]
     #names to use for the dataframe when I read a centroid file.  it's cleaner
     centroid_file_names = ['ROI', 'x', 'y', 'z', 'mean_dose', 'volume', 'min_dose', 'max_dose']
     #patients without organs, using their sorted order (12th patient in the sorted list ect)

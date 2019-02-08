@@ -16,6 +16,7 @@ class Patient():
         #patient ID number
         self.id = p_id
         self.full_dose = 0 if p_id in Constants.v2_half_dosed else 1
+        self.high_throat_dose = 1 if p_id in Constants.v2_high_throat_dose else 0
         #basically ordinality of the id, so where it will be in an index
         self.pos = position
         self.laterality = info['Tm Laterality (R/L)']
