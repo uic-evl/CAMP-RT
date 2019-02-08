@@ -29,8 +29,12 @@ var scenes = [],
     scenesRP = [],
     renderer, renderer2;
 
-var selectedPatient = 1,
-    patientsToShow = 7;
+	
+var selectedPatient = 1;
+//patients shown on load screen?
+var patientsToShow = 92;
+//patients to use in the macching algorithm
+var numMatches = 9;
 
 var totalModelCount;
 
@@ -85,8 +89,6 @@ var months,
     monthKeys,
     monthParse = d3.timeParse("%Y-%m");
 
-
-
 var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset.json"];
 var promises = [];
 
@@ -97,7 +99,6 @@ files.forEach(function (url) {
 Promise.all(promises).then(function (values) {
     start(values[0], values[1]);
 });
-
 
 
 function start(organAtlas, patientsData) {
@@ -1498,9 +1499,10 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
 
             //console.log(organ);
 
-            var organAverage = 0;
-
-            for (var x = 1; x <= 5; x++) {
+            var organTotal= 0;
+			var scoreTotal = 0;
+	
+            for (var x = 1; x <= numMatches; x++) {
 
                 var scene = scenes[pRankingOrder[x] - 1];
 
@@ -1513,8 +1515,9 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
                         console.log(meanDose);
                         meanDose = 0.0
                     }
-                    //organAverage += (meanDose * simScores[x]);
-                    organAverage += (meanDose);
+                    organTotal += (meanDose * simScores[x]);
+					scoreTotal += simScores[x]
+                    //organAverage += (meanDose);
                     
                     //console.log(simScores[x]);
                     organ_lc.values.push(meanDose);
@@ -1522,7 +1525,7 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
                 }
             }
 
-            var averageOrganDose = (organAverage / 5).toFixed(3);
+            var averageOrganDose = (organTotal / scoreTotal).toFixed(3);
             organ_lc.values.unshift(averageOrganDose);
 
             data.series.push(organ_lc);
