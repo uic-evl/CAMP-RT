@@ -1519,9 +1519,10 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
 					scoreTotal += simScores[x]
                     //organAverage += (meanDose);
                     
-                    //console.log(simScores[x]);
-                    organ_lc.values.push(meanDose);
-
+                    //why is this storing both the actaul mean dose and the doses?
+					if(x >= 5){
+						organ_lc.values.push(meanDose);
+					}
                 }
             }
 

@@ -131,7 +131,8 @@ class Constants():
     #pateints with like, really high neck radation, chosen manually
     v2_high_throat_dose = [184, 276, 5084, 265, 246, 289, 283, 5068, 197]
     #names to use for the dataframe when I read a centroid file.  it's cleaner
-    centroid_file_names = ['ROI', 'x', 'y', 'z', 'mean_dose', 'volume', 'min_dose', 'max_dose']
+    centroid_file_names_v2 = ['ROI', 'x', 'y', 'z', 'mean_dose', 'volume', 'min_dose', 'max_dose']
+    centroid_file_names_v3 = ['ROI', 'x', 'y', 'z', 'volume', 'min_dose', 'mean_dose', 'max_dose']
     #patients without organs, using their sorted order (12th patient in the sorted list ect)
     missing_organs = {}
     no_tumor = []
