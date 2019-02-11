@@ -77,21 +77,20 @@ class Rankings():
     def experimental(p1, p2, weights):
         #this is basically just an ensemble of different distances metrics at this point
         scores = np.zeros((len(weights),))
-        if p1.full_dose != p2.full_dose or p1.high_throat_dose != p2.high_throat_dose: #only compare people with full or half radiation with each other
+        if p1.full_dose != p2.full_dose:# or p1.high_throat_dose != p2.high_throat_dose: #only compare people with full or half radiation with each other
             return 0
         if p1.full_dose == 0 and p1.laterality != p2.laterality: #for half radiation, group by laterality
             return 0
         percent_different = lambda x,y: 1- np.abs(x - y)/(x + y + .0000001)
         if(weights[0] > 0):
             #ssim seems to do better than other things?
-            scores[0] = Rankings.ssim(p1, p2)
-        if(weights[1]) > 0:
+            scores[0] = percent_different( p1.tumor_volume/np.sum(p1.volumes), p2.tumor_volume/np.sum(p2.volumes))
             #this one is the most important
-            scores[1] = compare_ssim( Rankings.tumor_distance_matrix(p1),
-                  Rankings.tumor_distance_matrix(p2), win_size = 7)
+        scores[1] = compare_ssim( Rankings.tumor_distance_matrix(p1),
+              Rankings.tumor_distance_matrix(p2), win_size = 7)
         if(weights[2] > 0):
             #difference in prescribed dose 'total dose' for the tumor
-            scores[2] = percent_different(p1.prescribed_dose, p2.prescribed_dose)
+            scores[2] =  1 if (p1.tumor_subsite == p2.tumor_subsite and p1.tumor_subsite == 'NOS') else 0
         if(weights[3] > 0):
             #differences in tumor volume?
             scores[3] = percent_different(p1.tumor_volume, p2.tumor_volume)
@@ -152,6 +151,9 @@ class PatientSet():
         total_dose_vector = np.zeros((num_patients,))
         #putting all the data into a patient object for further objectification
         for patient_index in range(0, num_patients):
+            dataset_version = int(findall('patients_v([0-9])', distance_files[patient_index])[0])
+            print(dataset_version)
+            assert(dataset_version in [2,3])
             #these are indexed by name of organ
             #we only use 3 rows but half of them have a comma missing in the header between the last two rows
             distances = pd.read_csv(distance_files[patient_index],
@@ -160,7 +162,10 @@ class PatientSet():
             distances.replace(Constants.tumor_aliases, inplace = True)
             doses = pd.read_csv(dose_files[patient_index],
                                 usecols = [0,1,2,3,4,5,6,7]).dropna()
-            doses.columns = Constants.centroid_file_names
+            if dataset_version == 2:
+                doses.columns = Constants.centroid_file_names_v2
+            elif dataset_version == 3:
+                doses.columns = Constants.centroid_file_names_v3
             doses.replace(Constants.tumor_aliases, inplace = True)
             info = metadata.loc[ids[patient_index]]
             new_patient = Patient(distances, doses,
@@ -170,13 +175,14 @@ class PatientSet():
             total_dose_vector[patient_index] = new_patient.total_dose
         return((patients, dose_matrix, total_dose_vector, num_patients, id_map))
     
-    def export(self, weights = np.array([0,1,0,0,0,0]) , rank_function = 'experimental'):
+    def export(self, weights = np.array([0,1,0,0,0,0]) , rank_function = 'experimental', num_matches = 9):
         #exports the dataset into the json format peter is using for the frontend
         data = []
         scores = self.gen_score_matrix(weights, rank_function)
+        dose_estimates = self.predict_doses(rank_function, weights, num_matches)
         for p_idx in range(0, self.num_patients):
             patient = self.patients[p_idx]
-            entry = patient.to_ordered_dict()
+            entry = patient.to_ordered_dict(dose_estimates[p_idx, :])
             ssim_scores = scores[p_idx,:]
             ssim_scores[p_idx] = 1
             zipped_scores = sorted(zip(ssim_scores, np.arange(1,self.num_patients + 1)), key = lambda x: -x[0])
@@ -189,9 +195,6 @@ class PatientSet():
                 return int(o)  
         with open('data\\patient_dataset.json', 'w+') as f:  # generate JSON
             json.dump( data, f, indent=4, default = default)
-        ##fill in scores here
-        ##also save to json
-        return data
 
     def get_by_id(self, p_id):
         if p_id in self.id_map:
@@ -325,26 +328,59 @@ class PatientSet():
         #and returns a 1d numpy array of y
         self.total_dose_predictor = predictor
 
+    def gen_organ_distance_matrix(self):
+        #function to get a matrix I can try some dose prediction on?
+        #this will only work if patients actually has a distance value
+        features = np.zeros((self.num_patients, 1035))
+        feature_names = []
+        for x in range(0, Constants.num_organs):
+            for y in range(x, Constants.num_organs):
+                feature_names.append(Constants.organ_list[x] + '-' + Constants.organ_list[y])
+        indices = [np.empty((990,)), np.empty((990,))]
+        count = 0
+        for row in range(1,45):
+            for col in range(row + 1, 45):
+                indices[0][count] = row
+                indices[1][count] = col
+                count += 1
+        for patient_idx in range(0, self.num_patients):
+            patient = self.patients[patient_idx]
+            inds = np.triu_indices(len(patient.distances))
+            features[patient_idx, :] = patient.distances[inds].ravel()
+        #standarization, not needed for binary trees though
+        features = (features - np.mean(features, axis = 0))/(np.std(features, axis = 0) + .00000001)
+        return (features, feature_names)
+    
+    def gen_tumor_distance_matrix(self):
+        #function to get a matrix I can try some dose prediction on?
+        features = np.zeros((self.num_patients, 45))
+        feature_names = Constants.organ_list
+        for patient_idx in range(0, self.num_patients):
+            patient = self.patients[patient_idx]
+            features[patient_idx, :] = patient.tumor_distances
+        #standarization, not needed for binary trees though
+        features = (features - np.mean(features, axis = 0))/(np.std(features, axis = 0))
+        return (features, feature_names)
+
     def gen_patient_feature_matrix(self):
         #function to get a matrix I can try some dose prediction on?
-        features = np.zeros((self.num_patients, 16))
-        laterality_map = {'L': -1, 'R': 1, 'Bilateral': 0}
+        features = np.zeros((self.num_patients, 14))
+        feature_names = ['gtvp volume', 'gtvn volume', 'prescribed dose', 'total_organ_volume', 
+                         'BOT','GPS','Tonsil','NOS', 'gtvp_x', 'gtvp_y', 'gtvp_z', 'Left', 'Right', 'Bilateral']
+        laterality_map = {'L': 0, 'R': 1, 'Bilateral': 2}
         subsite_map = {'BOT': 0, 'GPS': 1, 'Tonsil': 2, 'NOS': 3}
-#        norm = lambda x: np.sqrt(np.sum(x*x))
         for patient_idx in range(0, self.num_patients):
             patient = self.patients[patient_idx]
             features[patient_idx, 0] = patient.gtvp_volume
             features[patient_idx, 1] = patient.gtvn_volume
             features[patient_idx, 2] = patient.prescribed_dose
-            features[patient_idx, 3] = laterality_map[patient.laterality]
-            features[patient_idx, 4] = np.sum(patient.volumes)
-            features[patient_idx, 5] = patient.prescribed_dose
-            features[patient_idx, 6 + subsite_map[patient.tumor_subsite]] = 1
-            features[patient_idx, 10:13] = patient.gtvp_position[:]
-            features[patient_idx, 13:16] = patient.gtvn_position[:]
+            features[patient_idx, 3] = np.sum(patient.volumes)
+            features[patient_idx, 4 + subsite_map[patient.tumor_subsite]] = 1
+            features[patient_idx, 8:11] = patient.gtvp_position[:]
+            features[patient_idx, 11 + laterality_map[patient.laterality]] = 1
         #standarization, not needed for binary trees though
-        features = (features - np.mean(features, axis = 0))/np.std(features, axis = 0)
-        return(features)
+        features = (features - np.mean(features, axis = 0))/(np.std(features, axis = 0))
+        return((features, feature_names))
 
     def evaluate(self, rank_function = 'ssim', weights = 1, num_matches = 5,
                  td_rank_function = None, td_weights = None):
@@ -424,28 +460,43 @@ def train_total_dose_tree(db):
     return(tree)
 
 #db = pickle.load( open('data\\patient_data_v2_only.p', 'rb' ))
-db = PatientSet(patient_set = db, root = 'data\\patients_v2*\\', outliers = Constants.v2_bad_entries)
-#out = db.export()
+db = PatientSet(patient_set = db, root = 'data\\patients_v*\\', outliers = Constants.v2_bad_entries)
+#out = db.export(weights = [1,1,0,0,0,0])
 #pickle.dump(db, open('data\\patient_data_v2_only.p', 'wb'))
 
-y = np.array([p.full_dose for p in db.get_patients()])
-x = db.gen_patient_feature_matrix()
-from sklearn.linear_model import LogisticRegressionCV
-model = LogisticRegressionCV()
-model.fit(x,y)
-for value in model.coef_[0]:
-    print(value)
+db.set_total_dose_prediction(None)
+weights = np.array([1, 1, 0, 0, 0, 0])
+td_weights = np.array([1, 1, 0, 0, 0, 0])
+num_matches = 9
 
-#db.set_total_dose_prediction(None)
-#weights = np.array([0, 1, 0, 0, 0, 1])
-#td_weights = np.array([0, 1, 0, 0, 0, 1])
-#num_matches = 9
-#
-#result = db.evaluate(rank_function = 'experimental',
-#                              weights = weights,
-#                              num_matches = num_matches,
-#                              td_weights = td_weights,
-#                              td_rank_function = 'experimental')
-#print(' mean error: ',result['mean_error'],' rmse: ', result['rmse'])
+result = db.evaluate(rank_function = 'experimental',
+                              weights = weights,
+                              num_matches = num_matches,
+                              td_weights = td_weights,
+                              td_rank_function = 'experimental')
+print(' mean error: ',result['mean_error'],' rmse: ', result['rmse'])
 #print(result['patient_mean_error'][80:])
-##print(result['organ_mean_error'][30:])
+#print(result['organ_mean_error'][30:])
+
+#y = np.array([p.high_throat_dose for p in db.get_patients()])
+#x,feature_labels = db.gen_patient_feature_matrix()
+#correlations = np.empty((x.shape[1],))
+#for variable in range(0, x.shape[1]):
+#    correlations[variable] = np.correlate(x[:, variable], y)[0]
+#labeled_correlations = sorted(zip(feature_labels, correlations),
+#                             key = lambda x: x[1])
+#labeled_correlations = list(zip(*labeled_correlations))
+#corrs = np.array(labeled_correlations[1])
+#corrs -= np.mean(corrs)
+#labels = labeled_correlations[0]
+#max_values = 175
+#back = len(labeled_correlations[1])
+#front = max([0, back - max_values])
+#plt.barh(range(back - front), corrs[front:back], 
+#         tick_label = labels[front: back])
+
+#from sklearn.linear_model import LogisticRegressionCV
+#model = LogisticRegressionCV()
+#model.fit(x,y)
+#for value in model.coef_[0]:
+#    print(value)

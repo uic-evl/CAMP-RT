@@ -41,14 +41,14 @@ class Patient():
         if self.tumor_volume == 0 or np.sum(self.tumor_distances) == 0:
             Constants.no_tumor.append(self.id)
     
-    def to_ordered_dict(self):
+    def to_ordered_dict(self, dose_estimates):
         #exports local information into a dictionary
         entry = OrderedDict() #why is it ordered?
         entry['ID'] = str(self.id)
         entry['ID_int'] = int(self.id)
         entry['name'] = "Patient " + str(self.id)
         entry['tumorVolume'] = max([self.gtvn_volume, self.gtvp_volume])
-        entry['organData'] = self.get_organ_data_dict()
+        entry['organData'] = self.get_organ_data_dict(dose_estimates)
         entry['ID_internal'] = self.pos + 1
         entry['hasGTVp'] = str((self.gtvp_volume > 0)).lower()
         entry['hasGTVn'] = str((self.gtvn_volume > 0)).lower()
@@ -62,7 +62,7 @@ class Patient():
         entry['total_Dose'] = self.prescribed_dose #this is confusing
         return(entry)
     
-    def get_organ_data_dict(self):
+    def get_organ_data_dict(self, dose_estimates):
         #subset of the information for json export - is ordering important
         #should be a dictionary key = organ string, values = x,y,z,meanDose,maxDose
         data = OrderedDict()
@@ -76,6 +76,7 @@ class Patient():
             organ_dict['meanDose'] = self.doses[x]
             organ_dict['minDose'] = self.min_doses[x]
             organ_dict['maxDose'] = self.max_doses[x]
+            organ_dict['estimatedDose'] = round(dose_estimates[x], 2)
             data[organ] = organ_dict
         if self.gtvp_volume > 0:
             gtvp_dict = OrderedDict()
@@ -111,8 +112,8 @@ class Patient():
         return
 
     def get_doses_file_info(self, doses):
-        #rename the columns so they're consistent
-        doses.columns = Constants.centroid_file_names
+        #rename the columns so they're consistent, now done in dataset so I can read which set it's from
+#        doses.columns = Constants.centroid_file_names
         #move centroids so the center of the cloud is at zero?
         centroids = self.center_centroids(doses)
         centroids = centroids.set_index('ROI')
