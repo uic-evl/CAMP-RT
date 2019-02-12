@@ -152,28 +152,36 @@ class PatientSet():
         #putting all the data into a patient object for further objectification
         for patient_index in range(0, num_patients):
             dataset_version = int(findall('patients_v([0-9])', distance_files[patient_index])[0])
-            print(dataset_version)
             assert(dataset_version in [2,3])
             #these are indexed by name of organ
             #we only use 3 rows but half of them have a comma missing in the header between the last two rows
             distances = pd.read_csv(distance_files[patient_index],
                                     usecols = [0,1,2]).dropna()
             #renames anything that is equivalent to GTVp/GTVn to the correct format
-            distances.replace(Constants.tumor_aliases, inplace = True)
+            distances = self.fix_tumor_names(distances)
             doses = pd.read_csv(dose_files[patient_index],
                                 usecols = [0,1,2,3,4,5,6,7]).dropna()
             if dataset_version == 2:
                 doses.columns = Constants.centroid_file_names_v2
             elif dataset_version == 3:
                 doses.columns = Constants.centroid_file_names_v3
-            doses.replace(Constants.tumor_aliases, inplace = True)
+            doses = self.fix_tumor_names(doses)
             info = metadata.loc[ids[patient_index]]
+            if ids[patient_index] in [37, 100, 10061, 10074, 10143]:
+                print(doses.ROI)
             new_patient = Patient(distances, doses,
                                   ids[patient_index], patient_index, info)
             patients[patient_index] = new_patient
             dose_matrix[patient_index, :] = new_patient.doses
             total_dose_vector[patient_index] = new_patient.total_dose
         return((patients, dose_matrix, total_dose_vector, num_patients, id_map))
+    
+    def fix_tumor_names(self, dataframe):
+        #this should probably not need to return anything, but does.
+        #replace the aliases for GTVp or GTVn(1) with a consistent name
+        dataframe.replace(Constants.tumor_aliases, inplace = True)
+        dataframe.replace(to_replace = r'GTV.*N', value = 'GTVn', regex = True, inplace = True)
+        return dataframe
     
     def export(self, weights = np.array([0,1,0,0,0,0]) , rank_function = 'experimental', num_matches = 9):
         #exports the dataset into the json format peter is using for the frontend
@@ -460,7 +468,8 @@ def train_total_dose_tree(db):
     return(tree)
 
 #db = pickle.load( open('data\\patient_data_v2_only.p', 'rb' ))
-db = PatientSet(patient_set = db, root = 'data\\patients_v*\\', outliers = Constants.v2_bad_entries)
+db = PatientSet(patient_set = None, root = 'data\\patients_v*\\', 
+                outliers = Constants.v2_bad_entries + Constants.v3_bad_entries)
 #out = db.export(weights = [1,1,0,0,0,0])
 #pickle.dump(db, open('data\\patient_data_v2_only.p', 'wb'))
 
