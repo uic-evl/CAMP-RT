@@ -102,7 +102,6 @@ class Constants():
          'Upper_Lip']
 
     num_organs = len(organ_list)
-    min_distance = -24.4 #just lower than the lowest distance value in the v2 dataset, so I can positivify things
     #GTVn analgoues: 'GTV node', 'GTV-N', 'GTV_n', 'GTVn2', 'GTVn1'
     #GTVp analogues: 'GTV primary', 'GTV-P', 'GTV_p'
     tumor_aliases = {'GTV node': 'GTVn',
@@ -123,9 +122,12 @@ class Constants():
                      #'GTV-N2': 'GTVn'
                      }
     v3_bad_entries = [11, 33, 55, 56, 67, 69, 72, 73, 74, 76, 77, 79,
-                      81, 17, 39, 101, 115, 2020, 10011, 10034, 10074,
-                      10080, 10094, 10145, 10148, 10164, 10174, 10181,
-                      10086, 10147]
+                      81, 17, 39, 101, 115, 2020, 10011, 10034,10043,
+                      10074,10080, 10094, 10145, 10148, 10164, 10174, 
+                      10181, 10086, 10147, #missing oragans
+                      131, 5001, 5003, 5042, 5053, 10009, 10013, 10015, 
+                      10018,10020, 10022, 10029, 10046, 10070, 10077,
+                      10086, 10108, 10131, 10143, 10159, 10181, 10193]
     v2_bad_entries = [239, 10034, 10164, 174, 175, 205, 249, 2009, 5059]
     v2_half_dosed = [160, 5077, 178, 155, 221, 251, 2007, 212, 234,154]
     #pateints with like, really high neck radation, chosen manually
@@ -136,4 +138,3 @@ class Constants():
     #patients without organs, using their sorted order (12th patient in the sorted list ect)
     missing_organs = {}
     no_tumor = []
-    multiple_gtvn = []

@@ -32,7 +32,7 @@ var scenes = [],
 	
 var selectedPatient = 1;
 //patients shown on load screen?
-var patientsToShow = 92;
+var patientsToShow = 20;
 //patients to use in the macching algorithm
 var numMatches = 9;
 
