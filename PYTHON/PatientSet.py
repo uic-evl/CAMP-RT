@@ -18,51 +18,40 @@ from Patient import Patient
 
 class Rankings():
     #ranking functions that generate a score, takes in pateint objects
-
-    def vector_ssim(p1, p2):
-        upper_triangle = np.triu_indices(len((p1.distances)))
-        d1 = p1.distances[upper_triangle].ravel()
-        d2 = p2.distances[upper_triangle].ravel()
-        return(compare_ssim(d1, d2, win_size = 5))
-
-    def volume_weights_ssim(p1, p2):
-        volume_matrix1 = p1.volumes.reshape(45,1)*p1.volumes.reshape(1,45)
-        volume_matrix2 = p2.volumes.reshape(45,1)*p2.volumes.reshape(1,45)
-        d1 = p1.distances*volume_matrix1
-        d2 = p2.distances*volume_matrix2
-        return(compare_ssim(d1, d2, win_size = 3))
-
-    def ssim(p1, p2):
-        return(compare_ssim(p1.distances, p2.distances, win_size = 3))
-
-    def ssim_with_laterality(p1, p2, weights = np.array([1,2,.05])):
-        scores = np.zeros((3,))
-        scores[0] = Rankings.ssim(p1,p2)
-        scores[1] = 1 if p1.laterality == p2.laterality else 0
-        scores[2] = 1 - np.abs(float(p1.gtvp_volume) - float(p2.gtvp_volume))/(
-                float(p1.gtvp_volume) + float(p2.gtvp_volume) + .000001)
-        final_score = np.sum(scores*weights)/np.mean(weights)
-        return(final_score)
-
-    def geometric_distance(p1,p2):
-        dist = np.sqrt(np.sum((p1 - p2)**2))
-        return(1/(dist + .000001))
-
-
-    def mse(p1,p2):
-        return( 1/( compare_mse(p1.distances, p2.distances) + .000001) )
-
-    def volume_mse(p1, p2):
-        return( 1/(compare_mse(p1.volumes, p2.volumes) + .000001) )
-
-    def emd(patient_1, patient_2):
-        #simplified earth movers distance - here it's just work done to move organs in the less massive
-        #patient into the same positions of the more massive patient
-        volumes = np.abs(patient_1.volumes - patient_2.volumes)
-        dists = np.sqrt(np.sum((patient_1.centroids - patient_2.centroids)**2, axis = 1))
-        work = np.sum(dists*volumes)
-        #we this to work with the other functions so >0 and high scores = closer
-        return(1/(work + .000001))
+    def pca(points):
+        points -= np.mean(points, axis = 0)
+        cov = np.cov(points, rowvar = False)
+        ev, eig = np.linalg.eig(cov)
+        principle_components = eig[:,np.argmax(ev)].dot(points.T)
+        return(principle_components)
+    
+    def cluster_organs(db):
+        #clusters, and then sorts the clusters and containing values by position along the
+        #principle component of the organs
+        from sklearn.cluster import AffinityPropagation
+        avg = db.get_average_patient_data()
+        centroids = avg['centroids']
+        estimator = AffinityPropagation()
+        estimator.fit(centroids)
+        centroid_principle_component = Rankings.pca(centroids)
+        #initialize list of empty stuff, and average pca value
+        clusters = { label: [[],0] for label in np.unique(estimator.labels_)}
+        for x in range(0, Constants.num_organs):
+            cluster = clusters[estimator.labels_[x]]
+            pc = centroid_principle_component[x]
+            cluster[0].append( (Constants.organ_list[x], pc) )
+            cluster[0] = sorted(cluster[0], key = lambda x: x[1])
+            cluster[1] = cluster[1] + pc
+            clusters[estimator.labels_[x]] = cluster
+        #average mean pca points
+        for key,value in clusters.items():
+            clusters[key][1] /= len(clusters[key][0])
+        cluster_list = sorted(clusters.values(), key = lambda x: x[1])
+        organs = []
+        for group in cluster_list:
+            for organ_tuple in group[0]:
+                organs.append( organ_tuple[0] )
+        return(organs)
 
     def min_dose_error(p1, p2):
         error = np.mean(np.abs(p1.doses - p2.doses))
@@ -422,103 +411,3 @@ class PatientSet():
         name_error_tuples = [ (labels[x], error[x] ) for x in range(0, len(error))]
         name_error_tuples = sorted(name_error_tuples, key = lambda x: x[1])
         return(name_error_tuples)
-
-def pca(points):
-    points -= np.mean(points, axis = 0)
-    cov = np.cov(points, rowvar = False)
-    ev, eig = np.linalg.eig(cov)
-    principle_components = eig[:,np.argmax(ev)].dot(points.T)
-    return(principle_components)
-
-def cluster_organs(db):
-    #clusters, and then sorts the clusters and containing values by position along the
-    #principle component of the organs
-    from sklearn.cluster import AffinityPropagation
-    avg = db.get_average_patient_data()
-    centroids = avg['centroids']
-    estimator = AffinityPropagation()
-    estimator.fit(centroids)
-    centroid_principle_component = pca(centroids)
-    #initialize list of empty stuff, and average pca value
-    clusters = { label: [[],0] for label in np.unique(estimator.labels_)}
-    for x in range(0, Constants.num_organs):
-        cluster = clusters[estimator.labels_[x]]
-        pc = centroid_principle_component[x]
-        cluster[0].append( (Constants.organ_list[x], pc) )
-        cluster[0] = sorted(cluster[0], key = lambda x: x[1])
-        cluster[1] = cluster[1] + pc
-        clusters[estimator.labels_[x]] = cluster
-    #average mean pca points
-    for key,value in clusters.items():
-        clusters[key][1] /= len(clusters[key][0])
-    cluster_list = sorted(clusters.values(), key = lambda x: x[1])
-    organs = []
-    for group in cluster_list:
-        for organ_tuple in group[0]:
-            organs.append( organ_tuple[0] )
-    return(organs)
-
-def train_total_dose_tree(db):
-    x = db.gen_patient_feature_matrix()
-    y = db.total_doses[:].reshape((db.num_patients, 1))
-    partition = db.num_patients//3
-    x_test = x[:partition, :]
-    x_train = x[partition:, :]
-    y_test = y[:partition]
-    y_train = y[partition:]
-    from sklearn.tree import DecisionTreeRegressor
-    tree = DecisionTreeRegressor(max_depth = 10, criterion = 'mae')
-    tree.fit(x_train,y_train)
-    return(tree)
-
-#db = pickle.load( open('data\\patient_data_v2_only.p', 'rb' ))
-db = PatientSet(patient_set = db, root = 'data\\patients_v2*\\', 
-                outliers = Constants.v2_bad_entries)
-#out = db.export(weights = [1,1,0,0,0,0])
-#pickle.dump(db, open('data\\patient_data_v2_only.p', 'wb'))
-
-db.set_total_dose_prediction(None)
-weights = np.array([1, 1])
-weights2 = np.array([0,1])
-td_weights = np.array([0, 1])
-num_matches = 9
-
-error = db.run_study(max_matches = 20, rank_function = 'experimental', weights = weights)
-error2 = db.run_study(max_matches = 20, rank_function = 'experimental', weights = weights2)
-x = range(2, len(error)+2)
-plt.plot(x, error, x, error2)
-plt.title('Error vs Number of Matches')
-plt.xlabel('Matches')
-plt.ylabel('Per-Patient Mean Organ Difference')
-
-result = db.evaluate(rank_function = 'experimental',
-                              weights = weights,
-                              num_matches = num_matches,
-                              td_weights = td_weights,
-                              td_rank_function = 'experimental')
-print(' mean error: ',result['mean_error'],' rmse: ', result['rmse'])
-print(result['patient_mean_error'][80:])
-print(result['organ_mean_error'][30:])
-
-#y = np.array([p.high_throat_dose for p in db.get_patients()])
-#x,feature_labels = db.gen_patient_feature_matrix()
-#correlations = np.empty((x.shape[1],))
-#for variable in range(0, x.shape[1]):
-#    correlations[variable] = np.correlate(x[:, variable], y)[0]
-#labeled_correlations = sorted(zip(feature_labels, correlations),
-#                             key = lambda x: x[1])
-#labeled_correlations = list(zip(*labeled_correlations))
-#corrs = np.array(labeled_correlations[1])
-#corrs -= np.mean(corrs)
-#labels = labeled_correlations[0]
-#max_values = 175
-#back = len(labeled_correlations[1])
-#front = max([0, back - max_values])
-#plt.barh(range(back - front), corrs[front:back], 
-#         tick_label = labels[front: back])
-
-#from sklearn.linear_model import LogisticRegressionCV
-#model = LogisticRegressionCV()
-#model.fit(x,y)
-#for value in model.coef_[0]:
-#    print(value)
