@@ -62,7 +62,11 @@ class Rankings():
         x = x.reshape(len(x),1)*np.absolute(x.reshape(1,len(x)))
         return(x)
 
-    def experimental(p1, p2, weights):
+    def raw_tumor_organ_ssim(p1, p2):
+        return compare_ssim( Rankings.tumor_distance_matrix(p1),
+              Rankings.tumor_distance_matrix(p2), win_size = 7)
+
+    def tumor_organ_ssim(p1, p2, weights):
         #this is basically just an ensemble of different distances metrics at this point
         scores = np.zeros((len(weights),))
         if p1.full_dose != p2.full_dose:# or p1.high_throat_dose != p2.high_throat_dose: #only compare people with full or half radiation with each other
@@ -74,8 +78,7 @@ class Rankings():
             #ssim seems to do better than other things?
             scores[0] = percent_different( p1.tumor_volume/np.sum(p1.volumes), p2.tumor_volume/np.sum(p2.volumes))
             #this one is the most important
-        scores[1] = compare_ssim( Rankings.tumor_distance_matrix(p1),
-              Rankings.tumor_distance_matrix(p2), win_size = 7)
+        scores[1] = Rankings.raw_tumor_organ_ssim(p1,p2)
         #I was normalizing here, but moved it so I can rescale the data
         final_score = np.sum(scores*weights)/np.mean(weights)
         return(final_score)
@@ -159,8 +162,8 @@ class PatientSet():
         dataframe.replace(to_replace = r'GTV.*N', value = 'GTVn', regex = True, inplace = True)
         return dataframe
     
-    def export(self, weights = np.array([0,1,0,0,0,0]) , 
-               rank_function = 'experimental', 
+    def export(self, weights = np.array([0,1]) , 
+               rank_function = 'tumor_organ_ssim', 
                num_matches = 9,
                patient_data_file = 'data\\patient_dataset.json',
                score_file = 'data\\all_ssim_scores.csv'):
@@ -191,7 +194,8 @@ class PatientSet():
         except:
             print('error exporting patient data to json')
         try:
-            score_df = pd.DataFrame(scores, index = self.ids, columns = self.ids)
+            raw_scores = self.gen_score_matrix(None, 'raw_tumor_organ_ssim')
+            score_df = pd.DataFrame(raw_scores, index = self.ids, columns = self.ids)
             score_df.to_csv(score_file)
             print('successfully saved similarity score matrix to ', score_file)
         except:
@@ -272,21 +276,19 @@ class PatientSet():
     def compare_traits(self, p1, p2, weights, rank_function):
         #calculates an overall scores
         #currently: comparison function, if laterality is equal, difference in tumor volume, tumor distances
-        if rank_function == 'ssim':
-            score = Rankings.ssim_with_laterality(p1, p2, weights = weights)
-        elif rank_function == 'experimental':
-            score = Rankings.experimental(p1,p2,weights = weights)
+        if rank_function == 'tumor_organ_ssim':
+            score = Rankings.tumor_organ_ssim(p1,p2,weights = weights)
+        elif rank_function == 'raw_tumor_organ_ssim':
+            score = Rankings.raw_tumor_organ_ssim(p1,p2)
         elif rank_function == 'min_dose_error':
             score = Rankings.min_dose_error(p1,p2)
         elif rank_function == 'random':
             score = random.random()
-        elif rank_function == 'mse':
-            score = Rankings.mse(p1,p2)
         else:
             print('error, invalid rank method: ', rank_function)
         return(score)
 
-    def run_study(self, max_matches = 20, rank_function = 'experimental', weights = np.array([0,1]),
+    def run_study(self, max_matches = 20, rank_function = 'tumor_organ_ssim', weights = np.array([0,1]),
                   td_rank_function = None, td_weights = None):
         #tests out a metric for a range of difference potential matches and gives a minimum
         error_hist = []
@@ -383,7 +385,7 @@ class PatientSet():
         features = (features - np.mean(features, axis = 0))/(np.std(features, axis = 0))
         return((features, feature_names))
 
-    def evaluate(self, rank_function, weights, num_matches = 10,
+    def evaluate(self, rank_function = 'tumor_organ_ssim', weights = np.array([0,1]), num_matches = 10,
                  td_rank_function = None, td_weights = None):
         #gives a bunch of different metrics for evaluating a given metric
         estimates = self.predict_doses(rank_function, weights, num_matches,
@@ -411,3 +413,7 @@ class PatientSet():
         name_error_tuples = [ (labels[x], error[x] ) for x in range(0, len(error))]
         name_error_tuples = sorted(name_error_tuples, key = lambda x: x[1])
         return(name_error_tuples)
+
+db = PatientSet(outliers = Constants.v2_bad_entries)
+result = db.evaluate()
+print(result)
