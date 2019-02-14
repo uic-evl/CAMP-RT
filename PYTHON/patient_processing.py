@@ -75,11 +75,15 @@ class Rankings():
 
     def experimental(p1, p2, weights):
         #this is basically just an ensemble of different distances metrics at this point
-        scores = np.zeros((len(weights),))
-        if p1.full_dose != p2.full_dose:# or p1.high_throat_dose != p2.high_throat_dose: #only compare people with full or half radiation with each other
-            return 0
-        if p1.full_dose == 0 and p1.laterality != p2.laterality: #for half radiation, group by laterality
-            return 0
+        scores = np.zeros((len(weights) - 2,))
+        if weights[2] == 1:
+            if p1.full_dose != p2.full_dose: #only compare people with full or half radiation with each other
+                return 0
+            if p1.full_dose == 0 and p1.laterality != p2.laterality: #for half radiation, group by laterality
+                return 0
+        if weights[3] == 1:
+            if p1.high_throat_dose != p2.high_throat_dose:
+                return 0
         percent_different = lambda x,y: 1- np.abs(x - y)/(x + y + .0000001)
         if(weights[0] > 0):
             #ssim seems to do better than other things?
@@ -88,7 +92,7 @@ class Rankings():
         scores[1] = compare_ssim( Rankings.tumor_distance_matrix(p1),
               Rankings.tumor_distance_matrix(p2), win_size = 7)
         #I was normalizing here, but moved it so I can rescale the data
-        final_score = np.sum(scores*weights)/np.mean(weights)
+        final_score = np.sum(scores*weights[0:2])/np.mean(weights[0:2])
         return(final_score)
 
 class PatientSet():
@@ -478,27 +482,28 @@ db = PatientSet(patient_set = db, root = 'data\\patients_v2*\\',
 #pickle.dump(db, open('data\\patient_data_v2_only.p', 'wb'))
 
 db.set_total_dose_prediction(None)
-weights = np.array([1, 1])
-weights2 = np.array([0,1])
-td_weights = np.array([0, 1])
+weights = np.array([0, 1,0,0])
+weights2 = np.array([0,1,1,0])
+weights3 = np.array([0, 1, 1, 1])
 num_matches = 9
 
 error = db.run_study(max_matches = 20, rank_function = 'experimental', weights = weights)
 error2 = db.run_study(max_matches = 20, rank_function = 'experimental', weights = weights2)
+error3 = db.run_study(max_matches = 20, rank_function = 'experimental', weights = weights3)
+error_best = db.run_study(max_matches = 20, rank_function = 'min_dose_error', weights = 1)
 x = range(2, len(error)+2)
-plt.plot(x, error, x, error2)
+plt.plot(x, error, x, error2, x, error3, x, error_best)
 plt.title('Error vs Number of Matches')
 plt.xlabel('Matches')
 plt.ylabel('Per-Patient Mean Organ Difference')
+plt.legend(['no classes', 'unilateral seperated', 'unilateral and high-throat seperated', 'optimal matching'])
 
-result = db.evaluate(rank_function = 'experimental',
-                              weights = weights,
-                              num_matches = num_matches,
-                              td_weights = td_weights,
-                              td_rank_function = 'experimental')
-print(' mean error: ',result['mean_error'],' rmse: ', result['rmse'])
-print(result['patient_mean_error'][80:])
-print(result['organ_mean_error'][30:])
+#result = db.evaluate(rank_function = 'experimental',
+#                              weights = weights,
+#                              num_matches = 10)
+#print(' mean error: ',result['mean_error'],' rmse: ', result['rmse'])
+#print(result['patient_mean_error'][80:])
+#print(result['organ_mean_error'][30:])
 
 #y = np.array([p.high_throat_dose for p in db.get_patients()])
 #x,feature_labels = db.gen_patient_feature_matrix()
