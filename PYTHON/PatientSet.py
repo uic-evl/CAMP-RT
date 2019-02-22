@@ -19,11 +19,14 @@ from Patient import Patient
 class Rankings():
     #ranking functions that generate a score, takes in pateint objects
     def pca(points):
-        points -= np.mean(points, axis = 0)
+#        points -= np.mean(points, axis = 0)
         cov = np.cov(points, rowvar = False)
         ev, eig = np.linalg.eig(cov)
-        principle_components = eig[:,np.argmax(ev)].dot(points.T)
-        return(principle_components)
+        args = np.argsort(-ev)
+        ev = ev[args]
+        eig = eig[:, args]
+        principle_components = eig.dot(points.T)
+        return(principle_components.T)
     
     def cluster_organs(db):
         #clusters, and then sorts the clusters and containing values by position along the
@@ -209,30 +212,66 @@ class PatientSet():
         score_df = pd.DataFrame(scores, index = self.ids, columns = self.ids)
         return(score_df)
     
-    def gen_score_matrix(self, weights, rank_function, normalize = False):
-        #generates a score matrix based on a rank function
-        #function should rank more similar people with a higher number
-        
-        #normalize == True for if we want to return a vector of scores and rescale them from 0-1 across
-        #the whole dataset.  if true compare_traits should be made to return a vector
-        if normalize:
-            scores = np.zeros((self.num_patients, self.num_patients, len(weights)))
-        else:
-            scores = np.zeros((self.num_patients, self.num_patients))
+#    def gen_score_matrix(self, weights, rank_function, normalize = False):
+#        #generates a score matrix based on a rank function
+#        #function should rank more similar people with a higher number
+#        
+#        #normalize == True for if we want to return a vector of scores and rescale them from 0-1 across
+#        #the whole dataset.  if true compare_traits should be made to return a vector
+#        if normalize:
+#            scores = np.zeros((self.num_patients, self.num_patients, len(weights)))
+#        else:
+#            scores = np.zeros((self.num_patients, self.num_patients))
+#        for row in range(0, self.num_patients):
+#            for col in range(row + 1, self.num_patients):
+#                scores[row, col] = self.compare_traits(self.patients[row], self.patients[col],
+#                      rank_function = rank_function, weights = weights)
+#        if normalize:
+#            rescale = lambda x: (x - np.min(x))/(np.max(x) - np.min(x) + .000001)
+#            for score_idx in range(0, len(weights)):
+#                scores[:, :, score_idx] = rescale(scores[:,:, score_idx])
+#            scores *= weights
+#            scores = np.sum(scores, axis = 2)/np.mean(weights)
+#        #formats it as a symetric matrix with a zero diagonal
+#        scores += scores.transpose()
+#        #basically normalize the score so the max is 1?
+#        scores = scores/scores.max()
+#        return(scores)
+#    
+    def gen_score_matrix(self, weights, rank_function):
+        avg = self.get_average_patient_data()
+        mean_dists = avg['distances']
+        k = 9
+        organ_kmeans = {}
+        name_kmeans = {}
+        for organ_row in range(0, Constants.num_organs):
+            organ_args = np.argsort(mean_dists[organ_row, :])[0: k] 
+            organ_kmeans[organ_row] = organ_args
+            organ_name = Constants.organ_list[organ_row]
+            argnames = []
+            for arg in organ_args:
+                argnames.append( Constants.organ_list[arg] )
+            name_kmeans[organ_name] = argnames
+        scores = np.zeros((self.num_patients, self.num_patients))
         for row in range(0, self.num_patients):
             for col in range(row + 1, self.num_patients):
-                scores[row, col] = self.compare_traits(self.patients[row], self.patients[col],
-                      rank_function = rank_function, weights = weights)
-        if normalize:
-            rescale = lambda x: (x - np.min(x))/(np.max(x) - np.min(x) + .000001)
-            for score_idx in range(0, len(weights)):
-                scores[:, :, score_idx] = rescale(scores[:,:, score_idx])
-            scores *= weights
-            scores = np.sum(scores, axis = 2)/np.mean(weights)
-        #formats it as a symetric matrix with a zero diagonal
-        scores += scores.transpose()
-        #basically normalize the score so the max is 1?
-        scores = scores/scores.max()
+                p1 = db.patients[row]
+                p2 = db.patients[col]
+                if p1.full_dose != p2.full_dose or p1.high_throat_dose != p2.high_throat_dose: 
+                    scores[row, col] = 0
+                    continue
+                elif p1.full_dose == False and p1.laterality != p2.laterality:
+                    scores[row, col] = 0
+                    continue
+                score = []
+                for key, value in organ_kmeans.items():
+                    d1 = p1.tumor_distances[value]
+                    d2 = p2.tumor_distances[value]
+                    similarity = compare_ssim(d1, d2, win_size = k)
+                    score.append(similarity)
+                scores[row, col] = np.mean(score)
+        scores += np.transpose(scores)
+        scores = (scores - scores.min()) / (scores.max() - scores.min())
         return(scores)
 
     def predict_doses(self, rank_function, weights, num_matches = 5,
@@ -262,9 +301,13 @@ class PatientSet():
             estimates *= total_dose_estimates.reshape((self.num_patients,1))
         return(estimates)
 
+    def get_matches(self, ranks, num_matches):
+        sorted_matches = np.argsort(-ranks)
+        top_matches = sorted_matches[0:num_matches]
+        return(top_matches)
+
     def estimate_patient_doses(self, ranks, num_matches):
-            sorted_matches = np.argsort(-ranks)
-            top_matches = sorted_matches[0:num_matches]
+            top_matches = self.get_matches(ranks, num_matches)
             scores = ranks[top_matches]
             matched_dosages = self.doses[tuple(top_matches), :]
             #weight things by their scores
@@ -362,7 +405,7 @@ class PatientSet():
             patient = self.patients[patient_idx]
             features[patient_idx, :] = patient.tumor_distances
         #standarization, not needed for binary trees though
-        features = (features - np.mean(features, axis = 0))/(np.std(features, axis = 0))
+#        features = (features - np.mean(features, axis = 0))/(np.std(features, axis = 0))
         return (features, feature_names)
 
     def gen_patient_feature_matrix(self):
@@ -413,3 +456,37 @@ class PatientSet():
         name_error_tuples = [ (labels[x], error[x] ) for x in range(0, len(error))]
         name_error_tuples = sorted(name_error_tuples, key = lambda x: x[1])
         return(name_error_tuples)
+
+#db = PatientSet(patient_set = db, outliers = Constants.v2_bad_entries)
+#
+#result = db.evaluate()
+scale = np.mean( np.absolute(result['differences']), axis = 1)**2
+x = db.gen_tumor_distance_matrix()[0] #db.doses #result['differences']
+from sklearn.decomposition import KernelPCA, PCA
+from sklearn.manifold import Isomap
+kpca = Isomap(n_neighbors = 10)
+pcs = kpca.fit_transform(x)
+colors = [ ('r' if p.full_dose == False else ('b' if p.high_throat_dose == False else 'c')) for p in db.get_patients()]
+plt.scatter(pcs[:,0], pcs[:,1], scale, c = colors)
+
+#num_matches = 2
+#
+#weights = np.array([0,1])
+#
+#ranks = db.gen_score_matrix(rank_function = 'tumor_organ_ssim',  weights = weights)
+#distances = db.gen_tumor_distance_matrix()[0]
+#errors = []
+#
+#for p in db.get_patients():
+#    p_pos = db.ids.index(p.id)
+#    matches = db.get_matches(ranks[p_pos, :], num_matches = num_matches)
+#    scores = ranks[p_pos, matches]
+#    matched_distances = distances[tuple(matches), :]
+#    weighted_distances = matched_distances * scores[:, np.newaxis]
+#    doses = db.doses[tuple(matches), :]
+#    weighted_doses = np.transpose( np.transpose(doses) * scores)
+#    x = np.linalg.lstsq(weighted_distances, weighted_doses)[0]
+#    estimates = np.dot(p.tumor_distances, x)
+#        
+#    errors.append( np.mean(np.absolute(estimates - p.doses)) )
+#print(np.mean(errors))

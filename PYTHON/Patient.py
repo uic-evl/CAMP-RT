@@ -32,7 +32,7 @@ class Patient():
         self.volumes = centroid_data[:, 3]
         self.centroids = centroid_data[:, 0:3]
         #distances is a symetric matrix sorted by the Constants.organ_list
-#        self.distances = self.gen_distance_matrix(distances)
+        self.distances = self.gen_distance_matrix(distances)
         (self.gtvp_dists, self.gtvn_dists) = self.get_tumor_distances(distances)
         #store the entries without gtvp for future study
         (self.tumor_volume, self.tumor_distances, self.tumor_position) = self.get_main_tumor()
@@ -169,14 +169,19 @@ class Patient():
         #generates a symetric 45x45 matrix of organ-organ distances
         dist_matrix = np.zeros(( Constants.num_organs, Constants.num_organs))
         dists = dists.set_index(['Reference ROI', 'Target ROI']).sort_index()
+        alphabetical_organ_list = sorted(Constants.organ_list)
         for row in range(0, Constants.num_organs):
             for col in range(row + 1, Constants.num_organs):
-                organ1 = Constants.organ_list[row]
-                organ2 = Constants.organ_list[col]
+                organ1 = alphabetical_organ_list[row]
+                organ2 = alphabetical_organ_list[col]
                 try:
                     dist_matrix[row, col] = (dists.loc[organ1, organ2])['Eucledian Distance (mm)']
                 except:
-                    dist_matrix[row, col] = 0
+                    try: 
+                        dist_matrix[row, col] = (dists.loc[organ2, organ1])['Eucledian Distance (mm)']
+                    except:
+                        dist_matrix[row, col] = 0
+                        print(self.id, ' ', organ1, ' ', organ2, ' missing')
         dist_matrix += np.transpose(dist_matrix)
         return(dist_matrix)
 
