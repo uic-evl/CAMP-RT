@@ -241,7 +241,7 @@ class PatientSet():
     def gen_score_matrix(self, weights, rank_function):
         avg = self.get_average_patient_data()
         mean_dists = avg['distances']
-        k = 9
+        k = 10
         organ_kmeans = {}
         name_kmeans = {}
         for organ_row in range(0, Constants.num_organs):
@@ -267,7 +267,7 @@ class PatientSet():
                 for key, value in organ_kmeans.items():
                     d1 = p1.tumor_distances[value]
                     d2 = p2.tumor_distances[value]
-                    similarity = compare_ssim(d1, d2, win_size = k)
+                    similarity = local_ssim(d1,d2)
                     score.append(similarity)
                 scores[row, col] = np.mean(score)
         scores += np.transpose(scores)
@@ -457,17 +457,39 @@ class PatientSet():
         name_error_tuples = sorted(name_error_tuples, key = lambda x: x[1])
         return(name_error_tuples)
 
-#db = PatientSet(patient_set = db, outliers = Constants.v2_bad_entries)
-#
-#result = db.evaluate()
-scale = np.mean( np.absolute(result['differences']), axis = 1)**2
-x = db.gen_tumor_distance_matrix()[0] #db.doses #result['differences']
-from sklearn.decomposition import KernelPCA, PCA
-from sklearn.manifold import Isomap
-kpca = Isomap(n_neighbors = 10)
-pcs = kpca.fit_transform(x)
-colors = [ ('r' if p.full_dose == False else ('b' if p.high_throat_dose == False else 'c')) for p in db.get_patients()]
-plt.scatter(pcs[:,0], pcs[:,1], scale, c = colors)
+def jaccard_similarity(x,y):
+    min_val = min([min(x), min(y)])
+    total = 0
+    for i in range(0, len(x)):
+        value = 0
+        for j in range(0, len(x)):
+            value += max([ x[j]/x[i], y[j]/y[i] ])
+        total += 1/value
+    return total
+        
+def local_ssim(x,y):
+    c1 = .000001
+    c2  = .000001
+    mean_x = np.mean(x)
+    mean_y = np.mean(y)
+    covariance = np.cov(x,y)
+    print(np.cov(x,y))
+    numerator = (2*mean_x*mean_y + c1) * (covariance[0,1] + covariance[1,0] + c2)
+    denominator = (mean_x**2 + mean_y**2 + c1)*(np.var(x) + np.var(y) + c2)
+    return numerator/denominator
+
+db = PatientSet(patient_set = db, outliers = Constants.v2_bad_entries)
+
+result = db.evaluate()
+print(result['mean_error'])
+#scale = np.mean( np.absolute(result['differences']), axis = 1)**2
+#x = db.gen_tumor_distance_matrix()[0] #db.doses #result['differences']
+#from sklearn.decomposition import KernelPCA, PCA
+#from sklearn.manifold import Isomap
+#kpca = Isomap(n_neighbors = 10)
+#pcs = kpca.fit_transform(x)
+#colors = [ ('r' if p.full_dose == False else ('b' if p.high_throat_dose == False else 'c')) for p in db.get_patients()]
+#plt.scatter(pcs[:,0], pcs[:,1], scale, c = colors)
 
 #num_matches = 2
 #
