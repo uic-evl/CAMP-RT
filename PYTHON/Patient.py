@@ -15,7 +15,7 @@ class Patient():
     def __init__(self, distances, doses, p_id, position, info):
         #patient ID number
         self.id = p_id
-        self.full_dose = 0 if p_id in Constants.v2_half_dosed else 1
+#        self.full_dose = 0 if p_id in Constants.v2_half_dosed else 1
         self.high_throat_dose = 1 if p_id in Constants.v2_high_throat_dose else 0
         #basically ordinality of the id, so where it will be in an index
         self.pos = position
@@ -37,9 +37,20 @@ class Patient():
         #store the entries without gtvp for future study
         (self.tumor_volume, self.tumor_distances, self.tumor_position) = self.get_main_tumor()
         self.check_missing_organs(doses)
+        self.check_if_full_dose()
         #report if there is no primary tumor
         if self.tumor_volume == 0 or np.sum(self.tumor_distances) == 0:
             Constants.no_tumor.append(self.id)
+    
+    def check_if_full_dose(self):
+        #checks difference in sternoceldomastoids to seperate out unilaterally dosed patients?
+        ls = Constants.organ_list.index('Lt_Sternocleidomastoid_M')
+        rs = Constants.organ_list.index('Rt_Sternocleidomastoid_M')
+        if np.abs(self.doses[ls] - self.doses[rs])/max([self.doses[ls], self.doses[rs]]) < .6:
+            self.full_dose = True
+        else:
+            self.full_dose = False
+        return(self.full_dose)
     
     def to_ordered_dict(self, dose_estimates):
         #exports local information into a dictionary
