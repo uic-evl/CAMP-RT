@@ -4,8 +4,6 @@ if (!Detector.webgl) {
     Detector.addGetWebGLMessage();
 }
 
-var canvas, canvas2;
-
 var parent = document.getElementById("content");
 var nodeDetails = document.getElementById("details");
 
@@ -84,13 +82,43 @@ var pRankingOrder, pScores;
 var listItems, arrayOfDivs = [],
     currScene;
 
-
-var months,
-    monthKeys,
-    monthParse = d3.timeParse("%Y-%m");
-
 var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset.json"];
 var promises = [];
+
+var master = document.getElementById("masterList");
+
+var materialArray2;
+
+var canvas = document.getElementById("c");
+var canvas2 = document.getElementById("c2");
+var template = document.getElementById("template").text;
+
+var data = {
+    y: "Dose (GY)",
+    series: [],
+    dates: []
+};
+
+var manager = new THREE.LoadingManager();
+
+manager.onLoad = function () {
+	//this may break this because I moved it to the front
+    console.log('Loading complete!');
+
+    updateOrder(selectedPatient);
+
+    document.getElementById("loadScreen").style.display = "none";
+
+};
+
+var loadProgress = document.getElementById("loadProgress");
+
+
+manager.onProgress = function (url, itemsLoaded, itemsTotal) {
+
+    loadProgress.innerHTML = parseInt(itemsLoaded / itemsTotal * 100) + " %"
+
+};
 
 files.forEach(function (url) {
     promises.push(d3.json(url));
@@ -99,7 +127,6 @@ files.forEach(function (url) {
 Promise.all(promises).then(function (values) {
     start(values[0], values[1]);
 });
-
 
 function start(organAtlas, patientsData) {
 
@@ -128,7 +155,6 @@ function start(organAtlas, patientsData) {
 
     flipGraph(); // fixes orientation of organs
     computeCenterOfGraphAndShift(); // compute center of graph and shift to origin
-    //shiftGraphToOrigin(); // center graph to origin
 
     init(); // initialize
 
@@ -150,18 +176,15 @@ function start(organAtlas, patientsData) {
 
     document.addEventListener("mousemove", onDocumentMouseMove, false);
 
-
     animate(); // render
 }
 
 // ----------------------------------------------------------------
 
-
-
 function populateColorScale() {
 
     var parentDiv = document.getElementById("colorScale");
-
+	//appears to make a color scale made from just like, a bunch of 10px wide divs for the hard-coded color scales
     rangeColorScale.forEach(function (color, index) {
 
         var tempDiv = document.createElement("div");
@@ -178,18 +201,13 @@ function populateColorScale() {
         parentDiv.appendChild(tempDiv);
     });
 
-
-
     var colorScaleEntries = document.getElementsByClassName("colorScaleEntry");
-
+	//adds mouseover tooltip
     for (var i = 0, ref = colorScaleEntries.length; i < ref; i++) {
         colorScaleEntries[i].addEventListener('mouseover', showColorScaleLabel, false);
         colorScaleEntries[i].addEventListener('mouseout', hideColorScaleLabel, false);
     }
-
-
-
-
+	//does it again for the blue one
     parentDiv = document.getElementById("colorScale2");
 
     rangeColorScale2.forEach(function (color, index) {
@@ -208,65 +226,46 @@ function populateColorScale() {
         parentDiv.appendChild(tempDiv);
     });
 
-
-
     var colorScaleEntries2 = document.getElementsByClassName("colorScaleEntry2");
 
     for (var i = 0, ref = colorScaleEntries2.length; i < ref; i++) {
         colorScaleEntries2[i].addEventListener('mouseover', showColorScaleLabel2, false);
         colorScaleEntries2[i].addEventListener('mouseout', hideColorScaleLabel2, false);
     }
-
 }
 
 function showColorScaleLabel(event) {
-
-    //console.log(event.target.value);
-
+	
     var details = document.getElementById("colorScaleDetails");
-
 
     details.style.left = event.target.offsetLeft + "px";
     details.innerHTML = "" + event.target.value;
 
-
     details.style.display = "block";
-
 }
 
 function hideColorScaleLabel(event) {
-
-    //console.log(event.target.value);
-
+	
     var details = document.getElementById("colorScaleDetails");
 
     details.style.display = "none";
-
 }
 
 function showColorScaleLabel2(event) {
-
-    //console.log(event.target.value);
-
+	
     var details = document.getElementById("colorScaleDetails2");
-
 
     details.style.left = event.target.offsetLeft + "px";
     details.innerHTML = "" + event.target.value;
 
-
     details.style.display = "block";
-
 }
 
 function hideColorScaleLabel2(event) {
 
-    //console.log(event.target.value);
-
     var details = document.getElementById("colorScaleDetails2");
 
     details.style.display = "none";
-
 }
 
 function compareID(a, b) {
@@ -285,7 +284,7 @@ function compareID(a, b) {
 }
 
 function populateDropDownMenu() {
-
+	//holds an array of patient internal ids
     var menu = document.getElementById("patientMenu");
 
     // copy of patients sorted
@@ -305,10 +304,8 @@ function populateDropDownMenu() {
     // first patient 
     var firstPatient = patients_sorted[0].ID_internal;
 
-    // check URL for ID variable
-
-    // change patient this way or by changing selected patient in dropdown?
-
+    //THis appears to look at the url to see if a patient is selected there
+	//if so, sets "first patient" to this guy? otherwise, uses the lowest id (above)
     var patientURL = getQueryVariable("id");
 
     if (patientURL != false) {
@@ -350,7 +347,153 @@ function getQueryVariable(variable) {
     return (false);
 }
 
-var master = document.getElementById("masterList");
+
+function flipGraph() {
+	//coordinate rotation and scaling for organ positions
+    for (var i = 0; i < patients.length; i++) {
+
+        var patientOrganList = patients[i].organData;
+
+        for (var pOrgan in patientOrganList) {
+
+            var tOrganX = (patientOrganList[pOrgan].x * -1);
+            var tOrganY = (patientOrganList[pOrgan].y * -1);
+            var tOrganZ = (patientOrganList[pOrgan].z * -1);
+
+            patientOrganList[pOrgan].x = tOrganY * 1.3;
+            patientOrganList[pOrgan].y = tOrganZ * 2.5;
+            patientOrganList[pOrgan].z = tOrganX * 1.1;
+        }
+    }
+
+    for (var pOrgan in oAtlas) {
+
+        var tOrganX = (oAtlas[pOrgan].x * -1);
+        var tOrganY = (oAtlas[pOrgan].y * -1);
+        var tOrganZ = (oAtlas[pOrgan].z * -1);
+
+        oAtlas[pOrgan].x = tOrganY * 1.3;
+        oAtlas[pOrgan].y = tOrganZ * 2.5;
+        oAtlas[pOrgan].z = tOrganX * 1.1;
+    }
+}
+
+function computeCenterOfGraphAndShift() {
+	//coordiante translation so that the organs are centered, I think
+    for (var i = 0; i < patients.length; i++) {
+
+        var sceneCenter = [0.0, 0.0, 0.0];
+
+        var xyzMin = new Array(3);
+        var xyzMax = new Array(3);
+
+        var positions = [];
+
+        var patientOrganList = patients[i].organData;
+
+        for (var pOrgan in patientOrganList) {
+
+            var xyz = {
+                x: patientOrganList[pOrgan].x,
+                y: patientOrganList[pOrgan].y,
+                z: patientOrganList[pOrgan].z
+            };
+
+            positions.push(xyz);
+        }
+
+        xyzMin = getMin(positions);
+        xyzMax = getMax(positions);
+
+        sceneCenter = [
+            ((xyzMin[0] + xyzMax[0]) / 2),
+            ((xyzMin[1] + xyzMax[1]) / 2),
+            ((xyzMin[2] + xyzMax[2]) / 2)
+        ];
+
+        for (var pOrgan in patientOrganList) {
+
+            patientOrganList[pOrgan].x = (patientOrganList[pOrgan].x - sceneCenter[0]);
+            patientOrganList[pOrgan].y = (patientOrganList[pOrgan].y - sceneCenter[1]);
+            patientOrganList[pOrgan].z = (patientOrganList[pOrgan].z - sceneCenter[2]);
+        }
+
+    }
+
+    var sceneCenter = [0.0, 0.0, 0.0];
+
+    var xyzMin = new Array(3);
+    var xyzMax = new Array(3);
+
+    var positions = [];
+	//shifts organs in organ atlas also?  couldn't this just be hard coded?
+    for (var pOrgan in oAtlas) {
+
+        var xyz = {
+            x: oAtlas[pOrgan].x,
+            y: oAtlas[pOrgan].y,
+            z: oAtlas[pOrgan].z
+        };
+
+        positions.push(xyz);
+    }
+
+    xyzMin = getMin(positions);
+    xyzMax = getMax(positions);
+
+    sceneCenter = [
+        ((xyzMin[0] + xyzMax[0]) / 2),
+        ((xyzMin[1] + xyzMax[1]) / 2),
+        ((xyzMin[2] + xyzMax[2]) / 2)
+        ];
+
+    for (var pOrgan in oAtlas) {
+
+        oAtlas[pOrgan].x = (oAtlas[pOrgan].x - sceneCenter[0]);
+        oAtlas[pOrgan].y = (oAtlas[pOrgan].y - sceneCenter[1]);
+        oAtlas[pOrgan].z = (oAtlas[pOrgan].z - sceneCenter[2]);
+    }
+}
+
+function getMin(pos) {
+
+    var x = pos.reduce(function (min, obj) {
+        return obj.x < min ? obj.x : min;
+    }, Infinity);
+
+    var y = pos.reduce(function (min, obj) {
+        return obj.y < min ? obj.y : min;
+    }, Infinity);
+
+    var z = pos.reduce(function (min, obj) {
+        return obj.z < min ? obj.z : min;
+    }, Infinity);
+
+    if (x == Infinity || y == Infinity || z == Infinity)
+        return [0.0, 0.0, 0.0];
+
+    return [x, y, z];
+}
+
+function getMax(pos) {
+
+    var x = pos.reduce(function (max, obj) {
+        return obj.x > max ? obj.x : max;
+    }, -Infinity);
+
+    var y = pos.reduce(function (max, obj) {
+        return obj.y > max ? obj.y : max;
+    }, -Infinity);
+
+    var z = pos.reduce(function (max, obj) {
+        return obj.z > max ? obj.z : max;
+    }, -Infinity);
+
+    if (x == -Infinity || y == -Infinity || z == -Infinity)
+        return [0.0, 0.0, 0.0];
+
+    return [x, y, z];
+}
 
 function handleCheckBoxSingle(event) {
 
@@ -421,11 +564,6 @@ function handleCheckBoxSingle(event) {
 
 function handleCheckBoxGroup(event) {
 
-    //console.log(event.parent.className);
-    //console.log(event.parentNode.className);
-
-    //console.log(event.id[0]);
-
     var children = master.getElementsByClassName(event.id[0] + "_GroupChildren");
 
     if (event.checked) {
@@ -433,9 +571,7 @@ function handleCheckBoxGroup(event) {
         for (var i = 0; i < children.length; i++) {
 
             children[i].checked = true;
-            //children[i].dispatchEvent(event);
 
-            //d3.select("#line_" + children[i].value).style("opacity", 1.0);
             d3.select("#line_" + children[i].value).attr("display", null);
         }
 
@@ -446,18 +582,10 @@ function handleCheckBoxGroup(event) {
                 var node = scene.getObjectByName(children[i].value);
                 var model = scene.getObjectByName(String(children[i].value) + "_model");
 
-                //children[i].setAttribute("checked", false);
-                //children[i].checked = false;
-
-                //children[i].fireEvent("onchange");
-
-                //console.log(children[i].checked);
-
                 if (node && model) {
                     node.visible = true;
                     model.visible = true;
                 }
-                //node.opacity = 0.1;
 
             }
         });
@@ -491,9 +619,7 @@ function handleCheckBoxGroup(event) {
 
                 var node = scene.getObjectByName(children[i].value);
                 var model = scene.getObjectByName(String(children[i].value) + "_model");
-
-                //console.log(children[i].checked);
-
+				
                 if (node && model) {
                     node.visible = false;
                     model.visible = false;
@@ -522,7 +648,6 @@ function handleCheckBoxGroup(event) {
 
 function populateOrganMasterList() {
 
-
     // make partition input first
     partitions.forEach(function (group, i) {
 
@@ -536,8 +661,7 @@ function populateOrganMasterList() {
         tempInput.setAttribute("type", "checkbox");
         tempInput.setAttribute("id", String(i + 1) + "_title");
         tempInput.setAttribute("value", group);
-        //tempInput.setAttribute("name", "organMasterList");
-        //tempInput.setAttribute("onchange", "handleCheckBox(this)");
+ 
         tempInput.setAttribute("onchange", "handleCheckBoxGroup(this)");
 
         tempInput.setAttribute("checked", true);
@@ -545,10 +669,7 @@ function populateOrganMasterList() {
 
         var tempLabel = document.createElement("label");
         tempLabel.setAttribute("for", String(i + 1) + "_title");
-        //tempLabel.setAttribute("width", "100%");
-        //tempLabel.style.display = "block";
-        //tempLabel.style.textAlign = "right";
-        //tempLabel.style.float = "right";
+
         tempLabel.style.fontSize = "16px";
         tempLabel.style.fontWeight = "bold";
         tempLabel.style.paddingLeft = "15px";
@@ -564,7 +685,6 @@ function populateOrganMasterList() {
 
         var tempDiv2 = document.createElement("div");
 
-        //tempDiv2.setAttribute("class", "checkbox_single");
         tempDiv2.setAttribute("id", String(i + 1) + "_single_container");
 
 
@@ -575,14 +695,12 @@ function populateOrganMasterList() {
         var tempDiv3 = document.createElement("div");
 
         tempDiv3.setAttribute("class", "dummy");
-        //tempDiv3.setAttribute("height", "15px");
-        //tempDiv3.setAttribute("width", "100%");
 
         master.appendChild(tempDiv3);
 
     });
 
-
+	////unhelpful documentation:
     // for loop bad, iterates in an unspecified order!!!!!!!!!!!!!!!!!!!!!!
 
     // individual organs
@@ -664,194 +782,9 @@ function formatOrganMasterList() {
     }
 }
 
-
-function flipGraph() {
-
-    for (var i = 0; i < patients.length; i++) {
-
-        var patientOrganList = patients[i].organData;
-
-        for (var pOrgan in patientOrganList) {
-
-            // pOrgan == string name of organ
-            // patientOrganList[pOrgan] == the properties of current object
-
-            var tOrganX = (patientOrganList[pOrgan].x * -1);
-            var tOrganY = (patientOrganList[pOrgan].y * -1);
-            var tOrganZ = (patientOrganList[pOrgan].z * -1);
-
-            patientOrganList[pOrgan].x = tOrganY * 1.3;
-            patientOrganList[pOrgan].y = tOrganZ * 2.5;
-            patientOrganList[pOrgan].z = tOrganX * 1.1;
-        }
-    }
-
-    for (var pOrgan in oAtlas) {
-
-        // pOrgan == string name of organ
-        // patientOrganList[pOrgan] == the properties of current object
-
-        var tOrganX = (oAtlas[pOrgan].x * -1);
-        var tOrganY = (oAtlas[pOrgan].y * -1);
-        var tOrganZ = (oAtlas[pOrgan].z * -1);
-
-        oAtlas[pOrgan].x = tOrganY * 1.3;
-        oAtlas[pOrgan].y = tOrganZ * 2.5;
-        oAtlas[pOrgan].z = tOrganX * 1.1;
-    }
-}
-
-function computeCenterOfGraphAndShift() {
-
-    for (var i = 0; i < patients.length; i++) {
-
-        var sceneCenter = [0.0, 0.0, 0.0];
-
-        var xyzMin = new Array(3);
-        var xyzMax = new Array(3);
-
-        var positions = [];
-
-        var patientOrganList = patients[i].organData;
-
-        for (var pOrgan in patientOrganList) {
-
-            // pOrgan == string name of organ
-            // patientOrganList[pOrgan] == the properties of current object
-
-            var xyz = {
-                x: patientOrganList[pOrgan].x,
-                y: patientOrganList[pOrgan].y,
-                z: patientOrganList[pOrgan].z
-            };
-
-            positions.push(xyz);
-        }
-
-        xyzMin = getMin(positions);
-        xyzMax = getMax(positions);
-
-        //console.log(patients[i].ID);
-        //console.log(xyzMin);
-        //console.log(xyzMax);
-
-        sceneCenter = [
-            ((xyzMin[0] + xyzMax[0]) / 2),
-            ((xyzMin[1] + xyzMax[1]) / 2),
-            ((xyzMin[2] + xyzMax[2]) / 2)
-        ];
-
-        for (var pOrgan in patientOrganList) {
-
-            // pOrgan == string name of organ
-            // patientOrganList[pOrgan] == the properties of current object
-
-            patientOrganList[pOrgan].x = (patientOrganList[pOrgan].x - sceneCenter[0]);
-            patientOrganList[pOrgan].y = (patientOrganList[pOrgan].y - sceneCenter[1]);
-            patientOrganList[pOrgan].z = (patientOrganList[pOrgan].z - sceneCenter[2]);
-        }
-
-        //console.log(positions);
-    }
-
-
-    var sceneCenter = [0.0, 0.0, 0.0];
-
-    var xyzMin = new Array(3);
-    var xyzMax = new Array(3);
-
-    var positions = [];
-
-
-    for (var pOrgan in oAtlas) {
-
-        // pOrgan == string name of organ
-        // patientOrganList[pOrgan] == the properties of current object
-
-        var xyz = {
-            x: oAtlas[pOrgan].x,
-            y: oAtlas[pOrgan].y,
-            z: oAtlas[pOrgan].z
-        };
-
-        positions.push(xyz);
-    }
-
-    xyzMin = getMin(positions);
-    xyzMax = getMax(positions);
-
-    //console.log(patients[i].ID);
-    //console.log(xyzMin);
-    //console.log(xyzMax);
-
-
-    sceneCenter = [
-        ((xyzMin[0] + xyzMax[0]) / 2),
-        ((xyzMin[1] + xyzMax[1]) / 2),
-        ((xyzMin[2] + xyzMax[2]) / 2)
-        ];
-
-    for (var pOrgan in oAtlas) {
-
-        // pOrgan == string name of organ
-        // patientOrganList[pOrgan] == the properties of current object
-
-        oAtlas[pOrgan].x = (oAtlas[pOrgan].x - sceneCenter[0]);
-        oAtlas[pOrgan].y = (oAtlas[pOrgan].y - sceneCenter[1]);
-        oAtlas[pOrgan].z = (oAtlas[pOrgan].z - sceneCenter[2]);
-    }
-}
-
-function getMin(pos) {
-
-    var x = pos.reduce(function (min, obj) {
-        return obj.x < min ? obj.x : min;
-    }, Infinity);
-
-    var y = pos.reduce(function (min, obj) {
-        return obj.y < min ? obj.y : min;
-    }, Infinity);
-
-    var z = pos.reduce(function (min, obj) {
-        return obj.z < min ? obj.z : min;
-    }, Infinity);
-
-    if (x == Infinity || y == Infinity || z == Infinity)
-        return [0.0, 0.0, 0.0];
-
-    return [x, y, z];
-}
-
-function getMax(pos) {
-
-    var x = pos.reduce(function (max, obj) {
-        return obj.x > max ? obj.x : max;
-    }, -Infinity);
-
-    var y = pos.reduce(function (max, obj) {
-        return obj.y > max ? obj.y : max;
-    }, -Infinity);
-
-    var z = pos.reduce(function (max, obj) {
-        return obj.z > max ? obj.z : max;
-    }, -Infinity);
-
-    if (x == -Infinity || y == -Infinity || z == -Infinity)
-        return [0.0, 0.0, 0.0];
-
-    return [x, y, z];
-}
-
-function shiftGraphToOrigin() {}
-
-var materialArray2;
-
-canvas = document.getElementById("c");
-canvas2 = document.getElementById("c2");
-var template = document.getElementById("template").text;
-
 function init() {
-
+	
+	//renderer for main views?
     renderer = new THREE.WebGLRenderer({
         canvas: canvas,
         antialias: true
@@ -860,7 +793,7 @@ function init() {
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.sortObjects = true;
 
-
+	//renderer for dose estimation views
     renderer2 = new THREE.WebGLRenderer({
         canvas: canvas2,
         antialias: true,
@@ -872,7 +805,6 @@ function init() {
 
     raycaster = new THREE.Raycaster();
 
-    //
     var maxAnisotropy = renderer.getMaxAnisotropy();
 
     var textureLoader = new THREE.TextureLoader();
@@ -916,6 +848,7 @@ function init() {
     //
     var maxAnisotropy2 = renderer2.getMaxAnisotropy();
 
+	//Do we even use this?
     var textureLoader2 = new THREE.TextureLoader();
 
     var texture0_2 = textureLoader2.load('resources/anterior.png'), // xpos, Right
@@ -956,7 +889,7 @@ function init() {
     
 
     for (var i = 0; i < patients.length; i++) {
-
+		//goes through all the patients and makes a scene for them?
         var scene = new THREE.Scene();
 
         var patientOrganList = patients[i].organData;
@@ -985,8 +918,12 @@ function init() {
 
         var scalarVal = 2.4; //4.1
 
-        //var camera = new THREE.PerspectiveCamera(35, scene.userData.element.offsetWidth / scene.userData.element.offsetHeight, 1, 100000);
-        var camera = new THREE.OrthographicCamera(scene.userData.element.offsetWidth / -scalarVal, scene.userData.element.offsetWidth / scalarVal, scene.userData.element.offsetHeight / scalarVal, scene.userData.element.offsetHeight / -scalarVal, 1, 100000);
+        var camera = new THREE.OrthographicCamera(scene.userData.element.offsetWidth / -scalarVal, 
+			scene.userData.element.offsetWidth / scalarVal, 
+			scene.userData.element.offsetHeight / scalarVal, 
+			scene.userData.element.offsetHeight / -scalarVal, 
+			1, 100000);
+			
         camera.position.z = cameraDistZ;
 
         camera.updateProjectionMatrix();
@@ -998,7 +935,6 @@ function init() {
         var MovingCube = new THREE.Mesh(MovingCubeGeom, MovingCubeMat);
 
         camera.add(MovingCube);
-        //MovingCube.position.set(65, -65, -100);
         MovingCube.position.set(121, -121, -250);
 
         //
@@ -1013,7 +949,6 @@ function init() {
         var geometry = new THREE.SphereGeometry(4, 16, 16);
 
         var material = new THREE.MeshStandardMaterial({
-
             color: new THREE.Color().setHex(0xa0a0a0),
             roughness: 0.5,
             metalness: 0,
@@ -1031,17 +966,9 @@ function init() {
             linewidth: 3
         });
 
-        //console.log(typeof patientOrganList);
-
-
         for (var pOrgan in patientOrganList) {
-
-            // pOrgan == string name of organ
-            // patientOrganList[pOrgan] == the properties of current object
-
-            //console.log(patientOrganList[pOrgan]);
-
-            // node
+			//this looks like it draws the organs in each patient?
+			
             var organSphere = new THREE.Mesh(geometry, material.clone());
 
             organSphere.position.x = (patientOrganList[pOrgan].x);
@@ -1067,16 +994,15 @@ function init() {
             // color
             var nodeColor;
 
-            //if (patientOrganList[organ.name] != null) {
-            //console.log(patientOrganList[organ.name]);
-
             organSphere.userData.volume = patientOrganList[pOrgan].volume;
             organSphere.userData.minDose = patientOrganList[pOrgan].minDose;
             organSphere.userData.meanDose = patientOrganList[pOrgan].meanDose;
             organSphere.userData.maxDose = patientOrganList[pOrgan].maxDose;
-            //organSphere.userData.dosePerVolume = undefined;
+			
+			organSphere.userData.estimatedDose = patientOrganList[pOrgan].estimatedDose;
 
             // do this in python script maybe
+			//grays are already in joules per kilogram?!?!? I might want to delete this because it's misleading to users
             organSphere.userData.dosePerVolume = (patientOrganList[pOrgan].meanDose / patientOrganList[pOrgan].volume).toFixed(3);
 
             if (organSphere.userData.meanDose >= 0.0) //null == -1 in json, pearson problems
@@ -1103,7 +1029,7 @@ function init() {
         var target = scene.getObjectByName("GTVn");
 
         if (source != null && target != null) {
-
+			//draws a line between the gtvp and gtvn is they are there
             tmp_geo.vertices.push(source.position);
             tmp_geo.vertices.push(target.position);
 
@@ -1111,19 +1037,13 @@ function init() {
             line.scale.x = line.scale.y = line.scale.z = 1;
             line.originalScale = 1;
 
-            //line.frustumCulled = false;
-
             scene.add(line);
         }
-
 
         // check for missing data
         for (var organ in oAtlas) {
 
             if (!patientOrganList.hasOwnProperty(organ)) {
-
-                //console.log(patients[i].name);
-                //console.log(organ);
 
                 // node
                 var organSphere = new THREE.Mesh(geometry, material.clone());
@@ -1140,7 +1060,6 @@ function init() {
 
                 outlineMesh.name = organ + "_outline";
 
-                //if (organSphere.name == "GTVn" || organSphere.name == "GTVp")
                 if (organSphere.name == "GTVp")
                     outlineMesh.scale.multiplyScalar(1.6);
                 else if (organSphere.name == "GTVn")
@@ -1148,24 +1067,17 @@ function init() {
                 else
                     outlineMesh.scale.multiplyScalar(1.3);
 
-
-                //outlineMesh.scale.multiplyScalar(1.15);
-
                 // color
-                var nodeColor;
-
-                //if (patientOrganList[organ.name] != null) {
-                //console.log(patientOrganList[organ.name]);
+                var nodeColor = '#a0a0a0';
 
                 organSphere.userData.volume = undefined;
                 organSphere.userData.minDose = undefined;
                 organSphere.userData.meanDose = undefined;
                 organSphere.userData.maxDose = undefined;
-                //organSphere.userData.dosePerVolume = undefined;
+                
+				organSphere.userData.estimatedDose = undefined;
+				
                 organSphere.userData.dosePerVolume = undefined;
-
-
-                nodeColor = '#a0a0a0'; //new THREE.Color().setHex(0xa0a0a0)
 
                 organSphere.material.color.setStyle(nodeColor);
 
@@ -1178,47 +1090,16 @@ function init() {
 
         }
 
-
         scene.add(camera);
 
-
         // light
-        var light = new THREE.AmbientLight(0xffffff, 1.0); // white light
-        //var light = new THREE.DirectionalLight(0xffffff);
-        //light.position.set(200, 200, 1000).normalize();
-        
+        var light = new THREE.AmbientLight(0xffffff, 1.0); // white light   
 
         scene.add(light);
         scenes.push(scene);
     }
 
-
-    //renderer.autoClear = false;
 }
-
-
-var manager = new THREE.LoadingManager();
-
-manager.onLoad = function () {
-
-    console.log('Loading complete!');
-
-    updateOrder(selectedPatient);
-
-    document.getElementById("loadScreen").style.display = "none";
-
-};
-
-var loadProgress = document.getElementById("loadProgress");
-
-
-manager.onProgress = function (url, itemsLoaded, itemsTotal) {
-
-    //console.log('Loaded ' + itemsLoaded + ' of ' + itemsTotal + ' files.');
-    //loadProgress.innerHTML = 'Loaded ' + itemsLoaded + ' of ' + itemsTotal + ' files.';
-    loadProgress.innerHTML = parseInt(itemsLoaded / itemsTotal * 100) + " %"
-
-};
 
 function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
 
@@ -1227,9 +1108,6 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
     if (!(pOrgan == "GTVn" || pOrgan == "GTVp")) {
 
         loader.load('resources/models/' + pOrgan + '.vtk', function (geometry) {
-
-
-            //console.log(pOrgan);
 
             geometry.computeVertexNormals();
             geometry.center();
@@ -1281,8 +1159,6 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
 
 
             scene.add(mesh);
-
-
 
         });
 
@@ -1359,13 +1235,6 @@ function updateOrder(updatedPatient) {
     initializeRiskPrediction(trueFirst, selectedPatient, pNames);
 
 }
-
-var data = {
-    y: "Dose (GY)",
-    series: [],
-    dates: []
-};
-
 
 function initializeRiskPrediction(firstPatient, rank, pNames) {
 
@@ -1789,16 +1658,6 @@ function multiLineChart() {
         .style("fill", "#000")
         .style("font-weight", "bold")
         .text(data.y);
-    /*
-        svg.append("text")
-            .attr("transform", "rotate(-90)")
-            .attr("y", 0)
-            .attr("x", 0 - (height / 2))
-            .attr("dy", "1em")
-            .style("text-anchor", "middle")
-            .text("Dose (GY)");
-    */
-
 
     const path = g.append("g")
         .attr("class", "cities")
@@ -1848,8 +1707,6 @@ function hover(svg, path, x, y) {
         .attr("display", "none")
         .attr("class", "dot");
 
-    //d3.select("#line_" + event.value).style("opacity", 1.0);
-
     dot.append("circle")
         .attr("r", 3.5)
         .style("fill", "#00e4ff");
@@ -1861,11 +1718,6 @@ function hover(svg, path, x, y) {
 
     function moved() {
         d3.event.preventDefault();
-
-        //console.log(d3.event.layerX + "    " + d3.event.layerY);
-        //console.log(d3.event.offsetX + "    " + d3.event.offsetY);
-
-        //event.offsetX / targ.offsetWidth
 
         var xAxisOrder = [...Array(5).keys()];
 
@@ -1887,8 +1739,6 @@ function hover(svg, path, x, y) {
 
                 for (var j = 0; j < scene.children[i].children.length; j++) {
 
-                    //console.log(scene.children[i].children[j].name);
-
                     if (scene.children[i].children[j].name.includes("_outline")) {
 
                         var organ = scene.children[i].children[j];
@@ -1904,8 +1754,6 @@ function hover(svg, path, x, y) {
             var tempObject = scene.getObjectByName(s.name + "_outline");
 
             tempObject.material.color.setHex(0x00e4ff);
-
-
 
         });
 
@@ -1926,10 +1774,7 @@ function hover(svg, path, x, y) {
 
             for (var i = 0; i < scene.children.length; i++) {
 
-
                 for (var j = 0; j < scene.children[i].children.length; j++) {
-
-                    //console.log(scene.children[i].children[j].name);
 
                     if (scene.children[i].children[j].name.includes("_outline")) {
 
@@ -1945,7 +1790,6 @@ function hover(svg, path, x, y) {
 }
 
 function animate() {
-
     render();
     requestAnimationFrame(animate);
 }
@@ -1980,7 +1824,6 @@ function updateMainView(rotMatrix) {
 
     var rotMatrix = new THREE.Matrix4();
 
-    //pRankingOrder = patients[selectedPatient - 1].similarity;
     pRankingOrder = patients[selectedPatient - 1].similarity_ssim;
 
     pRankingOrder.forEach(function (rank, index) {
@@ -2019,8 +1862,6 @@ function updateMainView(rotMatrix) {
 
             renderer.setViewport(left, bottom, width, height);
             renderer.setScissor(left, bottom, width, height);
-
-            //controls.update();
 
             // raycaster
             raycaster.setFromCamera(mouseNorm, currScene.userData.camera);
@@ -2067,8 +1908,6 @@ function updateMainView(rotMatrix) {
 
                 if (INTERSECTED) {
                     INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
-                    //INTERSECTED.scale.multiplyScalar(1);
-
                     // details
                     populateAndPlaceDetails("HIDE");
 
@@ -2081,7 +1920,6 @@ function updateMainView(rotMatrix) {
 
         }
     });
-
 
 }
 
@@ -2249,9 +2087,6 @@ function populateAndPlaceDetails(state) {
     } else if (state == "HIDE") {
 
         nodeDetails.style.display = "none";
-        //nodeDetails.style.opacity = .3;
-        //nodeDetails.style.opacity = "0.0";
-
         nodeDetails.style.top = -500 + "px";
         nodeDetails.style.left = -500 + "px";
     }
@@ -2304,7 +2139,6 @@ function syncAllCameras(cameraToCopy) {
 
         camera.position.subVectors(cameraToCopy.position, controls.target);
         camera.position.setLength(cameraDistZ);
-        //camera.position.setLength(2000);
         camera.lookAt(scene.position);
     });
 
@@ -2314,7 +2148,6 @@ function syncAllCameras(cameraToCopy) {
 
         camera.position.subVectors(cameraToCopy.position, controls.target);
         camera.position.setLength(cameraDistZ);
-        //camera.position.setLength(2000);
         camera.lookAt(scene.position);
     });
 }
