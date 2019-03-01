@@ -86,7 +86,7 @@ class Rankings():
         final_score = np.sum(scores*weights)/np.mean(weights)
         return(final_score)
     
-    def local_ssim(x,y):
+    def local_ssim(x,y,v = None, w = None):
         c1 = .000001
         c2  = .000001
         mean_x = np.mean(x)
@@ -94,6 +94,11 @@ class Rankings():
         covariance = np.cov(x,y)
         numerator = (2*mean_x*mean_y + c1) * (covariance[0,1] + covariance[1,0] + c2)
         denominator = (mean_x**2 + mean_y**2 + c1)*(np.var(x) + np.var(y) + c2)
+        if v is not None and 2 is not None:
+            mean_v = np.mean(v)
+            mean_w = np.mean(w)
+            numerator *= (2*mean_v*mean_w + c1)
+            denominator *= (mean_v**2 + mean_w**2 + c1)
         return numerator/denominator
 
 class PatientSet():
@@ -309,14 +314,18 @@ class PatientSet():
                 for key, value in self.organ_kmeans.items():
                     d1 = p1.tumor_distances[value]
                     d2 = p2.tumor_distances[value]
+                    v1 = p1.volumes[value]
+                    v2 = p2.volumes[value]
                     #changing weights so now it's based on number of organs in common with tumor-organ overlap?
                     weight = 1
                     for x in range(0,len(value)):
                         if d1[x] <= 0 and d2[x] <= 0:
                             weight += 1/len(value)
-                    similarity = Rankings.local_ssim(d1,d2)
+                    similarity = Rankings.local_ssim(d1,d2,v1,v2)
+                    if np.isnan(similarity):
+                        similarity = 0
                     score.append(similarity*weight)
-                scores[row, col] = np.mean(score)
+                scores[row, col] = np.nanmean(score)
         #scores is a semetric matrix, normalize from 0-1 in case I use something that's not the ssim
         scores += np.transpose(scores)
         scores = (scores - scores.min()) / (scores.max() - scores.min())
@@ -329,7 +338,11 @@ class PatientSet():
         ranks = self.gen_score_matrix(weights = weights)
         for patient_idx in range(0, self.num_patients):
             rank_row = ranks[patient_idx, :]
-            estimates[patient_idx, :] = self.estimate_patient_doses(rank_row, num_matches)
+            p = self.patients[patient_idx]
+            matches = 4
+            if p.full_dose and (not p.high_throat_dose):
+                matches = 11
+            estimates[patient_idx, :] = self.estimate_patient_doses(rank_row, matches)
         #if a seprate prediction is set for total dose, use that
         if self.total_dose_predictor is not None:
             #normalize the estimates by patient
@@ -489,64 +502,20 @@ class PatientSet():
         name_error_tuples = sorted(name_error_tuples, key = lambda x: x[1])
         return(name_error_tuples)
 
-db = PatientSet(patient_set = db, root = 'data\\patients_v2*\\', outliers = Constants.v2_bad_entries)
-avg = db.get_average_patient_data()
-print(np.correlate(avg['volumes'], avg['doses']))
+db = PatientSet(patient_set = None, root = 'data\\patients_v2*\\', outliers = Constants.v2_bad_entries)
+print(db.evaluate()['mean_error'])
 
-temp_weights = [1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 0.0,
- 2.0,
- 1.0,
- 2.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 2.0,
- 1.0,
- 0.0,
- 1.0,
- 1.0,
- 1.0,
- 0.0,
- 1.0,
- 2.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 0.0,
- 2.0,
- 1.0,
- 1.0,
- 1.0,
- 0.0,
- 2.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 2.0]
-    
-
-result = db.evaluate(weights = np.ones((Constants.num_organs,)))
-base_error =result['mean_error']
-print(base_error)
-
-
-scale = np.mean( np.absolute(result['differences']), axis = 1)**2
-x = np.zeros((db.num_patients, Constants.num_organs)) #db.doses #db.gen_tumor_distance_matrix()[0] #result['differences']
+#avg = db.get_average_patient_data()
+#print(np.correlate(avg['volumes'], avg['doses']))
+#   
+#
+#result = db.evaluate(weights = np.ones((Constants.num_organs,)))
+#base_error =result['mean_error']
+#print(base_error)
+#
+#
+#scale = np.mean( np.absolute(result['differences']), axis = 1)**2
+#x = np.zeros((db.num_patients, Constants.num_organs)) #db.doses #db.gen_tumor_distance_matrix()[0] #result['differences']
 #for pidx in range(db.num_patients):
 #    p = db.patients[pidx]
 #    x[pidx, :] = p.volumes

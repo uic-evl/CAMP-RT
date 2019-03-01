@@ -87,7 +87,7 @@ class Patient():
             organ_dict['meanDose'] = self.doses[x]
             organ_dict['minDose'] = self.min_doses[x]
             organ_dict['maxDose'] = self.max_doses[x]
-            organ_dict['estimatedDose'] = round(dose_estimates[x], 2)
+            organ_dict['estimatedDose'] = 0 if np.isnan(dose_estimates[x]) else round(dose_estimates[x], 2)
             data[organ] = organ_dict
         if self.gtvp_volume > 0:
             gtvp_dict = OrderedDict()
