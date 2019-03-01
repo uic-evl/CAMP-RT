@@ -85,11 +85,14 @@ class Rankings():
 
 class PatientSet():
 
-    def __init__(self, patient_set = None, outliers = [], root = 'data\\patients_v2*\\', score_lower_bound = .4):
+    def __init__(self, patient_set = None, outliers = [], root = 'data\\patients_v2*\\', score_lower_bound = None, score_lowerer_bound = .4):
         self.score_lower_bound = score_lower_bound
+        self.score_lowerer_bound = score_lowerer_bound
+        self.good_rankings = []
+        self.bad_rankings = []
         if patient_set is None:
             if score_lower_bound is None:
-                self.score_lower_bound = .4
+                self.score_lower_bound = .6
             outliers = outliers
             self.total_dose_predictor = None
             (self.patients, self.doses, self.total_doses, self.num_patients, self.ids) = self.read_patient_data(root, outliers)
@@ -245,17 +248,18 @@ class PatientSet():
                       td_rank_function = None, td_weights = None, ranks = None):
         #generates an ndarray of dose estimates based on algorithm parameters
         #rank_function and weights are the functions used to match dose
+        self.good_rankings = []
+        self.bad_rankings = []
         estimates = np.zeros(self.doses.shape)
         if ranks is None:
             ranks = self.gen_score_matrix(rank_function = rank_function, weights = weights)
         for patient_idx in range(0, self.num_patients):
             rank_row = ranks[patient_idx, :]
-            p = self.patients[patient_idx]
-#            if p.high_throat_dose or (not p.full_dose):
-#                matches = 4
-#            else:
-#                matches = 11
             estimates[patient_idx, :] = self.estimate_patient_doses(rank_row, num_matches)
+            if np.sum(estimates[patient_idx, :]) != 0:
+                self.good_rankings.append(patient_idx)
+            else:
+                self.bad_rankings.append(patient_idx)
         #if a seprate prediction is set for total dose, use that
         if self.total_dose_predictor is not None:
             #normalize the estimates by patient
@@ -278,8 +282,10 @@ class PatientSet():
             sorted_matches = np.argsort(-ranks)
             good_matches = np.where(ranks > self.score_lower_bound)[0]
             #do some storage of outliers here?
-            if len(good_matches) < num_matches and len(good_matches > 0):
+            if len(good_matches) < num_matches and len(good_matches) > 0:
                 num_matches = len(good_matches)
+            if len(np.where(ranks > min([self.score_lowerer_bound, self.score_lower_bound]))[0]) == 0:
+                return np.zeros(self.doses[0,:].shape)
             top_matches = sorted_matches[0:num_matches]
             scores = ranks[top_matches]
             matched_dosages = self.doses[tuple(top_matches), :]
@@ -307,13 +313,16 @@ class PatientSet():
     def run_study(self, max_matches = 30, rank_function = 'tumor_organ_ssim', weights = np.array([0,1]),
                   td_rank_function = None, td_weights = None):
         #tests out a metric for a range of difference potential matches and gives a minimum
-        error_hist = []
         ranks = self.gen_score_matrix(rank_function = rank_function, weights = weights)
-        error_matrix = np.zeros((db.num_patients, max_matches - 2))
+        base_score = self.predict_doses(rank_function, weights, 1, td_rank_function,
+                                        td_weights, ranks = ranks)
+        error_hist = []
+        error_matrix = np.zeros(( len(self.good_rankings), max_matches - 1))
+        error_matrix[:, 0] = np.mean( np.abs( self.doses[self.good_rankings, :] - base_score[self.good_rankings, :]), axis = 1)
         for num_matches in range(2, max_matches):
             estimates = self.predict_doses(rank_function, weights, num_matches,
                                            td_rank_function, td_weights, ranks = ranks)
-            error_matrix[:, num_matches - 2] = np.mean(np.abs(self.doses - estimates), axis = 1)
+            error_matrix[:, num_matches - 2] = np.mean( np.abs( self.doses[self.good_rankings, :] - estimates[self.good_rankings, :]), axis = 1)
             error_hist.append(np.mean(error_matrix[:, num_matches - 2]))
         print(rank_function, ': error of', min(error_hist), ' at ', np.argmin(error_hist) + 2)
         return(error_hist, error_matrix)
@@ -408,7 +417,7 @@ class PatientSet():
         #gives a bunch of different metrics for evaluating a given metric
         estimates = self.predict_doses(rank_function, weights, num_matches,
                                        td_rank_function, td_weights)
-        differences = self.doses - estimates
+        differences = self.doses[self.good_rankings, :] - estimates[self.good_rankings, :]
         patient_mean_error = self.labeled_mean_error(differences, axis = 1)
         organ_mean_error = self.labeled_mean_error(differences, axis = 0)
         total_mean_error = np.mean(np.abs(differences))
@@ -427,48 +436,71 @@ class PatientSet():
         if axis == 0: #axis 0 is features, so organs here
             labels = Constants.organ_list
         else:
-            labels = self.ids #ids for the patients in sorted order?
+            labels = self.good_rankings #ids for the patients in sorted order?
         name_error_tuples = [ (labels[x], error[x] ) for x in range(0, len(error))]
         name_error_tuples = sorted(name_error_tuples, key = lambda x: x[1])
         return(name_error_tuples)
+    
+    def set_lower_bound(self, bound, lowerer_bound = None):
+        self.score_lower_bound = bound
+        if lowerer_bound is not None:
+            self.score_lowerer_bound = lowerer_bound
 
-db = PatientSet(patient_set = db, outliers = Constants.v2_bad_entries, score_lower_bound = 0)
-error_hist, error_matrix = db.run_study()
+db = PatientSet(patient_set = db, outliers = Constants.v2_bad_entries, score_lowerer_bound = .5)
+error_hists = []
+bounds = np.linspace(0,.5, 4)
+for bound in bounds:
+    db.set_lower_bound(bound)
+    error_hist, error_matrix = db.run_study(max_matches = 92)
+    plt.plot(range(1,len(error_hist) + 1), error_hist, linewidth = 3)
+plt.legend(bounds)
+#ranks = db.gen_score_matrix(weights = np.array([0,1]), rank_function = 'tumor_organ_ssim')
+#best_matches = -np.amin(-ranks, axis = 1)
+#optimal_match_count = np.argmin(error_matrix, axis = 1) + 2
 
-ranks = db.gen_score_matrix(weights = np.array([0,1]), rank_function = 'tumor_organ_ssim')
-best_matches = -np.amin(-ranks, axis = 1)
-optimal_match_count = np.argmin(error_matrix, axis = 1) + 2
+#errors = []
+#bounds = np.linspace(np.min(ranks), .99*np.max(ranks), 50)
+#number_of_outliers = []
+#for bound in bounds:
+#    db = PatientSet(patient_set = db, score_lower_bound  = bound)
+#    diff = db.evaluate()['mean_error']
+#    print('lower bound: ', bound, 'error ', diff)
+#    errors.append(diff)
+#    number_of_outliers.append(len(db.bad_rankings))
+#    
+#
+#plt.plot(bounds, number_of_outliers)
 
-color_list = []
-for p in db.get_patients():
-    if p.high_throat_dose:
-        color_list.append('b')
-    elif p.full_dose:
-        color_list.append('c')
-    else:
-        color_list.append('r')
-        
-from matplotlib.patches import Patch
-legend = [Patch(facecolor = 'c', edgecolor = 'k', label = 'Bilateral'),
-          Patch(facecolor = 'b', edgecolor = 'k', label = 'High-Throat'),
-          Patch(facecolor = 'r', edgecolor = 'k', label = 'Unilateral')]
-        
-plt.scatter(best_matches, optimal_match_count, color = color_list)
-plt.legend(handles = legend)
-
-error_args = np.argmin(error_matrix, axis = 1) + 2
-bt = []
-unilateral = []
-ht = []
-for p in db.get_patients():
-    if p.high_throat_dose:
-        ht.append(p.pos)
-    elif p.full_dose:
-        bt.append(p.pos)
-    else:
-        unilateral.append(p.pos)
-        
-best_matchcount = {'base': int( np.ceil(np.mean(error_args[bt])) ), 
-                            'unilateral': int( np.ceil(np.mean(error_args[unilateral])) ), 
-                            'high_throat': int( np.ceil(np.mean(error_args[ht])) )}
-
+#color_list = []
+#for p in db.get_patients():
+#    if p.high_throat_dose:
+#        color_list.append('b')
+#    elif p.full_dose:
+#        color_list.append('c')
+#    else:
+#        color_list.append('r')
+#        
+#from matplotlib.patches import Patch
+#legend = [Patch(facecolor = 'c', edgecolor = 'k', label = 'Bilateral'),
+#          Patch(facecolor = 'b', edgecolor = 'k', label = 'High-Throat'),
+#          Patch(facecolor = 'r', edgecolor = 'k', label = 'Unilateral')]
+#        
+#plt.scatter(best_matches, optimal_match_count, color = color_list)
+#plt.legend(handles = legend)
+#
+#error_args = np.argmin(error_matrix, axis = 1) + 2
+#bt = []
+#unilateral = []
+#ht = []
+#for p in db.get_patients():
+#    if p.high_throat_dose:
+#        ht.append(p.pos)
+#    elif p.full_dose:
+#        bt.append(p.pos)
+#    else:
+#        unilateral.append(p.pos)
+#        
+#best_matchcount = {'base': int( np.ceil(np.mean(error_args[bt])) ), 
+#                            'unilateral': int( np.ceil(np.mean(error_args[unilateral])) ), 
+#                            'high_throat': int( np.ceil(np.mean(error_args[ht])) )}
+#
