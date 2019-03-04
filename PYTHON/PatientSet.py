@@ -195,11 +195,11 @@ class PatientSet():
             entry = patient.to_ordered_dict(dose_estimates[p_idx, :])
             ssim_scores = scores[p_idx,:]
             ssim_scores[p_idx] = 1
-            zipped_scores = sorted(zip(ssim_scores, np.arange(1,self.num_patients + 1)), 
+            zipped_scores = sorted(zip(ssim_scores, np.arange(1, len(ssim_scores) + 1)), 
                                    key = lambda x: -x[0])
             patient_scores, internal_ids = zip(*zipped_scores)
-            entry['similarity_ssim'] = internal_ids
-            entry['scores_ssim'] = patient_scores
+            entry['similarity_ssim'] = internal_ids[:self.get_num_matches(patient) + 1]
+            entry['scores_ssim'] = patient_scores[:self.get_num_matches(patient) + 1]
             data.append(entry)
         #save the vast dictionary of data for the front-end
         try:
@@ -228,47 +228,6 @@ class PatientSet():
         score_df = pd.DataFrame(scores, index = self.ids, columns = self.ids)
         return(score_df)
     
-#    def gen_score_matrix(self, weights, rank_function, normalize = False):
-#        #generates a score matrix based on a rank function
-#        #function should rank more similar people with a higher number
-#        
-#        #normalize == True for if we want to return a vector of scores and rescale them from 0-1 across
-#        #the whole dataset.  if true compare_traits should be made to return a vector
-#        if normalize:
-#            scores = np.zeros((self.num_patients, self.num_patients, len(weights)))
-#        else:
-#            scores = np.zeros((self.num_patients, self.num_patients))
-#        for row in range(0, self.num_patients):
-#            for col in range(row + 1, self.num_patients):
-#                scores[row, col] = self.compare_traits(self.patients[row], self.patients[col],
-#                      rank_function = rank_function, weights = weights)
-#        if normalize:
-#            rescale = lambda x: (x - np.min(x))/(np.max(x) - np.min(x) + .000001)
-#            for score_idx in range(0, len(weights)):
-#                scores[:, :, score_idx] = rescale(scores[:,:, score_idx])
-#            scores *= weights
-#            scores = np.sum(scores, axis = 2)/np.mean(weights)
-#        #formats it as a symetric matrix with a zero diagonal
-#        scores += scores.transpose()
-#        #basically normalize the score so the max is 1?
-#        scores = scores/scores.max()
-#        return(scores)
-#   
-#    def compare_traits(self, p1, p2, weights, rank_function):
-#        #calculates an overall scores
-#        #currently: comparison function, if laterality is equal, difference in tumor volume, tumor distances
-#        if rank_function == 'tumor_organ_ssim':
-#            score = Rankings.tumor_organ_ssim(p1,p2,weights = weights)
-#        elif rank_function == 'raw_tumor_organ_ssim':
-#            score = Rankings.raw_tumor_organ_ssim(p1,p2)
-#        elif rank_function == 'min_dose_error':
-#            score = Rankings.min_dose_error(p1,p2)
-#        elif rank_function == 'random':
-#            score = random.random()
-#        else:
-#            print('error, invalid rank method: ', rank_function)
-#        return(score)
-
     def get_organ_clusters(self, k):
         #creates an index-based dictionary of k-nearest organs for each organ
         #used in clusters
@@ -339,9 +298,7 @@ class PatientSet():
         for patient_idx in range(0, self.num_patients):
             rank_row = ranks[patient_idx, :]
             p = self.patients[patient_idx]
-            matches = 4
-            if p.full_dose and (not p.high_throat_dose):
-                matches = 11
+            matches = self.get_num_matches(p)
             estimates[patient_idx, :] = self.estimate_patient_doses(rank_row, matches)
         #if a seprate prediction is set for total dose, use that
         if self.total_dose_predictor is not None:
@@ -360,6 +317,13 @@ class PatientSet():
                 total_dose_estimates[p_idx] = np.sum(estimates_for_total_dose)
             estimates *= total_dose_estimates.reshape((self.num_patients,1))
         return(estimates)
+    
+    def get_num_matches(self, patient):
+        #function for determining the number of matches to use, so this can be changed easily
+        matches = 4
+        if patient.full_dose and (not patient.high_throat_dose):
+            matches = 11
+        return matches
 
     def get_matches(self, ranks, num_matches):
         sorted_matches = np.argsort(-ranks)
@@ -502,8 +466,8 @@ class PatientSet():
         name_error_tuples = sorted(name_error_tuples, key = lambda x: x[1])
         return(name_error_tuples)
 
-db = PatientSet(patient_set = None, root = 'data\\patients_v2*\\', outliers = Constants.v2_bad_entries)
-print(db.evaluate()['mean_error'])
+db = PatientSet(patient_set = db, root = 'data\\patients_v2*\\', outliers = Constants.v2_bad_entries)
+db.export()
 
 #avg = db.get_average_patient_data()
 #print(np.correlate(avg['volumes'], avg['doses']))

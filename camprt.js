@@ -30,9 +30,9 @@ var scenes = [],
 	
 var selectedPatient = 1;
 //patients shown on load screen?
-var patientsToShow = 20;
+var patientsToShow = 5;
 //patients to use in the macching algorithm
-var numMatches = 9;
+var numMatches = 5;
 
 var totalModelCount;
 
@@ -48,7 +48,6 @@ var mouseNorm = new THREE.Vector2(-500, -500),
     INTERSECTED = null,
     nodeHover = null;
 
-
 var cameraDistZ = 500;
 
 // 36 steps
@@ -60,14 +59,12 @@ var color = d3.scaleLinear()
     .domain(domainColorScale)
     .range(rangeColorScale);
 
-
 var domainColorScale2 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
 var rangeColorScale2 = ['#999999', '#98949f', '#968fa5', '#958aaa', '#9384b0', '#9180b5', '#8e7aba', '#8c75bf', '#8971c5', '#856bca', '#8166d0', '#7d61d5', '#795bda', '#7356e0', '#6e50e4', '#674bea', '#5f44ef', '#553ff5', '#4b38fa', '#3d32ff'];
 
 var color2 = d3.scaleLinear()
     .domain(domainColorScale2)
     .range(rangeColorScale2);
-
 
 // data
 var organs, oAtlas, links, patients;
@@ -87,6 +84,7 @@ var promises = [];
 
 var master = document.getElementById("masterList");
 
+var materialArray;
 var materialArray2;
 
 var canvas = document.getElementById("c");
@@ -104,20 +102,14 @@ var manager = new THREE.LoadingManager();
 manager.onLoad = function () {
 	//this may break this because I moved it to the front
     console.log('Loading complete!');
-
-    updateOrder(selectedPatient);
-
+    //updateOrder(selectedPatient);
     document.getElementById("loadScreen").style.display = "none";
-
 };
 
 var loadProgress = document.getElementById("loadProgress");
 
-
 manager.onProgress = function (url, itemsLoaded, itemsTotal) {
-
     loadProgress.innerHTML = parseInt(itemsLoaded / itemsTotal * 100) + " %"
-
 };
 
 files.forEach(function (url) {
@@ -135,20 +127,10 @@ function start(organAtlas, patientsData) {
     oAtlas = organAtlas[0];
     patients = patientsData;
 
-    //handlePatientsDisplayed();
-
-    //delete oAtlas["GTVn"];
-    //delete oAtlas["GTVp"];
-
     selectedPatient = populateDropDownMenu();
 
-    //totalModelCount = patients.length * oAtlas.length;
-    //console.log(totalModelCount);
-
-    //pRankingOrder = patients[selectedPatient - 1].similarity;
     pRankingOrder = patients[selectedPatient - 1].similarity_ssim;
 
-    //pScores = patients[selectedPatient - 1].scores;
     pScores = patients[selectedPatient - 1].scores_ssim;
 
     populateColorScale();
@@ -497,9 +479,6 @@ function getMax(pos) {
 
 function handleCheckBoxSingle(event) {
 
-    //console.log(event.parent.className);
-    //console.log(event.parentNode.parentNode.className);
-
     if (event.checked) {
 
         scenes.forEach(function (scene, index) {
@@ -785,23 +764,21 @@ function formatOrganMasterList() {
 function init() {
 	
 	//renderer for main views?
-    renderer = new THREE.WebGLRenderer({
-        canvas: canvas,
-        antialias: true
-    });
-    renderer.setClearColor(0xffffff, 1);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.sortObjects = true;
+	var getRenderer = function(canvas){
+		var r = new THREE.WebGLRenderer({
+			canvas: canvas,
+			antialias: true
+		});
+		r.setClearColor(0xffffff, 1);
+		r.setPixelRatio(window.devicePixelRatio);
+		r.sortObjects = true;
+		return r
+	}
+    
+	renderer = getRenderer(canvas);
 
 	//renderer for dose estimation views
-    renderer2 = new THREE.WebGLRenderer({
-        canvas: canvas2,
-        antialias: true,
-        alpha: true
-    });
-    renderer2.setClearColor(0xffffff, 1);
-    renderer2.setPixelRatio(window.devicePixelRatio);
-    renderer2.sortObjects = true;
+    renderer2 = getRenderer(canvas2);
 
     raycaster = new THREE.Raycaster();
 
@@ -823,7 +800,7 @@ function init() {
     texture4.anisotropy = maxAnisotropy;
     texture5.anisotropy = maxAnisotropy;
     //getcontext2d. draw image
-    var materialArray = [
+    materialArray = [
             new THREE.MeshBasicMaterial({
             map: texture0
         }),
@@ -887,218 +864,18 @@ function init() {
         })
     ];
     
+    updateOrder(selectedPatient);
+}
 
-    for (var i = 0; i < patients.length; i++) {
-		//goes through all the patients and makes a scene for them?
-        var scene = new THREE.Scene();
-
-        var patientOrganList = patients[i].organData;
-
-
-        // make a list item
-        var element = document.createElement("div");
-        element.className = "list-item";
-        element.id = patients[i].ID_internal;
-        element.innerHTML = template.replace('$', patients[i].name);
-        
-        var totDoseElement = element.querySelector(".totDose");
-        totDoseElement.innerHTML = "Total Dose: " + "<b>" + patients[i].total_Dose + "</b>" + " GY";
-
-        var tVolumeElement = element.querySelector(".tVolume");
-        tVolumeElement.innerHTML = "GTV: " + "<b>" + patients[i].tumorVolume + "</b>" + " cc";
-
-        var lateralityElement = element.querySelector(".laterality");
-        lateralityElement.innerHTML = "<b>(" + patients[i].laterality + ")</b> " + " " + patients[i].tumorSubsite;
-
-        // Look up the element that represents the area
-        // we want to render the scene
-        scene.userData.element = element.querySelector(".scene");
-
-        parent.appendChild(element);
-
-        var scalarVal = 2.4; //4.1
-
-        var camera = new THREE.OrthographicCamera(scene.userData.element.offsetWidth / -scalarVal, 
-			scene.userData.element.offsetWidth / scalarVal, 
-			scene.userData.element.offsetHeight / scalarVal, 
-			scene.userData.element.offsetHeight / -scalarVal, 
-			1, 100000);
-			
-        camera.position.z = cameraDistZ;
-
-        camera.updateProjectionMatrix();
-        scene.userData.camera = camera;
-
-        // orientation marker, patient coordinate system
-        var MovingCubeMat = new THREE.MultiMaterial(materialArray);
-        var MovingCubeGeom = new THREE.CubeGeometry(25, 25, 25, 1, 1, 1, materialArray);
-        var MovingCube = new THREE.Mesh(MovingCubeGeom, MovingCubeMat);
-
-        camera.add(MovingCube);
-        MovingCube.position.set(121, -121, -250);
-
-        //
-        var controls = new THREE.OrbitControls(scene.userData.camera, scene.userData.element);
-        controls.minDistance = 2;
-        controls.maxDistance = 5000;
-        controls.enablePan = false;
-        controls.enableZoom = false;
-
-        scene.userData.controls = controls;
-
-        var geometry = new THREE.SphereGeometry(4, 16, 16);
-
-        var material = new THREE.MeshStandardMaterial({
-            color: new THREE.Color().setHex(0xa0a0a0),
-            roughness: 0.5,
-            metalness: 0,
-            shading: THREE.FlatShading
-        });
-
-        var outlineMaterial = new THREE.MeshBasicMaterial({
-            color: 0x3d3d3d,
-            side: THREE.BackSide
-        });
-
-        var linkMaterial = new THREE.LineBasicMaterial({
-            color: 0x3d3d3d,
-            opacity: 1,
-            linewidth: 3
-        });
-
-        for (var pOrgan in patientOrganList) {
-			//this looks like it draws the organs in each patient?
-			
-            var organSphere = new THREE.Mesh(geometry, material.clone());
-
-            organSphere.position.x = (patientOrganList[pOrgan].x);
-            organSphere.position.y = (patientOrganList[pOrgan].y);
-            organSphere.position.z = (patientOrganList[pOrgan].z);
-
-            organSphere.name = pOrgan;
-            organSphere.userData.type = "node";
-
-            // outline
-            var outlineMesh = new THREE.Mesh(geometry, outlineMaterial.clone());
-
-            outlineMesh.name = pOrgan + "_outline";
-
-            if (organSphere.name == "GTVp")
-                outlineMesh.scale.multiplyScalar(1.6);
-            else if (organSphere.name == "GTVn")
-                outlineMesh.scale.multiplyScalar(1.5);
-            else
-                outlineMesh.scale.multiplyScalar(1.3);
-
-
-            // color
-            var nodeColor;
-
-            organSphere.userData.volume = patientOrganList[pOrgan].volume;
-            organSphere.userData.minDose = patientOrganList[pOrgan].minDose;
-            organSphere.userData.meanDose = patientOrganList[pOrgan].meanDose;
-            organSphere.userData.maxDose = patientOrganList[pOrgan].maxDose;
-			
-			organSphere.userData.estimatedDose = patientOrganList[pOrgan].estimatedDose;
-
-            // do this in python script maybe
-			//grays are already in joules per kilogram?!?!? I might want to delete this because it's misleading to users
-            organSphere.userData.dosePerVolume = (patientOrganList[pOrgan].meanDose / patientOrganList[pOrgan].volume).toFixed(3);
-
-            if (organSphere.userData.meanDose >= 0.0) //null == -1 in json, pearson problems
-                nodeColor = color(organSphere.userData.meanDose);
-            else {
-                nodeColor = '#a0a0a0'; //new THREE.Color().setHex(0xa0a0a0)
-                organSphere.userData.meanDose = undefined;
-                organSphere.userData.dosePerVolume = undefined;
-            }
-
-            organSphere.material.color.setStyle(nodeColor);
-
-            scene.add(organSphere);
-            organSphere.add(outlineMesh);
-
-            placeOrganModels(pOrgan, patientOrganList[pOrgan], scene, nodeColor);
-
-        }
-
-
-        var tmp_geo = new THREE.Geometry();
-
-        var source = scene.getObjectByName("GTVp");
-        var target = scene.getObjectByName("GTVn");
-
-        if (source != null && target != null) {
-			//draws a line between the gtvp and gtvn is they are there
-            tmp_geo.vertices.push(source.position);
-            tmp_geo.vertices.push(target.position);
-
-            var line = new THREE.LineSegments(tmp_geo, linkMaterial);
-            line.scale.x = line.scale.y = line.scale.z = 1;
-            line.originalScale = 1;
-
-            scene.add(line);
-        }
-
-        // check for missing data
-        for (var organ in oAtlas) {
-
-            if (!patientOrganList.hasOwnProperty(organ)) {
-
-                // node
-                var organSphere = new THREE.Mesh(geometry, material.clone());
-
-                organSphere.position.x = (oAtlas[organ].x);
-                organSphere.position.y = (oAtlas[organ].y);
-                organSphere.position.z = (oAtlas[organ].z);
-
-                organSphere.name = organ;
-                organSphere.userData.type = "node";
-
-                // outline
-                var outlineMesh = new THREE.Mesh(geometry, outlineMaterial.clone());
-
-                outlineMesh.name = organ + "_outline";
-
-                if (organSphere.name == "GTVp")
-                    outlineMesh.scale.multiplyScalar(1.6);
-                else if (organSphere.name == "GTVn")
-                    outlineMesh.scale.multiplyScalar(1.5);
-                else
-                    outlineMesh.scale.multiplyScalar(1.3);
-
-                // color
-                var nodeColor = '#a0a0a0';
-
-                organSphere.userData.volume = undefined;
-                organSphere.userData.minDose = undefined;
-                organSphere.userData.meanDose = undefined;
-                organSphere.userData.maxDose = undefined;
-                
-				organSphere.userData.estimatedDose = undefined;
-				
-                organSphere.userData.dosePerVolume = undefined;
-
-                organSphere.material.color.setStyle(nodeColor);
-
-                scene.add(organSphere);
-                organSphere.add(outlineMesh);
-
-                placeOrganModels(organ, oAtlas[organ], scene, nodeColor);
-
-            }
-
-        }
-
-        scene.add(camera);
-
-        // light
-        var light = new THREE.AmbientLight(0xffffff, 1.0); // white light   
-
-        scene.add(light);
-        scenes.push(scene);
-    }
-
+function updateScenes(selectedPatient, material){
+	var scenes = [] //scenes is a wonderful global for now
+	for (var i = 0; i < patients[selectedPatient].similarity_ssim.length; i++) {
+		console.log(patients[selectedPatient].similarity_ssim);
+		var id = patients[selectedPatient].similarity_ssim[i]
+		var newScene = showPatient(patients, material, id);
+		scenes.push(newScene);
+	}
+	return scenes
 }
 
 function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
@@ -1159,10 +936,218 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
 
 
             scene.add(mesh);
-
         });
-
     }
+}
+
+function showPatient(patients, materialArray, id){
+	var scene = new THREE.Scene();
+	var patient = patients[id];
+	var patientOrganList = patient.organData;
+
+	// make a list item
+	var element = document.createElement("div");
+	element.className = "list-item";
+	element.id = id;
+	element.innerHTML = template.replace('$', patient.name);
+	
+	var totDoseElement = element.querySelector(".totDose");
+	totDoseElement.innerHTML = "Total Dose: " + "<b>" + patient.total_Dose + "</b>" + " GY";
+
+	var tVolumeElement = element.querySelector(".tVolume");
+	tVolumeElement.innerHTML = "GTV: " + "<b>" + patient.tumorVolume + "</b>" + " cc";
+
+	var lateralityElement = element.querySelector(".laterality");
+	lateralityElement.innerHTML = "<b>(" + patient.laterality + ")</b> " + " " + patient.tumorSubsite;
+
+	// Look up the element that represents the area
+	// we want to render the scene
+	scene.userData.element = element.querySelector(".scene");
+	var parent = document.getElementById("content");
+	
+	if(!document.getElementById( element.id )){
+		parent.appendChild(element);
+	}
+
+	var scalarVal = 2.4; //4.1
+
+	var camera = new THREE.OrthographicCamera(scene.userData.element.offsetWidth / -scalarVal, 
+		scene.userData.element.offsetWidth / scalarVal, 
+		scene.userData.element.offsetHeight / scalarVal, 
+		scene.userData.element.offsetHeight / -scalarVal, 
+		1, 100000);
+		
+	camera.position.z = cameraDistZ;
+
+	camera.updateProjectionMatrix();
+	scene.userData.camera = camera;
+
+	// orientation marker, patient coordinate system
+	var MovingCubeMat = new THREE.MultiMaterial(materialArray);
+	var MovingCubeGeom = new THREE.CubeGeometry(25, 25, 25, 1, 1, 1, materialArray);
+	var MovingCube = new THREE.Mesh(MovingCubeGeom, MovingCubeMat);
+
+	camera.add(MovingCube);
+	MovingCube.position.set(121, -121, -250);
+
+	//
+	var controls = new THREE.OrbitControls(scene.userData.camera, scene.userData.element);
+	controls.minDistance = 2;
+	controls.maxDistance = 5000;
+	controls.enablePan = false;
+	controls.enableZoom = false;
+
+	scene.userData.controls = controls;
+
+	var geometry = new THREE.SphereGeometry(4, 16, 16);
+
+	var material = new THREE.MeshStandardMaterial({
+		color: new THREE.Color().setHex(0xa0a0a0),
+		roughness: 0.5,
+		metalness: 0,
+		shading: THREE.FlatShading
+	});
+
+	var outlineMaterial = new THREE.MeshBasicMaterial({
+		color: 0x3d3d3d,
+		side: THREE.BackSide
+	});
+
+	var linkMaterial = new THREE.LineBasicMaterial({
+		color: 0x3d3d3d,
+		opacity: 1,
+		linewidth: 3
+	});
+	
+	for (var pOrgan in patientOrganList) {
+		//this looks like it draws the organs in each patient?
+		
+		var organSphere = new THREE.Mesh(geometry, material.clone());
+
+		organSphere.position.x = (patientOrganList[pOrgan].x);
+		organSphere.position.y = (patientOrganList[pOrgan].y);
+		organSphere.position.z = (patientOrganList[pOrgan].z);
+
+		organSphere.name = pOrgan;
+		organSphere.userData.type = "node";
+
+		// outline
+		var outlineMesh = new THREE.Mesh(geometry, outlineMaterial.clone());
+
+		outlineMesh.name = pOrgan + "_outline";
+
+		if (organSphere.name == "GTVp")
+			outlineMesh.scale.multiplyScalar(1.6);
+		else if (organSphere.name == "GTVn")
+			outlineMesh.scale.multiplyScalar(1.5);
+		else
+			outlineMesh.scale.multiplyScalar(1.3);
+
+		// color
+		var nodeColor;
+
+		organSphere.userData.volume = patientOrganList[pOrgan].volume;
+		organSphere.userData.minDose = patientOrganList[pOrgan].minDose;
+		organSphere.userData.meanDose = patientOrganList[pOrgan].meanDose;
+		organSphere.userData.maxDose = patientOrganList[pOrgan].maxDose;
+		
+		organSphere.userData.estimatedDose = patientOrganList[pOrgan].estimatedDose;
+
+		// do this in python script maybe
+		//grays are already in joules per kilogram?!?!? I might want to delete this because it's misleading to users
+		organSphere.userData.dosePerVolume = (patientOrganList[pOrgan].meanDose / patientOrganList[pOrgan].volume).toFixed(3);
+
+		if (organSphere.userData.meanDose >= 0.0) //null == -1 in json, pearson problems
+			nodeColor = color(organSphere.userData.meanDose);
+		else {
+			nodeColor = '#a0a0a0'; //new THREE.Color().setHex(0xa0a0a0)
+			organSphere.userData.meanDose = undefined;
+			organSphere.userData.dosePerVolume = undefined;
+		}
+
+		organSphere.material.color.setStyle(nodeColor);
+
+		scene.add(organSphere);
+		organSphere.add(outlineMesh);
+
+		placeOrganModels(pOrgan, patientOrganList[pOrgan], scene, nodeColor);
+
+	}
+
+	var tmp_geo = new THREE.Geometry();
+
+	var source = scene.getObjectByName("GTVp");
+	var target = scene.getObjectByName("GTVn");
+
+	if (source != null && target != null) {
+		//draws a line between the gtvp and gtvn is they are there
+		tmp_geo.vertices.push(source.position);
+		tmp_geo.vertices.push(target.position);
+
+		var line = new THREE.LineSegments(tmp_geo, linkMaterial);
+		line.scale.x = line.scale.y = line.scale.z = 1;
+		line.originalScale = 1;
+
+		scene.add(line);
+	}
+
+	// check for missing data
+	for (var organ in oAtlas) {
+
+		if (!patientOrganList.hasOwnProperty(organ)) {
+
+			// node
+			var organSphere = new THREE.Mesh(geometry, material.clone());
+
+			organSphere.position.x = (oAtlas[organ].x);
+			organSphere.position.y = (oAtlas[organ].y);
+			organSphere.position.z = (oAtlas[organ].z);
+
+			organSphere.name = organ;
+			organSphere.userData.type = "node";
+
+			// outline
+			var outlineMesh = new THREE.Mesh(geometry, outlineMaterial.clone());
+
+			outlineMesh.name = organ + "_outline";
+
+			if (organSphere.name == "GTVp")
+				outlineMesh.scale.multiplyScalar(1.6);
+			else if (organSphere.name == "GTVn")
+				outlineMesh.scale.multiplyScalar(1.5);
+			else
+				outlineMesh.scale.multiplyScalar(1.3);
+
+			// color
+			var nodeColor = '#a0a0a0';
+
+			organSphere.userData.volume = undefined;
+			organSphere.userData.minDose = undefined;
+			organSphere.userData.meanDose = undefined;
+			organSphere.userData.maxDose = undefined;
+			
+			organSphere.userData.estimatedDose = undefined;
+			
+			organSphere.userData.dosePerVolume = undefined;
+
+			organSphere.material.color.setStyle(nodeColor);
+
+			scene.add(organSphere);
+			organSphere.add(outlineMesh);
+
+			placeOrganModels(organ, oAtlas[organ], scene, nodeColor);
+
+		}
+
+	}
+
+	scene.add(camera);
+
+	// light
+	var light = new THREE.AmbientLight(0xffffff, 1.0); // white light   
+
+	scene.add(light);
+	return scene;
 
 }
 
@@ -1171,15 +1156,17 @@ function updateOrder(updatedPatient) {
     var pNames = [];
 
     selectedPatient = updatedPatient;
-    //pRankingOrder = patients[selectedPatient - 1].similarity;
-    pRankingOrder = patients[selectedPatient - 1].similarity_ssim;
+	scenes = updateScenes(selectedPatient, materialArray);
+	console.log(scenes);
 
-    //pScores = patients[selectedPatient - 1].scores;
+	
+    pRankingOrder = patients[selectedPatient - 1].similarity_ssim;
     pScores = patients[selectedPatient - 1].scores_ssim;
 
     var lastPatient = document.getElementById(pRankingOrder[pRankingOrder.length - 1]);
     var firstPatient = document.getElementById(pRankingOrder[0]);
-
+	console.log(lastPatient);
+	console.log(firstPatient);
     firstPatient.style.display = "none";
 
     //insert last element from pRankingOrder in last place (before null)
@@ -1194,7 +1181,8 @@ function updateOrder(updatedPatient) {
 
         var first = document.getElementById(pRankingOrder[i]);
         var second = document.getElementById(pRankingOrder[i + 1]);
-
+		console.log(first);
+		console.log(second);
         // order div elements
         parent.insertBefore(first, second);
 
@@ -1232,7 +1220,7 @@ function updateOrder(updatedPatient) {
     pNames[0] = "0: Estimation";
 
 
-    initializeRiskPrediction(trueFirst, selectedPatient, pNames);
+    //initializeRiskPrediction(trueFirst, selectedPatient, pNames);
 
 }
 
@@ -1327,7 +1315,6 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
     // make a list item
     var element = document.createElement("div");
     element.className = "list-item-RP";
-    //element.id = patients[i].id;
     element.innerHTML = template.replace('$', "Estimation").replace('!', "");
     
     var totDoseElement = element.querySelector(".totDose");
@@ -1467,7 +1454,6 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
     // make a list item
     var element = document.createElement("div");
     element.className = "list-item-RP";
-    //element.id = patients[i].id;
     element.innerHTML = template.replace('$', "Difference").replace('!', "");
     
     var totDoseElement = element.querySelector(".totDose");
@@ -1807,8 +1793,6 @@ function render() {
 
     updateMainView();
 
-
-
     renderer2.setClearColor(0x444444, 0);
     renderer2.setScissorTest(false);
     renderer2.clear();
@@ -1823,103 +1807,103 @@ function render() {
 function updateMainView(rotMatrix) {
 
     var rotMatrix = new THREE.Matrix4();
-
+	//scenes = updateScenes(selectedPatient, materialArray);
     pRankingOrder = patients[selectedPatient - 1].similarity_ssim;
 
-    pRankingOrder.forEach(function (rank, index) {
+	for (var index; index < scenes.length; index++) {
 
-        if (index <= patientsToShow + 1) {
+		var scene = scenes[index];
+		console.log(scenes);
+		console.log(scene);
+		var controls = scene.userData.controls;
+		var camera = scene.userData.camera;
 
-            var scene = scenes[rank - 1];
-            var controls = scene.userData.controls;
-            var camera = scene.userData.camera;
+		var orientMarkerCube = camera.children[0];
 
-            var orientMarkerCube = camera.children[0];
+		// get the element that is a place holder for where we want to
+		// draw the scene
+		var element = scene.userData.element;
 
-            // get the element that is a place holder for where we want to
-            // draw the scene
-            var element = scene.userData.element;
+		// get its position relative to the page's viewport
+		var rect = element.getBoundingClientRect();
 
-            // get its position relative to the page's viewport
-            var rect = element.getBoundingClientRect();
+		// check if it's offscreen. If so skip it
+		if (rect.bottom < 0 || rect.top > renderer.domElement.clientHeight ||
+			rect.right < 0 || rect.left > renderer.domElement.clientWidth) {
 
-            // check if it's offscreen. If so skip it
-            if (rect.bottom < 0 || rect.top > renderer.domElement.clientHeight ||
-                rect.right < 0 || rect.left > renderer.domElement.clientWidth) {
+			return; // it's off screen
+		}
 
-                return; // it's off screen
-            }
+		// update orientation marker
+		rotMatrix.extractRotation(controls.object.matrix);
+		orientMarkerCube.rotation.setFromRotationMatrix(rotMatrix.transpose());
 
-            // update orientation marker
-            rotMatrix.extractRotation(controls.object.matrix);
-            orientMarkerCube.rotation.setFromRotationMatrix(rotMatrix.transpose());
+		// set the viewport
+		var width = rect.right - rect.left;
+		var height = rect.bottom - rect.top;
+		var left = rect.left;
+		var bottom = renderer.domElement.clientHeight - rect.bottom;
 
-            // set the viewport
-            var width = rect.right - rect.left;
-            var height = rect.bottom - rect.top;
-            var left = rect.left;
-            var bottom = renderer.domElement.clientHeight - rect.bottom;
+		renderer.setViewport(left, bottom, width, height);
+		renderer.setScissor(left, bottom, width, height);
 
-            renderer.setViewport(left, bottom, width, height);
-            renderer.setScissor(left, bottom, width, height);
+		// raycaster
+		raycaster.setFromCamera(mouseNorm, currScene.userData.camera);
 
-            // raycaster
-            raycaster.setFromCamera(mouseNorm, currScene.userData.camera);
+		var intersects = raycaster.intersectObjects(currScene.children);
 
-            var intersects = raycaster.intersectObjects(currScene.children);
+		if (intersects.length >= 1 && detailsOnRotate) {
 
-            if (intersects.length >= 1 && detailsOnRotate) {
+			for (var i = intersects.length - 1; i >= 0; i--) {
 
-                for (var i = intersects.length - 1; i >= 0; i--) {
+				if (intersects[i].object.userData.type == "node") {
 
-                    if (intersects[i].object.userData.type == "node") {
+					nodeHover = intersects[i].object;
+					var tempObject = scene.getObjectByName(nodeHover.name + "_outline");
 
-                        nodeHover = intersects[i].object;
-                        var tempObject = scene.getObjectByName(nodeHover.name + "_outline");
+					if (INTERSECTED != tempObject) {
 
-                        if (INTERSECTED != tempObject) {
+						if (INTERSECTED) {
+							INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+						}
 
-                            if (INTERSECTED) {
-                                INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
-                            }
+						INTERSECTED = tempObject;
 
-                            INTERSECTED = tempObject;
+						if (INTERSECTED) {
+							INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
+							INTERSECTED.material.color.setHex(0x00e4ff);
+						}
 
-                            if (INTERSECTED) {
-                                INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
-                                INTERSECTED.material.color.setHex(0x00e4ff);
-                            }
+						// details
 
-                            // details
+						populateAndPlaceDetails("SHOW");
 
-                            populateAndPlaceDetails("SHOW");
+					}
 
-                        }
+					break;
 
-                        break;
-
-                    } else {
-                        populateAndPlaceDetails("HIDE");
-                    }
+				} else {
+					populateAndPlaceDetails("HIDE");
+				}
 
 
-                }
-            } else {
+			}
+		} else {
 
-                if (INTERSECTED) {
-                    INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
-                    // details
-                    populateAndPlaceDetails("HIDE");
+			if (INTERSECTED) {
+				INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+				// details
+				populateAndPlaceDetails("HIDE");
 
-                }
+			}
 
-                INTERSECTED = null;
-            }
+			INTERSECTED = null;
+		}
 
-            renderer.render(scene, camera);
+		renderer.render(scene, camera);
 
-        }
-    });
+	}
+
 
 }
 
