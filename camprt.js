@@ -728,8 +728,6 @@ function populateOrganMasterList() {
 
 function checkOrganMasterList() {
 
-    //console.log(organList.length);
-
     organs.forEach(function (organ, index) {
 
         var tempItem = document.getElementById(organ.name);
@@ -869,9 +867,8 @@ function init() {
 
 function updateScenes(selectedPatient, material){
 	var scenes = [] //scenes is a wonderful global for now
-	for (var i = 0; i < patients[selectedPatient].similarity_ssim.length; i++) {
-		console.log(patients[selectedPatient].similarity_ssim);
-		var id = patients[selectedPatient].similarity_ssim[i]
+	for (var i = 0; i < patients[selectedPatient - 1].similarity_ssim.length; i++) {
+		var id = patients[selectedPatient-1].similarity_ssim[i]
 		var newScene = showPatient(patients, material, id);
 		scenes.push(newScene);
 	}
@@ -902,8 +899,6 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
             let mesh = new THREE.Mesh(geometry, material);
             mesh.name = (String(pOrgan) + "_model");
             mesh.userData.type = "node_model";
-
-            //console.log(mesh.name);
 
             mesh.position.x = organProperties.x;
             mesh.position.y = organProperties.y;
@@ -942,7 +937,7 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
 
 function showPatient(patients, materialArray, id){
 	var scene = new THREE.Scene();
-	var patient = patients[id];
+	var patient = patients[id-1];
 	var patientOrganList = patient.organData;
 
 	// make a list item
@@ -963,7 +958,7 @@ function showPatient(patients, materialArray, id){
 	// Look up the element that represents the area
 	// we want to render the scene
 	scene.userData.element = element.querySelector(".scene");
-	var parent = document.getElementById("content");
+	//var parent = document.getElementById("content");
 	
 	if(!document.getElementById( element.id )){
 		parent.appendChild(element);
@@ -1151,22 +1146,34 @@ function showPatient(patients, materialArray, id){
 
 }
 
+function removeOldViews(selectedPatientObject){
+	//remove list-items not matched to the patient
+	var matches = selectedPatientObject.similarity_ssim;
+	var parentNode = document.getElementById('content');
+	var patientViews = parentNode.getElementsByClassName('list-item');
+	var element;
+	console.log(patientViews);
+	for(var i = patientViews.length - 1; i >= 0; i--){
+		element = patientViews[i];
+		if( !matches.includes( +element.id ) ){
+			parentNode.removeChild(element);
+		}
+	}
+}
+
 function updateOrder(updatedPatient) {
 
     var pNames = [];
 
-    selectedPatient = updatedPatient;
-	scenes = updateScenes(selectedPatient, materialArray);
-	console.log(scenes);
-
-	
-    pRankingOrder = patients[selectedPatient - 1].similarity_ssim;
-    pScores = patients[selectedPatient - 1].scores_ssim;
+	selectedPatient = updatedPatient;
+	var patientObject = patients[selectedPatient - 1];
+    pRankingOrder = patientObject.similarity_ssim;
+    pScores = patientObject.scores_ssim;
+	scenes = updateScenes(selectedPatient, materialArray);//populates required views
+	removeOldViews(patientObject); //removes old views
 
     var lastPatient = document.getElementById(pRankingOrder[pRankingOrder.length - 1]);
     var firstPatient = document.getElementById(pRankingOrder[0]);
-	console.log(lastPatient);
-	console.log(firstPatient);
     firstPatient.style.display = "none";
 
     //insert last element from pRankingOrder in last place (before null)
@@ -1181,8 +1188,6 @@ function updateOrder(updatedPatient) {
 
         var first = document.getElementById(pRankingOrder[i]);
         var second = document.getElementById(pRankingOrder[i + 1]);
-		console.log(first);
-		console.log(second);
         // order div elements
         parent.insertBefore(first, second);
 
@@ -1265,7 +1270,6 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
         if (source_scene.children[i].userData.type == "node" ||
             source_scene.children[i].userData.type == "node_model") {
 
-            //console.log(source_scene.children[i]);
             var organ = source_scene.children[i].clone();
             organ.material.color.setStyle(source_scene.children[i].material.color);
             target_scene.add(organ);
@@ -1352,8 +1356,6 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
                 name: organ.name,
                 values: []
             };
-
-            //console.log(organ);
 
             var organTotal= 0;
 			var scoreTotal = 0;
@@ -1486,8 +1488,6 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
 
         if (organ.userData.type == "node") {
 
-            //console.log(organ);
-
             var organSum = 0;
 
 
@@ -1544,9 +1544,6 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
     var MovingCubeGeom2 = new THREE.CubeGeometry(25, 25, 25, 1, 1, 1, materialArray2);
     var MovingCube2 = new THREE.Mesh(MovingCubeGeom2, MovingCubeMat2);
 
-    //target_camera.add(MovingCube2);
-    //MovingCube2.position.set(121, -121, -250);
-
     var target_controls = new THREE.OrbitControls(target_scene.userData.camera, target_scene.userData.element);
     target_controls.minDistance = 2;
     target_controls.maxDistance = 5000;
@@ -1561,7 +1558,6 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
 
     scenesRP.push(target_scene);
 
-    //console.log(data);
 
     multiLineChart();
 
@@ -1810,11 +1806,9 @@ function updateMainView(rotMatrix) {
 	//scenes = updateScenes(selectedPatient, materialArray);
     pRankingOrder = patients[selectedPatient - 1].similarity_ssim;
 
-	for (var index; index < scenes.length; index++) {
+	for (var index = 0; index < scenes.length; index++) {
 
 		var scene = scenes[index];
-		console.log(scenes);
-		console.log(scene);
 		var controls = scene.userData.controls;
 		var camera = scene.userData.camera;
 
@@ -1901,7 +1895,6 @@ function updateMainView(rotMatrix) {
 		}
 
 		renderer.render(scene, camera);
-
 	}
 
 
@@ -2100,9 +2093,10 @@ function handleInputRotate(event) {
         cameraToCopy;
 
     if (targ.className == "scene" && syncCameras == true) {
-
+		var index;
         if (targ.parentNode.hasAttribute("id")) {
-            cameraToCopy = scenes[targ.parentNode.id - 1].userData.camera;
+			index = patients[selectedPatient - 1].similarity_ssim.indexOf( +targ.parentNode.id );
+            cameraToCopy = scenes[index].userData.camera;
 
         } else {
             cameraToCopy = scenesRP[targ.parentNode.value - 1].userData.camera;
@@ -2115,16 +2109,16 @@ function handleInputRotate(event) {
 
 function syncAllCameras(cameraToCopy) {
 
-    pRankingOrder.forEach(function (rank, index) {
+    for( var i = 0; i < scenes.length; i++) {
 
-        var scene = scenes[rank - 1];
+        var scene = scenes[i];
         var camera = scene.userData.camera;
         var controls = scene.userData.controls;
 
         camera.position.subVectors(cameraToCopy.position, controls.target);
         camera.position.setLength(cameraDistZ);
         camera.lookAt(scene.position);
-    });
+    };
 
     scenesRP.forEach(function (scene, index) {
         var camera = scene.userData.camera;
@@ -2159,7 +2153,8 @@ function onDocumentMouseMove(event) {
         if (targ.className == "scene") {
 
             if (targ.parentNode.hasAttribute("id")) {
-                currScene = scenes[targ.parentNode.id - 1];
+				let index = patients[selectedPatient - 1].similarity_ssim.indexOf( +targ.parentNode.id );
+                currScene = scenes[index];
             } else {
                 currScene = scenesRP[targ.parentNode.value - 1];
             }
