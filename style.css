@@ -11,11 +11,22 @@ body {
 	margin: 0px;
 }
 
+#leftContent {
+	position: absolute;
+	top: 0px;
+	width: 40%;
+	height: 100%;
+	min-width: 810px;
+	z-index: 1;
+	padding: 5em 0 3em 0;
+}
+
 #content {
 	position: absolute;
 	top: 0px;
-	width: 100%;
-	min-width: 1160px;
+	width: 60%;
+	left: 40%;
+	min-width: 810px;
 	z-index: 1;
 	padding: 5em 0 3em 0;
 }
@@ -28,7 +39,6 @@ a {
 	position: fixed;
 	left: 0px;
 	width: 100%;
-	min-width: 1160px;
 	height: 100%;
 }
 

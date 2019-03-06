@@ -18,15 +18,15 @@ from Patient import Patient
 
 class Rankings():
     #ranking functions that generate a score, takes in pateint objects
-    def pca(points):
-#        points -= np.mean(points, axis = 0)
+    def pca(points, n_components = 2):
+        points = points - np.mean(points, axis = 0)
         cov = np.cov(points, rowvar = False)
-        ev, eig = np.linalg.eig(cov)
-        args = np.argsort(-ev)
-        ev = ev[args]
-        eig = eig[:, args]
-        principle_components = eig.dot(points.T)
-        return(principle_components.T)
+        ev, eig = np.linalg.eigh(cov)
+        args = np.argsort(ev)[::-1]
+        ev = ev[args[0:n_components]]
+        eig = eig[:, args[0:n_components]]
+        principle_components = np.dot(points, eig)
+        return(principle_components)
 
     def cluster_organs(db):
         #clusters, and then sorts the clusters and containing values by position along the
@@ -190,6 +190,8 @@ class PatientSet():
         data = []
         scores = self.gen_score_matrix(weights)
         dose_estimates = self.predict_doses(weights, num_matches)
+        patient_mean_error = np.mean(np.absolute(self.doses - dose_estimates), axis = 1)
+        dose_pca = Rankings.pca(self.doses)
         for p_idx in range(0, self.num_patients):
             patient = self.patients[p_idx]
             entry = patient.to_ordered_dict(dose_estimates[p_idx, :])
@@ -200,6 +202,8 @@ class PatientSet():
             patient_scores, internal_ids = zip(*zipped_scores)
             entry['similarity_ssim'] = internal_ids[:self.get_num_matches(patient) + 1]
             entry['scores_ssim'] = patient_scores[:self.get_num_matches(patient) + 1]
+            entry['dose_pca'] = dose_pca[p_idx,:].tolist()
+            entry['mean_error'] = round(patient_mean_error[p_idx], 4)
             data.append(entry)
         #save the vast dictionary of data for the front-end
         try:
@@ -466,7 +470,7 @@ class PatientSet():
         name_error_tuples = sorted(name_error_tuples, key = lambda x: x[1])
         return(name_error_tuples)
 
-db = PatientSet(patient_set = None, root = 'data\\patients_v2*\\', outliers = Constants.v2_bad_entries)
+db = PatientSet(patient_set = db, root = 'data\\patients_v2*\\', outliers = Constants.v2_bad_entries)
 db.export()
 
 #avg = db.get_average_patient_data()

@@ -13,12 +13,12 @@
 
     <canvas id="c"></canvas>
 
-
     <div id="loadScreen">
         <div style="position: relative; top: 200px;">loading...</div>
         <div style="position: relative; top: 220px;" id="loadProgress">0 %</div>
     </div>
-
+	<div id="leftContent">
+	</div>
     <div id="content">
         <div id="lineChartsContainer">
             <canvas id="c2"></canvas>
@@ -144,7 +144,7 @@
         window.dropDown = function(e) {
             //console.log(e.value);
             //
-            updateOrder(e.value);
+            switchPatient(e.value);
         }
 
         //maybe include onmouseleave="handleSideNav()" in sidenav

@@ -535,8 +535,6 @@ function handleCheckBoxSingle(event) {
         //d3.select("#line_" + event.value).style("opacity", 0.0);
         d3.select("#line_" + event.value).attr("display", "none");
     }
-
-
 }
 
 function handleCheckBoxGroup(event) {
@@ -642,7 +640,6 @@ function populateOrganMasterList() {
         tempInput.setAttribute("onchange", "handleCheckBoxGroup(this)");
 
         tempInput.setAttribute("checked", true);
-
 
         var tempLabel = document.createElement("label");
         tempLabel.setAttribute("for", String(i + 1) + "_title");
@@ -862,7 +859,11 @@ function init() {
         })
     ];
     
-    updateOrder(selectedPatient);
+	var patientObject = patients[selectedPatient - 1];
+    pRankingOrder = patientObject.similarity_ssim;
+    pScores = patientObject.scores_ssim;
+	scenes = updateScenes(selectedPatient, materialArray);//populates required views	
+	updateOrder(selectedPatient);
 }
 
 function updateScenes(selectedPatient, material){
@@ -1160,17 +1161,23 @@ function removeOldViews(selectedPatientObject){
 	}
 }
 
-function updateOrder(updatedPatient) {
-	//sorts the divs of list-items for the patients based on similarity score
-	console.log('updateOrder');
-    
+function switchPatient(updatedPatient){
+	if(updatedPatient == selectedPatient){ 
+		return;
+	}
 	selectedPatient = updatedPatient;
 	var patientObject = patients[selectedPatient - 1];
     pRankingOrder = patientObject.similarity_ssim;
     pScores = patientObject.scores_ssim;
 	scenes = updateScenes(selectedPatient, materialArray);//populates required views
 	removeOldViews(patientObject); //removes old views
+	
+	updateOrder(updatedPatient);
+}
 
+function updateOrder(updatedPatient) {
+	//sorts the divs of list-items for the patients based on similarity score
+	console.log('updateOrder');
     var lastPatient = document.getElementById(pRankingOrder[pRankingOrder.length - 1]);
     var firstPatient = document.getElementById(pRankingOrder[0]);
     firstPatient.style.display = "none";
@@ -1181,7 +1188,6 @@ function updateOrder(updatedPatient) {
     // first patient always has score of 1, clear it
     var pScoreElement = firstPatient.querySelector(".pScore");
     pScoreElement.innerHTML = "";
-
 
     for (var i = (pRankingOrder.length - 2); i >= 0; i--) {
 
@@ -1196,7 +1202,6 @@ function updateOrder(updatedPatient) {
         pScoreElement.innerHTML = pScores[i + 1].toFixed(5);
 
         // hide patients
-     
         second.style.display = "none";
     }
 
@@ -1210,7 +1215,6 @@ function updateOrder(updatedPatient) {
 
     pScoreElement2.innerHTML = pScoreElement1.innerHTML;
     pScoreElement1.innerHTML = "";
-	
 
 }
 
