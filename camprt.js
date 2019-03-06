@@ -3,7 +3,7 @@
 if (!Detector.webgl) {
     Detector.addGetWebGLMessage();
 }
-
+//storing everything in like 100 global variables.  The best programming practice.
 var parent = document.getElementById("content");
 var nodeDetails = document.getElementById("details");
 
@@ -76,8 +76,7 @@ var organRef = [];
 
 var pRankingOrder, pScores;
 
-var listItems, arrayOfDivs = [],
-    currScene;
+var currScene;
 
 var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset.json"];
 var promises = [];
@@ -103,6 +102,7 @@ manager.onLoad = function () {
 	//this may break this because I moved it to the front
     console.log('Loading complete!');
     //updateOrder(selectedPatient);
+	initializeRiskPrediction(selectedPatient);
     document.getElementById("loadScreen").style.display = "none";
 };
 
@@ -122,7 +122,7 @@ Promise.all(promises).then(function (values) {
 
 function start(organAtlas, patientsData) {
 
-    console.log(patientsData);
+    console.log("start()");
 
     oAtlas = organAtlas[0];
     patients = patientsData;
@@ -142,12 +142,6 @@ function start(organAtlas, patientsData) {
 
     populateOrganMasterList();
 
-    listItems = document.getElementsByClassName("list-item");
-
-    for (var i = 0, ref = arrayOfDivs.length = listItems.length; i < ref; i++) {
-        arrayOfDivs[i] = listItems[i];
-    }
-
     currScene = scenes[0];
 
     document.addEventListener("mousedown", onMouseDown, false);
@@ -164,7 +158,7 @@ function start(organAtlas, patientsData) {
 // ----------------------------------------------------------------
 
 function populateColorScale() {
-
+	console.log("populateColorScale()");
     var parentDiv = document.getElementById("colorScale");
 	//appears to make a color scale made from just like, a bunch of 10px wide divs for the hard-coded color scales
     rangeColorScale.forEach(function (color, index) {
@@ -217,7 +211,7 @@ function populateColorScale() {
 }
 
 function showColorScaleLabel(event) {
-	
+	console.log("showColorScaleLabel");
     var details = document.getElementById("colorScaleDetails");
 
     details.style.left = event.target.offsetLeft + "px";
@@ -227,14 +221,14 @@ function showColorScaleLabel(event) {
 }
 
 function hideColorScaleLabel(event) {
-	
+	console.log('hideColorScaleLabel');
     var details = document.getElementById("colorScaleDetails");
 
     details.style.display = "none";
 }
 
 function showColorScaleLabel2(event) {
-	
+	console.log("showColorScaleLabel2()");
     var details = document.getElementById("colorScaleDetails2");
 
     details.style.left = event.target.offsetLeft + "px";
@@ -244,14 +238,15 @@ function showColorScaleLabel2(event) {
 }
 
 function hideColorScaleLabel2(event) {
-
+	console.log("hideColorScaleLabel2()");
     var details = document.getElementById("colorScaleDetails2");
 
     details.style.display = "none";
 }
 
 function compareID(a, b) {
-
+	//a function that compares two numbers because maybe they're string?
+	//because there's for sure no easy way to convert ints to strings and also the ids are pre-sorted
     var a_ID = a.ID_int;
     var b_ID = b.ID_int;
 
@@ -267,6 +262,7 @@ function compareID(a, b) {
 
 function populateDropDownMenu() {
 	//holds an array of patient internal ids
+	console.log("populateDropDownMenu()");
     var menu = document.getElementById("patientMenu");
 
     // copy of patients sorted
@@ -318,6 +314,7 @@ function getInternalID(searchString) {
 }
 
 function getQueryVariable(variable) {
+	console.log("getQueryVariable()");
     var query = window.location.search.substring(1);
     var vars = query.split("&");
     for (var i = 0; i < vars.length; i++) {
@@ -332,6 +329,7 @@ function getQueryVariable(variable) {
 
 function flipGraph() {
 	//coordinate rotation and scaling for organ positions
+	console.log("flipGraph()");
     for (var i = 0; i < patients.length; i++) {
 
         var patientOrganList = patients[i].organData;
@@ -361,6 +359,7 @@ function flipGraph() {
 }
 
 function computeCenterOfGraphAndShift() {
+	console.log("computeCenterOfGraphAndShift()");
 	//coordiante translation so that the organs are centered, I think
     for (var i = 0; i < patients.length; i++) {
 
@@ -478,7 +477,7 @@ function getMax(pos) {
 }
 
 function handleCheckBoxSingle(event) {
-
+	console.log("handleCheckBoxSinge()");
     if (event.checked) {
 
         scenes.forEach(function (scene, index) {
@@ -542,7 +541,7 @@ function handleCheckBoxSingle(event) {
 }
 
 function handleCheckBoxGroup(event) {
-
+	console.log("handleCheckBoxGroup()");
     var children = master.getElementsByClassName(event.id[0] + "_GroupChildren");
 
     if (event.checked) {
@@ -626,7 +625,7 @@ function handleCheckBoxGroup(event) {
 }
 
 function populateOrganMasterList() {
-
+	console.log("populateOrganMasterList()");
     // make partition input first
     partitions.forEach(function (group, i) {
 
@@ -727,7 +726,7 @@ function populateOrganMasterList() {
 }
 
 function checkOrganMasterList() {
-
+	console.log("checkOrganMasterList()");
     organs.forEach(function (organ, index) {
 
         var tempItem = document.getElementById(organ.name);
@@ -747,6 +746,7 @@ function checkOrganMasterList() {
 }
 
 function formatOrganMasterList() {
+	console.log("formatOrganMasterList()");
     var organList = master.children;
 
     for (var i = 0; i < organList.length; i++) {
@@ -760,7 +760,7 @@ function formatOrganMasterList() {
 }
 
 function init() {
-	
+	console.log("init()");
 	//renderer for main views?
 	var getRenderer = function(canvas){
 		var r = new THREE.WebGLRenderer({
@@ -775,7 +775,7 @@ function init() {
     
 	renderer = getRenderer(canvas);
 
-	//renderer for dose estimation views
+	//renderer for dose estimation views?
     renderer2 = getRenderer(canvas2);
 
     raycaster = new THREE.Raycaster();
@@ -866,6 +866,7 @@ function init() {
 }
 
 function updateScenes(selectedPatient, material){
+	console.log('updateScenes()');
 	var scenes = [] //scenes is a wonderful global for now
 	for (var i = 0; i < patients[selectedPatient - 1].similarity_ssim.length; i++) {
 		var id = patients[selectedPatient-1].similarity_ssim[i]
@@ -876,7 +877,7 @@ function updateScenes(selectedPatient, material){
 }
 
 function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
-
+	console.log('placeOrganModels()');
     let loader = new THREE.VTKLoader(manager);
 
     if (!(pOrgan == "GTVn" || pOrgan == "GTVp")) {
@@ -936,6 +937,7 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
 }
 
 function showPatient(patients, materialArray, id){
+	console.log('showPatient()');
 	var scene = new THREE.Scene();
 	var patient = patients[id-1];
 	var patientOrganList = patient.organData;
@@ -1066,7 +1068,6 @@ function showPatient(patients, materialArray, id){
 		organSphere.add(outlineMesh);
 
 		placeOrganModels(pOrgan, patientOrganList[pOrgan], scene, nodeColor);
-
 	}
 
 	var tmp_geo = new THREE.Geometry();
@@ -1131,9 +1132,7 @@ function showPatient(patients, materialArray, id){
 			organSphere.add(outlineMesh);
 
 			placeOrganModels(organ, oAtlas[organ], scene, nodeColor);
-
 		}
-
 	}
 
 	scene.add(camera);
@@ -1143,11 +1142,11 @@ function showPatient(patients, materialArray, id){
 
 	scene.add(light);
 	return scene;
-
 }
 
 function removeOldViews(selectedPatientObject){
 	//remove list-items not matched to the patient
+	console.log('removeOldViews()');
 	var matches = selectedPatientObject.similarity_ssim;
 	var parentNode = document.getElementById('content');
 	var patientViews = parentNode.getElementsByClassName('list-item');
@@ -1162,9 +1161,9 @@ function removeOldViews(selectedPatientObject){
 }
 
 function updateOrder(updatedPatient) {
-
-    var pNames = [];
-
+	//sorts the divs of list-items for the patients based on similarity score
+	console.log('updateOrder');
+    
 	selectedPatient = updatedPatient;
 	var patientObject = patients[selectedPatient - 1];
     pRankingOrder = patientObject.similarity_ssim;
@@ -1211,7 +1210,19 @@ function updateOrder(updatedPatient) {
 
     pScoreElement2.innerHTML = pScoreElement1.innerHTML;
     pScoreElement1.innerHTML = "";
+	
 
+}
+
+function initializeRiskPrediction(rank) {
+	
+	console.log('initializeRiskPrediction()');
+    var firstPatient = document.getElementById(rank);
+    var simScores = patients[rank - 1].scores_ssim;
+    // remove scenes
+    scenesRP.length = 0;
+	
+	var pNames = [];
     for (var j = 0; j < patientsToShow; j++) {
         var p = document.getElementById(pRankingOrder[j]);
         p.style.display = "inline-block";
@@ -1221,23 +1232,7 @@ function updateOrder(updatedPatient) {
             pNames.push(String(j) + ": " + pName.innerHTML);
         }
     }
-
     pNames[0] = "0: Estimation";
-
-
-    //initializeRiskPrediction(trueFirst, selectedPatient, pNames);
-
-}
-
-function initializeRiskPrediction(firstPatient, rank, pNames) {
-
-    data.dates = pNames;
-    data.series = [];
-    
-    var simScores = patients[rank - 1].scores_ssim;
-
-    // remove scenes
-    scenesRP.length = 0;
 
     // -----------------------------------------
     // -----------------------------------------
@@ -1260,11 +1255,10 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
 
     // -----------------------------------------
 
-    var source_scene = scenes[rank - 1];
+    var source_scene = scenes[0];
     var target_scene = new THREE.Scene();
 
     target_scene.userData.element = pTarget_chart.childNodes[0].querySelector(".scene");
-
     for (var i = 0; i < source_scene.children.length; i++) {
 
         if (source_scene.children[i].userData.type == "node" ||
@@ -1310,11 +1304,6 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
     target_scene.add(light);
 
     scenesRP.push(target_scene);
-
-
-    //
-
-    // -----------------------------------------
     // -----------------------------------------
     // make a list item
     var element = document.createElement("div");
@@ -1338,10 +1327,6 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
 
     pPrediction_chart.appendChild(element);
 
-    // -----------------------------------------
-
-   
-    //source_scene = scenes[rank - 1];
     target_scene = new THREE.Scene();
 
     target_scene.userData.element = pPrediction_chart.childNodes[0].querySelector(".scene");
@@ -1352,47 +1337,9 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
 
         if (organ.userData.type == "node") {
 
-            var organ_lc = {
-                name: organ.name,
-                values: []
-            };
-
-            var organTotal= 0;
-			var scoreTotal = 0;
-	
-            for (var x = 1; x <= numMatches; x++) {
-
-                var scene = scenes[pRankingOrder[x] - 1];
-
-                var node = scene.getObjectByName(organ.name);
-
-                if (node) {
-
-                    var meanDose = node.userData.meanDose;
-                    if (isNaN(meanDose)) {
-                        console.log(meanDose);
-                        meanDose = 0.0
-                    }
-                    organTotal += (meanDose * simScores[x]);
-					scoreTotal += simScores[x]
-                    //organAverage += (meanDose);
-                    
-                    //why is this storing both the actaul mean dose and the doses?
-					if(x >= 5){
-						organ_lc.values.push(meanDose);
-					}
-                }
-            }
-
-            var averageOrganDose = (organTotal / scoreTotal).toFixed(3);
-            organ_lc.values.unshift(averageOrganDose);
-
-            data.series.push(organ_lc);
-
-
             organ.userData.volume = undefined;
             organ.userData.minDose = undefined;
-            organ.userData.meanDose = averageOrganDose;
+            organ.userData.meanDose = organ.userData.estimatedDose;
             organ.userData.maxDose = undefined;
 
             organ.userData.dosePerVolume = undefined;
@@ -1403,7 +1350,7 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
 
             target_scene.add(organ);
 
-            var source_model = source_scene.getObjectByName(String(organ.name) + "_model");
+            var source_model = source_scene.getObjectByName(organ.name + "_model");
 
             if (source_model != null) {
                 var target_model = source_model.clone();
@@ -1474,10 +1421,7 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
     }
 
     pDifference_chart.appendChild(element);
-
     // -----------------------------------------
-
-    //source_scene = scenes[rank - 1];
     target_scene = new THREE.Scene();
 
     target_scene.userData.element = pDifference_chart.childNodes[0].querySelector(".scene");
@@ -1514,7 +1458,7 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
 
             target_scene.add(organ);
 
-            var source_model = source_scene.getObjectByName(String(organ.name) + "_model");
+            var source_model = source_scene.getObjectByName(organ.name + "_model");
 
             if (source_model != null) {
                 var target_model = source_model.clone();
@@ -1526,7 +1470,6 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
         } else {
             organ = undefined;
         }
-
     }
 
     var scalarVal = 2.4; //4.1
@@ -1558,120 +1501,10 @@ function initializeRiskPrediction(firstPatient, rank, pNames) {
 
     scenesRP.push(target_scene);
 
-
-    multiLineChart();
-
-
-}
-
-
-function multiLineChart() {
-
-    d3.selectAll("#mLineChart > *").remove();
-
-    var svg = d3.select("#mLineChart"),
-        margin = {
-            top: 20,
-            right: 60,
-            bottom: 50,
-            left: 60
-        },
-        width = svg.attr("width") - margin.left - margin.right,
-        height = svg.attr("height") - margin.top - margin.bottom,
-        g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-    var x = d3.scalePoint().range([0, width]).padding([.2]);
-
-    var y = d3.scaleLinear()
-        .range([height, 0]);
-
-    var line = d3.line()
-        .x(function (d, i) {
-            //return x(d.date);
-            return x(data.dates[i]);
-        })
-        .y(function (d) {
-            //return y(d.value);
-            return y(d);
-        });
-
-    // --------------------------------
-
-    x.domain(data.dates);
-    x.invert = (function () {
-        var domain = x.domain();
-        var range = x.range();
-        var scale = d3.scaleQuantize().domain(range).range(domain);
-
-        return function (x) {
-            return scale(x);
-        }
-    })();
-  
-    y.domain([0, d3.max(data.series, d => d3.max(d.values))]).nice();
-
-    g.append("g")
-        .attr("class", "axis axis--x")
-        .attr("transform", "translate(0," + height + ")")
-        .call(d3.axisBottom(x).tickSizeOuter([0]))
-        .append("text")
-        .attr("x", width + 5)
-        .attr("y", 0.5)
-        .attr("dy", "0.32em")
-        .style("text-anchor", "start")
-        .style("fill", "#000")
-        .style("font-weight", "bold")
-        .text("Patients");
-
-    svg.append("text")
-        .attr("transform", "translate(" + (width / 2 + 50) + " ," + (20) + ")")
-        .style("text-anchor", "middle")
-        .text("Organ Dose Across Most Similar Patients");
-
-    g.append("g")
-        .attr("class", "axis axis--y")
-        //.call(d3.axisLeft(y).ticks(10, "%"))
-        .call(d3.axisLeft(y).ticks(10))
-        .append("text")
-        .attr("x", 4)
-        .attr("y", 0.5)
-        .attr("dy", "0.32em")
-        .style("text-anchor", "start")
-        .style("fill", "#000")
-        .style("font-weight", "bold")
-        .text(data.y);
-
-    const path = g.append("g")
-        .attr("class", "cities")
-        .selectAll("path")
-        //.data(data_lc)
-        .data(data.series)
-        .enter().append("path")
-        .attr("d", function (d) {
-            d.line = this;
-            return line(d.values);
-        })
-        .attr("id", function (d) {
-            return ("line_" + d.name);
-        })
-        .attr("display", function (d) {
-
-            var el = document.getElementById(d.name + "_checkList")
-
-            if (d.name == "GTVp" || d.name == "GTVn")
-                return (null);
-            else if (el && !el.checked)
-                return ("none");
-            else
-                return (null);
-        });
-
-    svg.call(hover, path, x, y, data);
-
 }
 
 function hover(svg, path, x, y) {
-
+	console.log('hover()');
     svg
         .style("position", "relative");
 
@@ -1901,7 +1734,6 @@ function updateMainView(rotMatrix) {
 }
 
 function updateRiskPView(rotMatrix) {
-
     var rotMatrix = new THREE.Matrix4();
 
     scenesRP.forEach(function (scene, index) {
@@ -1996,10 +1828,7 @@ function updateRiskPView(rotMatrix) {
         }
 
         renderer2.render(scene, camera);
-
     });
-
-
 }
 
 function updateSize() {
@@ -2018,7 +1847,7 @@ function updateSize() {
 }
 
 function populateAndPlaceDetails(state) {
-
+	console.log('populateAndPlaceDetails()');
     if (state == "SHOW") {
 
         nodeDetails.style.display = "block";
@@ -2143,9 +1972,6 @@ function onTouchEnd(event) {
 }
 
 function onDocumentMouseMove(event) {
-
-    //event.preventDefault();
-
     if (event.target) {
 
         var targ = event.target;
@@ -2202,5 +2028,3 @@ opacSlider.oninput = function () {
 
     });
 }
-
-var onAfterRender = function (renderer, scene, camera, geometry, material, group) {};

@@ -27,7 +27,7 @@ class Rankings():
         eig = eig[:, args]
         principle_components = eig.dot(points.T)
         return(principle_components.T)
-    
+
     def cluster_organs(db):
         #clusters, and then sorts the clusters and containing values by position along the
         #principle component of the organs
@@ -85,7 +85,7 @@ class Rankings():
         #I was normalizing here, but moved it so I can rescale the data
         final_score = np.sum(scores*weights)/np.mean(weights)
         return(final_score)
-    
+
     def local_ssim(x,y,v = None, w = None):
         c1 = .000001
         c2  = .000001
@@ -173,16 +173,16 @@ class PatientSet():
             dose_matrix[patient_index, :] = new_patient.doses
             total_dose_vector[patient_index] = new_patient.total_dose
         return((patients, dose_matrix, total_dose_vector, num_patients, ids))
-    
+
     def fix_tumor_names(self, dataframe):
         #this should probably not need to return anything, but does.
         #replace the aliases for GTVp or GTVn(1) with a consistent name
         dataframe.replace(Constants.tumor_aliases, inplace = True)
         dataframe.replace(to_replace = r'GTV.*N', value = 'GTVn', regex = True, inplace = True)
         return dataframe
-    
-    def export(self, weights = np.array([0,1]) , 
-               rank_function = 'tumor_organ_ssim', 
+
+    def export(self, weights = np.array([0,1]) ,
+               rank_function = 'tumor_organ_ssim',
                num_matches = 9,
                patient_data_file = 'data\\patient_dataset.json',
                score_file = 'data\\all_ssim_scores.csv'):
@@ -195,7 +195,7 @@ class PatientSet():
             entry = patient.to_ordered_dict(dose_estimates[p_idx, :])
             ssim_scores = scores[p_idx,:]
             ssim_scores[p_idx] = 1
-            zipped_scores = sorted(zip(ssim_scores, np.arange(1, len(ssim_scores) + 1)), 
+            zipped_scores = sorted(zip(ssim_scores, np.arange(1, len(ssim_scores) + 1)),
                                    key = lambda x: -x[0])
             patient_scores, internal_ids = zip(*zipped_scores)
             entry['similarity_ssim'] = internal_ids[:self.get_num_matches(patient) + 1]
@@ -204,8 +204,8 @@ class PatientSet():
         #save the vast dictionary of data for the front-end
         try:
             def default(o):
-                if isinstance(o, np.int32): 
-                    return int(o)  
+                if isinstance(o, np.int32):
+                    return int(o)
             with open(patient_data_file, 'w+') as f:  # generate JSON
                 json.dump( data, f, indent=4, default = default)
             print('successfully save patient data to ', patient_data_file)
@@ -227,7 +227,7 @@ class PatientSet():
         scores = self.gen_score_matrix(weights, rank_function)
         score_df = pd.DataFrame(scores, index = self.ids, columns = self.ids)
         return(score_df)
-    
+
     def get_organ_clusters(self, k):
         #creates an index-based dictionary of k-nearest organs for each organ
         #used in clusters
@@ -235,14 +235,14 @@ class PatientSet():
         mean_dists = avg['distances']
         organ_kmeans = {}
         for organ_row in range(0, Constants.num_organs):
-            organ_args = np.argsort(mean_dists[organ_row, :])[0: k] 
+            organ_args = np.argsort(mean_dists[organ_row, :])[0: k]
             organ_kmeans[organ_row] = organ_args
         return(organ_kmeans)
-    
+
     def gen_score_matrix(self, weights, class_type = 'full'):
         #weights basically scales the importants of the knn cluster (one centered on each organ)
         #currently not in use?
-        try: 
+        try:
             if weights.shape != (Constants.num_organs,):
                 weights = np.ones((Constants.num_organs,))
         except:
@@ -317,7 +317,7 @@ class PatientSet():
                 total_dose_estimates[p_idx] = np.sum(estimates_for_total_dose)
             estimates *= total_dose_estimates.reshape((self.num_patients,1))
         return(estimates)
-    
+
     def get_num_matches(self, patient):
         #function for determining the number of matches to use, so this can be changed easily
         matches = 4
@@ -406,7 +406,7 @@ class PatientSet():
         #standarization, not needed for binary trees though
         features = (features - np.mean(features, axis = 0))/(np.std(features, axis = 0) + .00000001)
         return (features, feature_names)
-    
+
     def gen_tumor_distance_matrix(self):
         #function to get a matrix I can try some dose prediction on?
         features = np.zeros((self.num_patients, 45))
@@ -421,7 +421,7 @@ class PatientSet():
     def gen_patient_feature_matrix(self):
         #function to get a matrix I can try some dose prediction on?
         features = np.zeros((self.num_patients, 14))
-        feature_names = ['gtvp volume', 'gtvn volume', 'prescribed dose', 'total_organ_volume', 
+        feature_names = ['gtvp volume', 'gtvn volume', 'prescribed dose', 'total_organ_volume',
                          'BOT','GPS','Tonsil','NOS', 'gtvp_x', 'gtvp_y', 'gtvp_z', 'Left', 'Right', 'Bilateral']
         laterality_map = {'L': 0, 'R': 1, 'Bilateral': 2}
         subsite_map = {'BOT': 0, 'GPS': 1, 'Tonsil': 2, 'NOS': 3}
@@ -454,7 +454,7 @@ class PatientSet():
                        'differences': differences,
                        'organ_mean_error': organ_mean_error}
         return(result_dict)
-    
+
     def labeled_mean_error(self, differences, axis):
         #gives us a nice sorted list organ or patient total mean error as a labeled tuple
         error = np.mean(np.abs(differences), axis = axis)
@@ -466,12 +466,12 @@ class PatientSet():
         name_error_tuples = sorted(name_error_tuples, key = lambda x: x[1])
         return(name_error_tuples)
 
-db = PatientSet(patient_set = db, root = 'data\\patients_v2*\\', outliers = Constants.v2_bad_entries)
+db = PatientSet(patient_set = None, root = 'data\\patients_v2*\\', outliers = Constants.v2_bad_entries)
 db.export()
 
 #avg = db.get_average_patient_data()
 #print(np.correlate(avg['volumes'], avg['doses']))
-#   
+#
 #
 #result = db.evaluate(weights = np.ones((Constants.num_organs,)))
 #base_error =result['mean_error']
@@ -520,6 +520,6 @@ db.export()
 #    weighted_doses = np.transpose( np.transpose(doses) * scores)
 #    x = np.linalg.lstsq(weighted_distances, weighted_doses)[0]
 #    estimates = np.dot(p.tumor_distances, x)
-#        
+#
 #    errors.append( np.mean(np.absolute(estimates - p.doses)) )
 #print(np.mean(errors))
