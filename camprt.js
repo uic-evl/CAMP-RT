@@ -101,7 +101,6 @@ var manager = new THREE.LoadingManager();
 manager.onLoad = function () {
 	//this may break this because I moved it to the front
     console.log('Loading complete!');
-    //updateOrder(selectedPatient);
 	initializeRiskPrediction(selectedPatient);
     document.getElementById("loadScreen").style.display = "none";
 };
@@ -762,10 +761,11 @@ function formatOrganMasterList() {
 function init() {
 	console.log("init()");
 	//renderer for main views?
-	var getRenderer = function(canvas){
+	var getRenderer = function(canvas, isAlpha){
 		var r = new THREE.WebGLRenderer({
 			canvas: canvas,
-			antialias: true
+			antialias: true,
+			alpha: isAlpha
 		});
 		r.setClearColor(0xffffff, 1);
 		r.setPixelRatio(window.devicePixelRatio);
@@ -773,10 +773,10 @@ function init() {
 		return r
 	}
     
-	renderer = getRenderer(canvas);
+	renderer = getRenderer(canvas, false);
 
 	//renderer for dose estimation views?
-    renderer2 = getRenderer(canvas2);
+    renderer2 = getRenderer(canvas2, true);
 
     raycaster = new THREE.Raycaster();
 
@@ -1503,106 +1503,6 @@ function initializeRiskPrediction(rank) {
 
 }
 
-function hover(svg, path, x, y) {
-	console.log('hover()');
-    svg
-        .style("position", "relative");
-
-    if ("ontouchstart" in document) svg
-        .style("-webkit-tap-highlight-color", "transparent")
-        .on("touchmove", moved)
-        .on("touchstart", entered)
-        .on("touchend", left)
-    else svg
-        .on("mousemove", moved)
-        .on("mouseenter", entered)
-        .on("mouseleave", left);
-
-    const dot = svg.append("g")
-        .attr("display", "none")
-        .attr("class", "dot");
-
-    dot.append("circle")
-        .attr("r", 3.5)
-        .style("fill", "#00e4ff");
-
-    dot.append("text")
-        .style("font", "15px sans-serif")
-        .attr("text-anchor", "middle")
-        .attr("y", -8);
-
-    function moved() {
-        d3.event.preventDefault();
-
-        var xAxisOrder = [...Array(5).keys()];
-
-        const ym = y.invert(d3.event.offsetY - 20);
-        const xm = x.invert(d3.event.offsetX - 60);
-        const i1 = d3.bisectRight(data.dates, xm, 1);
-        const i0 = i1 - 1;
-        const i = xm - data.dates[i0] > data.dates[i1] - xm ? i1 : i0;
-        const s = data.series.reduce((a, b) => Math.abs(a.values[i] - ym) < Math.abs(b.values[i] - ym) ? a : b);
-        path.attr("stroke", d => d === s ? "#00e4ff" : "#d1d1d1").attr("stroke-width", d => d === s ? "4px" : "2px").filter(d => d === s).raise();
-        
-        dot.attr("transform", `translate(${x(data.dates[i])+60},${y(s.values[i])+20})`);
-        dot.select("text").text(s.name + " (" + s.values[i] + " GY)");
-
-        scenesRP.forEach(function (scene, index) {
-
-            for (var i = 0; i < scene.children.length; i++) {
-
-
-                for (var j = 0; j < scene.children[i].children.length; j++) {
-
-                    if (scene.children[i].children[j].name.includes("_outline")) {
-
-                        var organ = scene.children[i].children[j];
-                        organ.material.color.setHex(0x3d3d3d);
-                    }
-                }
-            }
-
-        });
-
-        scenesRP.forEach(function (scene, index) {
-
-            var tempObject = scene.getObjectByName(s.name + "_outline");
-
-            tempObject.material.color.setHex(0x00e4ff);
-
-        });
-
-    }
-
-    function entered() {
-
-        path.attr("stroke", null).attr("stroke-width", "4px");
-        dot.attr("display", null);
-    }
-
-    function left() {
-
-        path.attr("stroke", "#d1d1d1").attr("stroke-width", "2px");
-        dot.attr("display", "none");
-
-        scenesRP.forEach(function (scene, index) {
-
-            for (var i = 0; i < scene.children.length; i++) {
-
-                for (var j = 0; j < scene.children[i].children.length; j++) {
-
-                    if (scene.children[i].children[j].name.includes("_outline")) {
-
-                        var organ = scene.children[i].children[j];
-                        organ.material.color.setHex(0x3d3d3d);
-                    }
-                }
-            }
-        });
-
-    }
-
-}
 
 function animate() {
     render();
@@ -1628,9 +1528,9 @@ function render() {
 
     renderer2.setClearColor(0xa5a5a5);
     renderer2.setScissorTest(true);
-
-    updateRiskPView();
-
+	if(toggle){
+		updateRiskPView();
+	}
 }
 
 function updateMainView(rotMatrix) {
