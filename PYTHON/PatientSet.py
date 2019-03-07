@@ -103,7 +103,7 @@ class Rankings():
 
 class PatientSet():
 
-    def __init__(self, patient_set = None, outliers = [], root = 'data\\patients_v2*\\', k = 10):
+    def __init__(self, patient_set = None, outliers = [], root = 'data\\patients_v2*\\', max_distance = 80):
         if patient_set is None:
             outliers = outliers
             self.total_dose_predictor = None
@@ -115,8 +115,11 @@ class PatientSet():
             self.total_doses = patient_set.total_doses
             self.num_patients = patient_set.num_patients
             self.ids = patient_set.ids
-        self.organ_kmeans = self.get_organ_clusters(k)
+        self.organ_kmeans = self.get_organ_clusters(max_distance)
         print('\npatient data loaded...\n')
+
+    def set_max_distance(self, distance):
+        self.organ_kmeans = self.get_organ_clusters(distance)
 
     def read_patient_data(self, root, outliers):
         #sorts by size of largest integer string, which is the id for our files
@@ -232,14 +235,15 @@ class PatientSet():
         score_df = pd.DataFrame(scores, index = self.ids, columns = self.ids)
         return(score_df)
 
-    def get_organ_clusters(self, k):
+    def get_organ_clusters(self, max_dist):
         #creates an index-based dictionary of k-nearest organs for each organ
         #used in clusters
-        avg = self.get_average_patient_data()
-        mean_dists = avg['distances']
+        mean_dists = self.get_average_patient_data('distances')
         organ_kmeans = {}
         for organ_row in range(0, Constants.num_organs):
-            organ_args = np.argsort(mean_dists[organ_row, :])[0: k]
+            organ_dists = mean_dists[organ_row, :]
+            k = len(np.where( organ_dists < max_dist)[0])
+            organ_args = np.argsort(organ_dists)[0: k]
             organ_kmeans[organ_row] = organ_args
         return(organ_kmeans)
 
@@ -470,18 +474,19 @@ class PatientSet():
         name_error_tuples = sorted(name_error_tuples, key = lambda x: x[1])
         return(name_error_tuples)
 
-db = PatientSet(patient_set = db, root = 'data\\patients_v2*\\', outliers = Constants.v2_bad_entries)
-db.export()
+db = PatientSet(patient_set = db, root = 'data\\patients_v2*\\',
+                outliers = Constants.v2_bad_entries)
+
+#db.export()
 
 #avg = db.get_average_patient_data()
 #print(np.correlate(avg['volumes'], avg['doses']))
-#
-#
-#result = db.evaluate(weights = np.ones((Constants.num_organs,)))
-#base_error =result['mean_error']
-#print(base_error)
-#
-#
+
+result = db.evaluate(weights = np.ones((Constants.num_organs,)))
+base_error =result['mean_error']
+print(base_error)
+
+
 #scale = np.mean( np.absolute(result['differences']), axis = 1)**2
 #x = np.zeros((db.num_patients, Constants.num_organs)) #db.doses #db.gen_tumor_distance_matrix()[0] #result['differences']
 #for pidx in range(db.num_patients):

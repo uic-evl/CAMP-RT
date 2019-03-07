@@ -13,21 +13,27 @@ body {
 
 #leftContent {
 	position: absolute;
-	top: 0px;
-	width: 40%;
+	top: 0;
+	width: 800px;
 	height: 100%;
-	min-width: 810px;
+	min-width: 800px;
 	z-index: 1;
 	padding: 5em 0 3em 0;
 }
 
 #content {
 	position: absolute;
-	top: 0px;
-	width: 60%;
-	left: 40%;
-	min-width: 810px;
+	top: 2%;
+	height: 100%;
+	width: calc(100% - 800px);
+	left: 800px;
 	z-index: 1;
+	padding: 5em 0 3em 0;
+	overflow-y: scroll;
+}
+#topBar{
+	position: absolute;
+	z-index: 2;
 	padding: 5em 0 3em 0;
 }
 
@@ -121,7 +127,6 @@ a {
 #pDifference_chart {
 	
 	display: block;
-	
 	border: 2px solid #1f1f1f;
 	text-align: left;
 	width: auto;
@@ -560,14 +565,20 @@ option:hover {
 .list-item-RP {
 	position: relative;
 	display: inline-block;
-	margin: .5em;
+	margin: 1em;
 	padding: 0em;
 	border: 1px solid rgb(30, 30, 30);
 	box-shadow: 0px 0px 12px 1px rgba(0, 0, 0, 0.25);
 }
 
+#differenceScene {
+	position: relative;
+	display: inline-block;
+	margin: 1em;
+	padding: 0em;
+}
+
 .scene {
-	
 	cursor: crosshair;
 	width: 350px;
 	height: 350px;

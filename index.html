@@ -18,8 +18,9 @@
         <div style="position: relative; top: 220px;" id="loadProgress">0 %</div>
     </div>
 	<div id="leftContent">
+		<div id="differenceScene"></div>
 	</div>
-    <div id="content">
+    <div id="topBar">
         <div id="lineChartsContainer">
             <canvas id="c2"></canvas>
             <div id="pTarget_chart"></div>
@@ -35,7 +36,7 @@
                 </div>
                 <div id="pDifference_chart"></div>
             </div>
-            <div id="pAverages_chart">
+            <div id="organErrorViz">
                 <svg id="mLineChart" width="1160" height="380"></svg>
             </div>
 
@@ -114,6 +115,8 @@
         </div>
 
     </div>
+	<div id="content">
+	</div>
 
     <script src="js/three/three.js"></script>
     <script src="js/controls/OrbitControls.js"></script>

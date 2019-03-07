@@ -17,10 +17,7 @@ var organName = document.getElementById("details_organName"),
     meanDoseVal = document.getElementById("details_meanDose_val"),
     minDoseVal = document.getElementById("details_minDose_val"),
     maxDoseVal = document.getElementById("details_maxDose_val"),
-    pDisplayed = document.getElementById("pDisplayed"),
-    pTarget_chart = document.getElementById("pTarget_chart"),
-    pPrediction_chart = document.getElementById("pPrediction_chart"),
-    pDifference_chart = document.getElementById("pDifference_chart");
+    pDisplayed = document.getElementById("pDisplayed");
 
 
 var scenes = [],
@@ -90,13 +87,11 @@ var canvas = document.getElementById("c");
 var canvas2 = document.getElementById("c2");
 var template = document.getElementById("template").text;
 
-var data = {
-    y: "Dose (GY)",
-    series: [],
-    dates: []
-};
-
 var manager = new THREE.LoadingManager();
+
+manager.onStart = function(url, itemsLoaded, itemsTotal){
+	document.getElementById("loadScreen").style.display = "block";
+}
 
 manager.onLoad = function () {
 	//this may break this because I moved it to the front
@@ -105,10 +100,8 @@ manager.onLoad = function () {
     document.getElementById("loadScreen").style.display = "none";
 };
 
-var loadProgress = document.getElementById("loadProgress");
-
 manager.onProgress = function (url, itemsLoaded, itemsTotal) {
-    loadProgress.innerHTML = parseInt(itemsLoaded / itemsTotal * 100) + " %"
+    document.getElementById("loadProgress").innerHTML = parseInt(itemsLoaded / itemsTotal * 100) + " %"
 };
 
 files.forEach(function (url) {
@@ -648,20 +641,13 @@ function populateOrganMasterList() {
         tempLabel.style.fontWeight = "bold";
         tempLabel.style.paddingLeft = "15px";
         tempLabel.innerHTML = group;
-
         // ----------
-
         tempDiv.appendChild(tempInput);
         tempDiv.appendChild(tempLabel);
-
-
         // ----------
-
         var tempDiv2 = document.createElement("div");
 
         tempDiv2.setAttribute("id", String(i + 1) + "_single_container");
-
-
 
         master.appendChild(tempDiv);
         master.appendChild(tempDiv2);
@@ -701,7 +687,6 @@ function populateOrganMasterList() {
             tempInput.setAttribute("onchange", "handleCheckBoxSingle(this)");
 
             tempInput.setAttribute("checked", true);
-
 
             var tempLabel = document.createElement("label");
             tempLabel.setAttribute("for", organ + "_checkList");
@@ -871,7 +856,8 @@ function updateScenes(selectedPatient, material){
 	var scenes = [] //scenes is a wonderful global for now
 	for (var i = 0; i < patients[selectedPatient - 1].similarity_ssim.length; i++) {
 		var id = patients[selectedPatient-1].similarity_ssim[i]
-		var newScene = showPatient(patients, material, id);
+		var target = (i == 0)? "leftContent" : "content";
+		var newScene = showPatient(patients, material, id, target);
 		scenes.push(newScene);
 	}
 	return scenes
@@ -937,8 +923,8 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
     }
 }
 
-function showPatient(patients, materialArray, id){
-	console.log('showPatient()');
+function showPatient(patients, materialArray, id, parentDivId){
+	console.log('showPatient()' + parentDivId);
 	var scene = new THREE.Scene();
 	var patient = patients[id-1];
 	var patientOrganList = patient.organData;
@@ -961,10 +947,9 @@ function showPatient(patients, materialArray, id){
 	// Look up the element that represents the area
 	// we want to render the scene
 	scene.userData.element = element.querySelector(".scene");
-	//var parent = document.getElementById("content");
 	
 	if(!document.getElementById( element.id )){
-		parent.appendChild(element);
+		document.getElementById(parentDivId).appendChild(element);
 	}
 
 	var scalarVal = 2.4; //4.1
@@ -1058,7 +1043,7 @@ function showPatient(patients, materialArray, id){
 		if (organSphere.userData.meanDose >= 0.0) //null == -1 in json, pearson problems
 			nodeColor = color(organSphere.userData.meanDose);
 		else {
-			nodeColor = '#a0a0a0'; //new THREE.Color().setHex(0xa0a0a0)
+			nodeColor = '#a0a0a0'; 
 			organSphere.userData.meanDose = undefined;
 			organSphere.userData.dosePerVolume = undefined;
 		}
@@ -1149,14 +1134,13 @@ function removeOldViews(selectedPatientObject){
 	//remove list-items not matched to the patient
 	console.log('removeOldViews()');
 	var matches = selectedPatientObject.similarity_ssim;
-	var parentNode = document.getElementById('content');
-	var patientViews = parentNode.getElementsByClassName('list-item');
+	var patientViews = document.getElementsByClassName('list-item');
 	var element;
 	console.log(patientViews);
 	for(var i = patientViews.length - 1; i >= 0; i--){
 		element = patientViews[i];
 		if( !matches.includes( +element.id ) ){
-			parentNode.removeChild(element);
+			element.parentElement.removeChild(element);
 		}
 	}
 }
@@ -1179,37 +1163,36 @@ function updateOrder(updatedPatient) {
 	//sorts the divs of list-items for the patients based on similarity score
 	console.log('updateOrder');
     var lastPatient = document.getElementById(pRankingOrder[pRankingOrder.length - 1]);
-    var firstPatient = document.getElementById(pRankingOrder[0]);
+    var firstPatient = document.getElementById(updatedPatient);//isn't this just updatedPatient already?
     firstPatient.style.display = "none";
 
     //insert last element from pRankingOrder in last place (before null)
     parent.insertBefore(lastPatient, null);
-
+	firstPatient.parentElement.prepend(firstPatient);
     // first patient always has score of 1, clear it
     var pScoreElement = firstPatient.querySelector(".pScore");
     pScoreElement.innerHTML = "";
+	
+	var first;
+	var second;
+    for (var i = (pRankingOrder.length - 2); i > 0; i--) {
 
-    for (var i = (pRankingOrder.length - 2); i >= 0; i--) {
-
-        var first = document.getElementById(pRankingOrder[i]);
-        var second = document.getElementById(pRankingOrder[i + 1]);
+        first = document.getElementById(pRankingOrder[i]);
+        second = document.getElementById(pRankingOrder[i + 1]);
         // order div elements
         parent.insertBefore(first, second);
-
+		//updates the similarity score for the second patient
         pScoreElement = second.querySelector(".pScore");
-
         // update patient score
         pScoreElement.innerHTML = pScores[i + 1].toFixed(5);
-
         // hide patients
         second.style.display = "none";
     }
-
-    var trueFirst = document.getElementById(selectedPatient);
-
-    // if there is a tie, fix first patient
-    parent.insertBefore(trueFirst, firstPatient);
-
+	//update similarity for the first non-self match
+	pScoreElement = first.querySelector(".pScore");
+	pScoreElement.innerHTML = pScores[i + 1].toFixed(5);
+	first.style.display = "none";
+	
     var pScoreElement1 = document.getElementById(selectedPatient).querySelector(".pScore");
     var pScoreElement2 = firstPatient.querySelector(".pScore");
 
@@ -1218,82 +1201,41 @@ function updateOrder(updatedPatient) {
 
 }
 
-function initializeRiskPrediction(rank) {
-	
-	console.log('initializeRiskPrediction()');
-    var firstPatient = document.getElementById(rank);
-    var simScores = patients[rank - 1].scores_ssim;
-    // remove scenes
-    scenesRP.length = 0;
-	
-	var pNames = [];
-    for (var j = 0; j < patientsToShow; j++) {
-        var p = document.getElementById(pRankingOrder[j]);
-        p.style.display = "inline-block";
-        if (j <= 5) {
+function clonePatientScene(targetId, patientInternalId = -1, materials){
+	if(patientInternalId == -1){//default to default patient
+		patientInternalId = selectedPatient
+	}
+	var clone = document.getElementById(patientInternalId).cloneNode(true);
+    clone.className = "list-item";
+    clone.removeAttribute("class");
+    clone.removeAttribute("id");
+    clone.setAttribute("class", "list-item-RP");
+    clone.value = 1;
 
-            var pName = p.querySelector(".description");
-            pNames.push(String(j) + ": " + pName.innerHTML);
-        }
+	var targetDiv = document.getElementById(targetId);
+    if (targetDiv.childNodes.length > 0) {
+        targetDiv.removeChild(targetDiv.childNodes[0]);
     }
-    pNames[0] = "0: Estimation";
+    targetDiv.appendChild(clone);
 
-    // -----------------------------------------
-    // -----------------------------------------
-
-    var cln = firstPatient.cloneNode(true);
-
-    cln.className = "list-item";
-
-    cln.removeAttribute("class");
-    cln.removeAttribute("id");
-
-    cln.setAttribute("class", "list-item-RP");
-    cln.value = 1;
-
-    if (pTarget_chart.childNodes.length > 0) {
-        pTarget_chart.removeChild(pTarget_chart.childNodes[0]);
-    }
-
-    pTarget_chart.appendChild(cln);
-
-    // -----------------------------------------
-
-    var source_scene = scenes[0];
+    var source_scene = scenes[ getSceneIndex(patientInternalId) ];
     var target_scene = new THREE.Scene();
-
-    target_scene.userData.element = pTarget_chart.childNodes[0].querySelector(".scene");
+    target_scene.userData.element = targetDiv.childNodes[0].querySelector(".scene");
     for (var i = 0; i < source_scene.children.length; i++) {
-
         if (source_scene.children[i].userData.type == "node" ||
             source_scene.children[i].userData.type == "node_model") {
-
             var organ = source_scene.children[i].clone();
             organ.material.color.setStyle(source_scene.children[i].material.color);
             target_scene.add(organ);
         }
     }
+	var scalarVal = 2.4; //4.1
 
-    var scalarVal = 2.4; //4.1
+    target_scene.userData.camera = source_scene.userData.camera;
 
-    //var camera = new THREE.PerspectiveCamera(35, scene.userData.element.offsetWidth / scene.userData.element.offsetHeight, 1, 100000);
-    var target_camera = new THREE.OrthographicCamera(target_scene.userData.element.offsetWidth / -scalarVal, target_scene.userData.element.offsetWidth / scalarVal, target_scene.userData.element.offsetHeight / scalarVal, target_scene.userData.element.offsetHeight / -scalarVal, 1, 100000);
-
-    target_camera.position.x = scenes[0].userData.camera.position.x;
-    target_camera.position.y = scenes[0].userData.camera.position.y;
-    target_camera.position.z = scenes[0].userData.camera.position.z;
-
-    target_camera.updateProjectionMatrix();
-    target_scene.userData.camera = target_camera;
-
-
-    var MovingCubeMat2 = new THREE.MultiMaterial(materialArray2);
-    var MovingCubeGeom2 = new THREE.CubeGeometry(25, 25, 25, 1, 1, 1, materialArray2);
+    var MovingCubeMat2 = new THREE.MultiMaterial(materials);
+    var MovingCubeGeom2 = new THREE.CubeGeometry(25, 25, 25, 1, 1, 1, materials);
     var MovingCube2 = new THREE.Mesh(MovingCubeGeom2, MovingCubeMat2);
-
-    //target_camera.add(MovingCube2);
-    //MovingCube2.position.set(121, -121, -250);
-
 
     var target_controls = new THREE.OrbitControls(target_scene.userData.camera, target_scene.userData.element);
     target_controls.minDistance = 2;
@@ -1303,14 +1245,13 @@ function initializeRiskPrediction(rank) {
 
     target_scene.userData.controls = target_controls;
 
-
     var light = new THREE.AmbientLight(0xffffff, 1.0); // white light
     target_scene.add(light);
+	return target_scene
+}
 
-    scenesRP.push(target_scene);
-    // -----------------------------------------
-    // make a list item
-    var element = document.createElement("div");
+function createPredictionScene(targetId, patientInternalId, materials){
+	var element = document.createElement("div");
     element.className = "list-item-RP";
     element.innerHTML = template.replace('$', "Estimation").replace('!', "");
     
@@ -1324,23 +1265,20 @@ function initializeRiskPrediction(rank) {
     lateralityElement.innerHTML = "";
 
     element.value = 2;
-
-    if (pPrediction_chart.childNodes.length > 0) {
-        pPrediction_chart.removeChild(pPrediction_chart.childNodes[0]);
-    }
-
-    pPrediction_chart.appendChild(element);
-
-    target_scene = new THREE.Scene();
-
-    target_scene.userData.element = pPrediction_chart.childNodes[0].querySelector(".scene");
+	
+	var targetDiv = document.getElementById(targetId);
+		if (targetDiv.childNodes.length > 0) {
+			targetDiv.removeChild(targetDiv.childNodes[0]);
+		}
+    targetDiv.appendChild(element);
+	
+	var source_scene = scenes[ getSceneIndex(patientInternalId) ];
+	var target_scene = new THREE.Scene();
+    target_scene.userData.element = targetDiv.childNodes[0].querySelector(".scene");
 
     for (var i = 0; i < source_scene.children.length; i++) {
-
         var organ = source_scene.children[i].clone();
-
         if (organ.userData.type == "node") {
-
             organ.userData.volume = undefined;
             organ.userData.minDose = undefined;
             organ.userData.meanDose = organ.userData.estimatedDose;
@@ -1371,21 +1309,11 @@ function initializeRiskPrediction(rank) {
 
     var scalarVal = 2.4; //4.1
 
-    var target_camera = new THREE.OrthographicCamera(target_scene.userData.element.offsetWidth / -scalarVal, target_scene.userData.element.offsetWidth / scalarVal, target_scene.userData.element.offsetHeight / scalarVal, target_scene.userData.element.offsetHeight / -scalarVal, 1, 100000);
+    target_scene.userData.camera = source_scene.userData.camera;
 
-    target_camera.position.x = scenes[0].userData.camera.position.x;
-    target_camera.position.y = scenes[0].userData.camera.position.y;
-    target_camera.position.z = scenes[0].userData.camera.position.z;
-
-    target_camera.updateProjectionMatrix();
-    target_scene.userData.camera = target_camera;
-
-    var MovingCubeMat2 = new THREE.MultiMaterial(materialArray2);
-    var MovingCubeGeom2 = new THREE.CubeGeometry(25, 25, 25, 1, 1, 1, materialArray2);
+    var MovingCubeMat2 = new THREE.MultiMaterial(materials);
+    var MovingCubeGeom2 = new THREE.CubeGeometry(25, 25, 25, 1, 1, 1, materials);
     var MovingCube2 = new THREE.Mesh(MovingCubeGeom2, MovingCubeMat2);
-
-    //target_camera.add(MovingCube2);
-    //MovingCube2.position.set(121, -121, -250);
 
     var target_controls = new THREE.OrbitControls(target_scene.userData.camera, target_scene.userData.element);
     target_controls.minDistance = 2;
@@ -1394,18 +1322,14 @@ function initializeRiskPrediction(rank) {
     target_controls.enableZoom = false;
 
     target_scene.userData.controls = target_controls;
-
-
     var light = new THREE.AmbientLight(0xffffff, 1.0); // white light
     target_scene.add(light);
 
-    scenesRP.push(target_scene);
+    return target_scene
+}
 
-
-    // -----------------------------------------
-    // -----------------------------------------
-    // make a list item
-    var element = document.createElement("div");
+function createDoseDifferenceScene(targetId, patientInternalId, materials){
+	var element = document.createElement("div");
     element.className = "list-item-RP";
     element.innerHTML = template.replace('$', "Difference").replace('!', "");
     
@@ -1420,15 +1344,15 @@ function initializeRiskPrediction(rank) {
 
     element.value = 3;
 
-    if (pDifference_chart.childNodes.length > 0) {
-        pDifference_chart.removeChild(pDifference_chart.childNodes[0]);
-    }
-
-    pDifference_chart.appendChild(element);
-    // -----------------------------------------
-    target_scene = new THREE.Scene();
-
-    target_scene.userData.element = pDifference_chart.childNodes[0].querySelector(".scene");
+    var targetDiv = document.getElementById(targetId);
+	if (targetDiv.childNodes.length > 0) {
+		targetDiv.removeChild(targetDiv.childNodes[0]);
+	}
+    targetDiv.appendChild(element);
+	
+	var source_scene = scenes[ getSceneIndex(+patientInternalId) ];
+	var target_scene = new THREE.Scene();
+    target_scene.userData.element = targetDiv.childNodes[0].querySelector(".scene");
 
     for (var i = 0; i < source_scene.children.length; i++) {
 
@@ -1437,23 +1361,17 @@ function initializeRiskPrediction(rank) {
         if (organ.userData.type == "node") {
 
             var organSum = 0;
-
-
             var scene1 = scenesRP[0];
             var scene2 = scenesRP[1];
 
             var node1 = scene1.getObjectByName(organ.name);
             var node2 = scene2.getObjectByName(organ.name);
-
-
             organSum = Math.abs(node1.userData.meanDose - node2.userData.meanDose);
-
 
             organ.userData.volume = undefined;
             organ.userData.minDose = undefined;
             organ.userData.meanDose = organSum.toFixed(3);
             organ.userData.maxDose = undefined;
-
             organ.userData.dosePerVolume = undefined;
 
             var nodeColor = color2(organ.userData.meanDose);
@@ -1478,17 +1396,10 @@ function initializeRiskPrediction(rank) {
 
     var scalarVal = 2.4; //4.1
 
-    target_camera = new THREE.OrthographicCamera(target_scene.userData.element.offsetWidth / -scalarVal, target_scene.userData.element.offsetWidth / scalarVal, target_scene.userData.element.offsetHeight / scalarVal, target_scene.userData.element.offsetHeight / -scalarVal, 1, 100000);
+    target_scene.userData.camera = source_scene.userData.camera;
 
-    target_camera.position.x = scenes[0].userData.camera.position.x;
-    target_camera.position.y = scenes[0].userData.camera.position.y;
-    target_camera.position.z = scenes[0].userData.camera.position.z;
-
-    target_camera.updateProjectionMatrix();
-    target_scene.userData.camera = target_camera;
-
-    var MovingCubeMat2 = new THREE.MultiMaterial(materialArray2);
-    var MovingCubeGeom2 = new THREE.CubeGeometry(25, 25, 25, 1, 1, 1, materialArray2);
+    var MovingCubeMat2 = new THREE.MultiMaterial(materials);
+    var MovingCubeGeom2 = new THREE.CubeGeometry(25, 25, 25, 1, 1, 1, materials);
     var MovingCube2 = new THREE.Mesh(MovingCubeGeom2, MovingCubeMat2);
 
     var target_controls = new THREE.OrbitControls(target_scene.userData.camera, target_scene.userData.element);
@@ -1498,15 +1409,46 @@ function initializeRiskPrediction(rank) {
     target_controls.enableZoom = false;
 
     target_scene.userData.controls = target_controls;
-
-
     var light = new THREE.AmbientLight(0xffffff, 1.0); // white light
+	
     target_scene.add(light);
-
-    scenesRP.push(target_scene);
-
+	return target_scene;
 }
 
+function initializeRiskPrediction(rank) {
+	
+	console.log('initializeRiskPrediction()');
+    var simScores = patients[rank - 1].scores_ssim;
+    // remove scenes
+    scenesRP.length = 0;
+	
+	var pNames = [];
+    for (var j = 0; j < patientsToShow; j++) {
+        var p = document.getElementById(pRankingOrder[j]);
+        p.style.display = "inline-block";
+        if (j <= 5) {
+
+            var pName = p.querySelector(".description");
+            pNames.push(String(j) + ": " + pName.innerHTML);
+        }
+    }
+    pNames[0] = "0: Estimation";
+
+    // -----------------------------------------
+    var selectedPatientScene = clonePatientScene('pTarget_chart', rank, materialArray2);
+    scenesRP.push(selectedPatientScene);
+	
+	var predictedDoseScene = createPredictionScene('pPrediction_chart', rank, materialArray2);
+	scenesRP.push(predictedDoseScene);
+	
+    // -----------------------------------------
+    // make a list item
+    var doseErrorScene = createDoseDifferenceScene('pDifference_chart',rank, materialArray2);
+    scenesRP.push(doseErrorScene);
+
+	var frontPageDifferenceScene = createDoseDifferenceScene('differenceScene', rank, materialArray2);
+	scenes.push(frontPageDifferenceScene);
+}
 
 function animate() {
     render();
@@ -1532,9 +1474,9 @@ function render() {
 
     renderer2.setClearColor(0xa5a5a5);
     renderer2.setScissorTest(true);
-	if(toggle){
-		updateRiskPView();
-	}
+
+	updateRiskPView();
+	
 }
 
 function updateMainView(rotMatrix) {
@@ -1751,7 +1693,7 @@ function updateSize() {
 }
 
 function populateAndPlaceDetails(state) {
-	console.log('populateAndPlaceDetails()');
+
     if (state == "SHOW") {
 
         nodeDetails.style.display = "block";
@@ -1820,6 +1762,12 @@ function onTouchStart(event) {
     }
 }
 
+function getSceneIndex(internalId){
+	//gets the index in the scene list from a given internal id
+	var index = patients[selectedPatient - 1].similarity_ssim.indexOf( +internalId )
+	return(index)
+}
+
 function handleInputRotate(event) {
 
     var targ = event.target,
@@ -1828,7 +1776,7 @@ function handleInputRotate(event) {
     if (targ.className == "scene" && syncCameras == true) {
 		var index;
         if (targ.parentNode.hasAttribute("id")) {
-			index = patients[selectedPatient - 1].similarity_ssim.indexOf( +targ.parentNode.id );
+			index = getSceneIndex( +targ.parentNode.id );
             cameraToCopy = scenes[index].userData.camera;
 
         } else {
@@ -1883,7 +1831,7 @@ function onDocumentMouseMove(event) {
         if (targ.className == "scene") {
 
             if (targ.parentNode.hasAttribute("id")) {
-				let index = patients[selectedPatient - 1].similarity_ssim.indexOf( +targ.parentNode.id );
+				let index = getSceneIndex(+targ.parentNode.id);
                 currScene = scenes[index];
             } else {
                 currScene = scenesRP[targ.parentNode.value - 1];
