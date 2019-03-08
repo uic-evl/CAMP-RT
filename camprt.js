@@ -27,9 +27,7 @@ var scenes = [],
 	
 var selectedPatient = 1;
 //patients shown on load screen?
-var patientsToShow = 5;
-//patients to use in the macching algorithm
-var numMatches = 5;
+var patientsToShow = 3;
 
 var totalModelCount;
 
@@ -110,6 +108,7 @@ files.forEach(function (url) {
 
 Promise.all(promises).then(function (values) {
     start(values[0], values[1]);
+	
 });
 
 function start(organAtlas, patientsData) {
@@ -854,7 +853,7 @@ function init() {
 function updateScenes(selectedPatient, material){
 	console.log('updateScenes()');
 	var scenes = [] //scenes is a wonderful global for now
-	for (var i = 0; i < patients[selectedPatient - 1].similarity_ssim.length; i++) {
+	for (var i = 0; i < patientsToShow; i++) {
 		var id = patients[selectedPatient-1].similarity_ssim[i]
 		var target = (i == 0)? "leftContent" : "content";
 		var newScene = showPatient(patients, material, id, target);
@@ -1162,7 +1161,7 @@ function switchPatient(updatedPatient){
 function updateOrder(updatedPatient) {
 	//sorts the divs of list-items for the patients based on similarity score
 	console.log('updateOrder');
-    var lastPatient = document.getElementById(pRankingOrder[pRankingOrder.length - 1]);
+    var lastPatient = document.getElementById(pRankingOrder[scenes.length - 1]);
     var firstPatient = document.getElementById(updatedPatient);//isn't this just updatedPatient already?
     firstPatient.style.display = "none";
 
@@ -1175,7 +1174,7 @@ function updateOrder(updatedPatient) {
 	
 	var first;
 	var second;
-    for (var i = (pRankingOrder.length - 2); i > 0; i--) {
+    for (var i = (scenes.length - 2); i > 0; i--) {
 
         first = document.getElementById(pRankingOrder[i]);
         second = document.getElementById(pRankingOrder[i + 1]);
@@ -1330,7 +1329,7 @@ function createPredictionScene(targetId, patientInternalId, materials){
 
 function createDoseDifferenceScene(targetId, patientInternalId, materials){
 	var element = document.createElement("div");
-    element.className = "list-item-RP";
+    element.className = "list-item";
     element.innerHTML = template.replace('$', "Difference").replace('!', "");
     
     var totDoseElement = element.querySelector(".totDose");
@@ -1846,9 +1845,7 @@ function onDocumentMouseMove(event) {
     }
 }
 
-var opacSlider = document.getElementById("opacSlider");
-
-opacSlider.oninput = function () {
+document.getElementById("opacSlider").oninput = function () {
 
     var opac = (this.value / 100.0);
 
