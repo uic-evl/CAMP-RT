@@ -103,14 +103,27 @@ class Rankings():
 
 class PatientSet():
 
-    def __init__(self, patient_set = None, outliers = [], root = 'data\\patients_v2*\\', max_distance = 80):
+    def __init__(self, patient_set = None, outliers = [], root = 'data\\patients_v2*\\', 
+                 max_distance = 80, class_name = None):
+        if class_name is not None: #default signifies you want to overwrite it
+            classes = pd.read_csv('data//rt_plan_clusters.csv', 
+                                   index_col = 1)
+            classes = classes.drop(labels = ['Unnamed: 0'], axis = 1)
+            classes.columns = classes.columns.str.strip()
+            self.classes = classes[class_name]
+            self.class_name = class_name
+        else:
+            self.classes = None
+            self.class_name = 'default'
         if patient_set is None:
             outliers = outliers
             self.total_dose_predictor = None
             (self.patients, self.doses, self.total_doses, self.num_patients, self.ids) = self.read_patient_data(root, outliers)
         else:
-            self.total_dose_predictor = patient_set.total_dose_predictor
             self.patients = patient_set.patients
+            if class_name is None: #overwrite if don't specify anything
+                self.classes = patient_set.classes
+                self.class_name = patient_set.class_name
             self.doses = patient_set.doses
             self.total_doses = patient_set.total_doses
             self.num_patients = patient_set.num_patients
@@ -130,15 +143,7 @@ class PatientSet():
         distance_files = file_sort(glob(root + '**/*distances.csv'))
         dose_files = file_sort(glob(root + '**/*centroid*.csv'))
         #maps ids to position so I can do that too?
-        id_map = {max([int(x) for x in findall('[0-9]+', file)]): distance_files.index(file)  for file in distance_files}
-        ids = sorted(list(id_map.keys()))
-        #delete patient files with an id in the outliers
-        for outlier_id in sorted(outliers, reverse = True):
-            if outlier_id in id_map:
-                pos = id_map[outlier_id]
-                del distance_files[pos]
-                del dose_files[pos]
-                del ids[pos]
+        ids = self.delete_outliers(outliers, distance_files, dose_files)
         metadata_file = 'data\\patient_info.csv'
         assert(len(distance_files) == len(dose_files))
         #maps a position 0-len(files) to the dummy id for a patient
@@ -170,12 +175,66 @@ class PatientSet():
             doses = self.fix_tumor_names(doses)
             #misc patient info - laterality, subsite, total dose, etc
             info = metadata.loc[ids[patient_index]]
+            group = self.get_patient_class(ids[patient_index], doses.set_index('ROI').mean_dose)
             new_patient = Patient(distances, doses,
-                                  ids[patient_index], patient_index, info)
+                                  ids[patient_index], group, info)
             patients[patient_index] = new_patient
             dose_matrix[patient_index, :] = new_patient.doses
             total_dose_vector[patient_index] = new_patient.total_dose
         return((patients, dose_matrix, total_dose_vector, num_patients, ids))
+    
+    def get_patient_class(self, patient_id, doses):
+        #if a vector of classes is used
+        if self.classes is not None:
+            try:
+                group = self.classes[patient_id]
+            except:
+                print('patient ', patient_id, 'not in class list, defaulting to 0')
+                group = 0
+        else: #no class list, use default laterality
+            group = self.get_default_class(patient_id, doses)
+        return group
+    
+    def get_default_class(self, patient_id, dose_vector):
+        full_dose, left_biased = self.check_if_full_dose(dose_vector)
+        if not full_dose:
+            group = 'unilateral'
+            group += ('-left' if left_biased == True else '-right')
+        elif patient_id in Constants.v2_high_throat_dose:
+            group = 'high_throat'
+        else:
+            group = 'default'
+        return group
+    
+    def get_class_list(self, class_map = None):
+        if class_map is None:
+            class_list =  [p.group for p in self.get_patients()]
+        else:
+            class_list = [class_map.get(p.group,0) for p in self.get_patients()]
+        return class_list
+            
+    def check_if_full_dose(self, dose_vector):
+        #checks difference in sternoceldomastoids to seperate out unilaterally dosed patients?
+        #may be used for getting classes eventually?
+        ls = dose_vector.loc['Lt_Sternocleidomastoid_M']
+        rs = dose_vector.loc['Rt_Sternocleidomastoid_M']
+        if np.abs(ls - rs)/max([ls, rs]) < .6:
+            full_dose = True
+        else:
+            full_dose = False
+        return(full_dose, (ls > rs))
+    
+    def delete_outliers(self, outliers, distance_files, dose_files):
+        id_map = {max([int(x) for x in findall('[0-9]+', file)]): distance_files.index(file)  for file in distance_files}
+        ids = sorted(list(id_map.keys()))
+        #delete patient files with an id in the outliers
+        for outlier_id in sorted(outliers, reverse = True):
+            if outlier_id in id_map:
+                pos = id_map[outlier_id]
+                del distance_files[pos]
+                del dose_files[pos]
+                del ids[pos]
+        return(ids)
 
     def fix_tumor_names(self, dataframe):
         #this should probably not need to return anything, but does.
@@ -183,6 +242,16 @@ class PatientSet():
         dataframe.replace(Constants.tumor_aliases, inplace = True)
         dataframe.replace(to_replace = r'GTV.*N', value = 'GTVn', regex = True, inplace = True)
         return dataframe
+
+    def change_classes(self, class_name):
+        classes = pd.read_csv('data//rt_plan_clusters.csv', 
+                                   index_col = 1)
+        classes = classes.drop(labels = ['Unnamed: 0'], axis = 1)
+        classes.columns = classes.columns.str.strip()
+        self.classes = classes[class_name]
+        self.class_name = class_name
+        for p in self.get_patients():
+            p.group = self.classes[p.id]
 
     def export(self, weights = np.array([0,1]) ,
                rank_function = 'tumor_organ_ssim',
@@ -203,6 +272,7 @@ class PatientSet():
             zipped_scores = sorted(zip(ssim_scores, np.arange(1, len(ssim_scores) + 1)),
                                    key = lambda x: -x[0])
             patient_scores, internal_ids = zip(*zipped_scores)
+            entry['ID_internal'] = p_idx + 1
             entry['similarity_ssim'] = internal_ids[:self.get_num_matches(patient) + 1]
             entry['scores_ssim'] = patient_scores[:self.get_num_matches(patient) + 1]
             entry['dose_pca'] = dose_pca[p_idx,:].tolist()
@@ -220,7 +290,7 @@ class PatientSet():
         except:
             print('error exporting patient data to json')
         try:
-            raw_scores = self.gen_score_matrix(1, class_type = 'raw')
+            raw_scores = self.gen_score_matrix(1, classes = False)
             score_df = pd.DataFrame(raw_scores, index = self.ids, columns = self.ids)
             score_df.to_csv(score_file)
             print('successfully saved similarity score matrix to ', score_file)
@@ -231,7 +301,7 @@ class PatientSet():
         return list(self.patients.values())
 
     def get_score_dataframe(self, weights, rank_function):
-        scores = self.gen_score_matrix(weights, rank_function)
+        scores = self.gen_score_matrix(weights)
         score_df = pd.DataFrame(scores, index = self.ids, columns = self.ids)
         return(score_df)
 
@@ -247,7 +317,7 @@ class PatientSet():
             organ_kmeans[organ_row] = organ_args
         return(organ_kmeans)
 
-    def gen_score_matrix(self, weights, class_type = 'full'):
+    def gen_score_matrix(self, weights, classes = True):
         #weights basically scales the importants of the knn cluster (one centered on each organ)
         #currently not in use?
         try:
@@ -260,20 +330,11 @@ class PatientSet():
         for row in range(0, self.num_patients):
             #skip comparing the patient to itself - will default to 0 so it doesn't appear in the comparison
             for col in range(row + 1, self.num_patients):
-                p1 = db.patients[row]
-                p2 = db.patients[col]
+                p1 = self.patients[row]
+                p2 = self.patients[col]
                 #divide gorups up
-                if class_type == 'full' or class_type == 'laterality':
-                    #match only unilateral or bilateral groups
-                    if p1.full_dose != p2.full_dose:
-                        scores[row, col] = 0
-                        continue
-                    #seperate out left and right unilateral
-                    elif p1.full_dose == False and p1.laterality != p2.laterality:
-                        scores[row, col] = 0
-                        continue
-                    #seperate out outher groups
-                    if class_type == 'full' and (p1.high_throat_dose != p2.high_throat_dose):
+                if classes == True:
+                    if p1.group != p2.group:
                         scores[row, col] = 0
                         continue
                 score = []
@@ -298,7 +359,7 @@ class PatientSet():
         scores = (scores - scores.min()) / (scores.max() - scores.min())
         return(scores)
 
-    def predict_doses(self,weights, num_matches = 5, td_weights = None):
+    def predict_doses(self,weights, num_matches = 5):
         #generates an ndarray of dose estimates based on algorithm parameters
         #rank_function and weights are the functions used to match dose
         estimates = np.zeros(self.doses.shape)
@@ -308,28 +369,12 @@ class PatientSet():
             p = self.patients[patient_idx]
             matches = self.get_num_matches(p)
             estimates[patient_idx, :] = self.estimate_patient_doses(rank_row, matches)
-        #if a seprate prediction is set for total dose, use that
-        if self.total_dose_predictor is not None:
-            #normalize the estimates by patient
-            estimates /= np.sum(estimates, axis = 1).reshape((self.num_patients,1))
-            x = self.gen_patient_feature_matrix()
-            total_dose_prediction = self.total_dose_predictor.predict(x)
-            estimates *= total_dose_prediction.reshape((self.num_patients,1))
-        elif td_weights is not None:
-            estimates /= np.sum(estimates, axis = 1).reshape((self.num_patients,1))
-            total_dose_estimates = np.zeros((self.num_patients,))
-            td_ranks = self.gen_score_matrix(weights = td_weights)
-            for p_idx in range(0,self.num_patients):
-                td_rank_row = td_ranks[p_idx, :]
-                estimates_for_total_dose = self.estimate_patient_doses(td_rank_row, num_matches)
-                total_dose_estimates[p_idx] = np.sum(estimates_for_total_dose)
-            estimates *= total_dose_estimates.reshape((self.num_patients,1))
         return(estimates)
 
     def get_num_matches(self, patient):
         #function for determining the number of matches to use, so this can be changed easily
         matches = 4
-        if patient.full_dose and (not patient.high_throat_dose):
+        if patient.group == 'default':
             matches = 11
         return matches
 
@@ -348,11 +393,11 @@ class PatientSet():
             patient_estimates = np.mean(matched_dosages, axis = 0)/np.mean(scores)
             return(patient_estimates)
 
-    def run_study(self, max_matches = 20,  weights = np.array([0,1]), td_weights = None):
+    def run_study(self, max_matches = 20,  weights = np.array([0,1])):
         #tests out a metric for a range of difference potential matches and gives a minimum
         error_hist = []
         for num_matches in range(2, max_matches):
-            estimates = self.predict_doses(weights, num_matches, td_weights)
+            estimates = self.predict_doses(weights, num_matches)
             error = np.mean(np.abs(self.doses - estimates))
             error_hist.append(error)
         print('min error of', min(error_hist), ' at ', np.argmin(error_hist) + 2)
@@ -386,11 +431,6 @@ class PatientSet():
             return(p_avg)
         else:
             return(p_avg[key])
-
-    def set_total_dose_prediction(self, predictor):
-        #should be like a skikit model, so takes numppy array with .predict(x)
-        #and returns a 1d numpy array of y
-        self.total_dose_predictor = predictor
 
     def gen_organ_distance_matrix(self):
         #function to get a matrix I can try some dose prediction on?
@@ -446,10 +486,9 @@ class PatientSet():
         features = (features - np.mean(features, axis = 0))/(np.std(features, axis = 0))
         return((features, feature_names))
 
-    def evaluate(self, rank_function = 'tumor_organ_ssim', weights = np.array([0,1]), num_matches = 10,
-                 td_rank_function = None, td_weights = None):
+    def evaluate(self, rank_function = 'tumor_organ_ssim', key = None, weights = np.array([0,1]), num_matches = 10):
         #gives a bunch of different metrics for evaluating a given metric
-        estimates = self.predict_doses(weights, num_matches, td_weights)
+        estimates = self.predict_doses(weights, num_matches)
         differences = self.doses - estimates
         patient_mean_error = self.labeled_mean_error(differences, axis = 1)
         organ_mean_error = self.labeled_mean_error(differences, axis = 0)
@@ -461,6 +500,12 @@ class PatientSet():
                        'rmse': total_rmse,
                        'differences': differences,
                        'organ_mean_error': organ_mean_error}
+        if key is not None:
+            try:
+                return(result_dict[key])
+            except:
+                print('invalid key passed to PatientSet.evaluate()')
+                return(result_dict)
         return(result_dict)
 
     def labeled_mean_error(self, differences, axis):
@@ -473,62 +518,3 @@ class PatientSet():
         name_error_tuples = [ (labels[x], error[x] ) for x in range(0, len(error))]
         name_error_tuples = sorted(name_error_tuples, key = lambda x: x[1])
         return(name_error_tuples)
-
-db = PatientSet(patient_set = db, root = 'data\\patients_v2*\\',
-                outliers = Constants.v2_bad_entries)
-
-#db.export()
-
-#avg = db.get_average_patient_data()
-#print(np.correlate(avg['volumes'], avg['doses']))
-
-result = db.evaluate(weights = np.ones((Constants.num_organs,)))
-base_error =result['mean_error']
-print(base_error)
-
-
-#scale = np.mean( np.absolute(result['differences']), axis = 1)**2
-#x = np.zeros((db.num_patients, Constants.num_organs)) #db.doses #db.gen_tumor_distance_matrix()[0] #result['differences']
-#for pidx in range(db.num_patients):
-#    p = db.patients[pidx]
-#    x[pidx, :] = p.volumes
-#from sklearn.decomposition import KernelPCA, PCA
-#from sklearn.manifold import Isomap
-#kpca = PCA(n_components = 2)
-#pcs = kpca.fit_transform(x)
-#colors = [ ('r' if p.full_dose == False else ('b' if p.high_throat_dose == False else 'c')) for p in db.get_patients()]
-#plt.scatter(pcs[:,0], pcs[:,1], scale, c = colors)
-
-
-#import copy
-#errors = {}
-#for x in range(Constants.num_organs):
-#    if temp_weights[x] == 0:
-#        continue
-#    new_weights = copy.copy(temp_weights)
-#    new_weights[x] = 0
-#    result = db.evaluate(weights = new_weights)
-#    print('dropping ', Constants.organ_list[x], ' ', base_error - result['mean_error'])
-#    errors[Constants.organ_list[x]] = base_error - result['mean_error']
-
-#num_matches = 2
-#
-#weights = np.array([0,1])
-#
-#ranks = db.gen_score_matrix(rank_function = 'tumor_organ_ssim',  weights = weights)
-#distances = db.gen_tumor_distance_matrix()[0]
-#errors = []
-#
-#for p in db.get_patients():
-#    p_pos = db.ids.index(p.id)
-#    matches = db.get_matches(ranks[p_pos, :], num_matches = num_matches)
-#    scores = ranks[p_pos, matches]
-#    matched_distances = distances[tuple(matches), :]
-#    weighted_distances = matched_distances * scores[:, np.newaxis]
-#    doses = db.doses[tuple(matches), :]
-#    weighted_doses = np.transpose( np.transpose(doses) * scores)
-#    x = np.linalg.lstsq(weighted_distances, weighted_doses)[0]
-#    estimates = np.dot(p.tumor_distances, x)
-#
-#    errors.append( np.mean(np.absolute(estimates - p.doses)) )
-#print(np.mean(errors))

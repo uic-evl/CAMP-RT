@@ -12,14 +12,13 @@ class Patient():
     ##class holds information for each patient.  
     ##is pased a series of dataframes (distacnes, doses, info) and extracts info
     ##p_id is a dummy id, position is the position of the patient in the whole dataset
-    def __init__(self, distances, doses, p_id, position, info):
+    def __init__(self, distances, doses, p_id, group, info):
         #patient ID number
         self.id = p_id
-#        self.full_dose = 0 if p_id in Constants.v2_half_dosed else 1
-        self.high_throat_dose = 1 if p_id in Constants.v2_high_throat_dose else 0
+        self.group = group
+        ##self.high_throat_dose = 1 if p_id in Constants.v2_high_throat_dose else 0
         #basically ordinality of the id, so where it will be in an index
-        self.pos = position
-        self.laterality = info['Tm Laterality (R/L)']
+        ##self.laterality = info['Tm Laterality (R/L)']
         self.prescribed_dose = info['Total dose']
         self.tumor_subsite = info['Tumor subsite (BOT/Tonsil/Soft Palate/Pharyngeal wall/GPS/NOS)']
         centroid_data = self.get_doses_file_info(doses)
@@ -37,20 +36,10 @@ class Patient():
         #store the entries without gtvp for future study
         (self.tumor_volume, self.tumor_distances, self.tumor_position) = self.get_main_tumor()
         self.check_missing_organs(doses)
-        self.check_if_full_dose()
+        ##self.check_if_full_dose()
         #report if there is no primary tumor
         if self.tumor_volume == 0 or np.sum(self.tumor_distances) == 0:
             Constants.no_tumor.append(self.id)
-    
-    def check_if_full_dose(self):
-        #checks difference in sternoceldomastoids to seperate out unilaterally dosed patients?
-        ls = Constants.organ_list.index('Lt_Sternocleidomastoid_M')
-        rs = Constants.organ_list.index('Rt_Sternocleidomastoid_M')
-        if np.abs(self.doses[ls] - self.doses[rs])/max([self.doses[ls], self.doses[rs]]) < .6:
-            self.full_dose = True
-        else:
-            self.full_dose = False
-        return(self.full_dose)
     
     def to_ordered_dict(self, dose_estimates):
         #exports local information into a dictionary
@@ -60,7 +49,6 @@ class Patient():
         entry['name'] = "Patient " + str(self.id)
         entry['tumorVolume'] = max([self.gtvn_volume, self.gtvp_volume])
         entry['organData'] = self.get_organ_data_dict(dose_estimates)
-        entry['ID_internal'] = self.pos + 1
         entry['hasGTVp'] = str((self.gtvp_volume > 0)).lower()
         entry['hasGTVn'] = str((self.gtvn_volume > 0)).lower()
         #placeholders, will need to be populated by the Patientset class
@@ -116,10 +104,8 @@ class Patient():
         organs = set(Constants.organ_list[:])
         dose_organs = set(doses['ROI'].unique())
         diff = organs - dose_organs
-        #for missing_organ in diff:
-            #print('patient ', self.id, ' at index ', self.pos, ' is missing organ ', missing_organ)
         if len(diff) > 0:
-            Constants.missing_organs[self.pos] = {'id': self.id, 'organs': diff}
+            Constants.missing_organs[self.id] = {'organs': diff}
         return
 
     def get_doses_file_info(self, doses):
