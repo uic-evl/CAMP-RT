@@ -19,6 +19,11 @@
     </div>
 	<div id="leftContent">
 		<div id="differenceScene" style="margin:0;padding:0;"></div>
+		<div id="organErrorViz">
+		
+			<button class='button' id="doseScatterButton">Organ Dose</button>
+			<button class='button' id="distanceScatterButton">Tumor-Organ Distance</button>
+        </div>
 	</div>
     <div id="topBar">
         <div id="lineChartsContainer">
@@ -36,9 +41,6 @@
                 </div>
                 <div id="pDifference_chart"></div>
             </div>
-            <div id="organErrorViz">
-                <svg id="mLineChart" width="1160" height="380"></svg>
-            </div>
 
         </div>
         <div id="navbar">
@@ -52,9 +54,6 @@
                 <div id="unitLabel">(GY)</div>
 
                 <div class="scaleLabels1" style="left: -1px;">0</div>
-                <!--<div class="scaleLabels" style="left: 100px;">5</div>
-                <div class="scaleLabels" style="left: 200px;">10</div>
-                <div class="scaleLabels" style="left: 280px;">50</div>-->
                 <div class="scaleLabels1" style="right: -40px;">108 +</div>
 
             </div>
@@ -117,6 +116,7 @@
     </div>
 	<div id="content">
 	</div>
+	<div class='tooltip' style='visibility:hidden;'></div>
 
     <script src="js/three/three.js"></script>
     <script src="js/controls/OrbitControls.js"></script>
@@ -203,7 +203,7 @@
 
             for (var j = count; j < count + 5; j++) {
 
-                if (patientsToShow >= patients.length)
+                if (j >= scenes.length - 1)
                     return;
 
                 patientsToShow += 1;
@@ -231,7 +231,7 @@
 
             pDisplayed.innerHTML = "Showing " + patientsToShow + " out of " + patients.length + " patients";
         }
-
+		
     </script>
 	<script type="text/javascript" src="dose_scatterplot.js"></script>
     <script type="text/javascript" src="camprt.js"></script>

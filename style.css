@@ -14,18 +14,31 @@ body {
 #leftContent {
 	position: absolute;
 	top: 0;
-	width: 800px;
+	width: 780px;
 	height: 100%;
-	min-width: 790px;
+	min-width: 770px;
 	z-index: 1;
 	padding: 5em 0 3em 0;
+	overflow: auto;
+}
+
+#organErrorViz{
+	position: relative;
+	width: 95%;
+	left: 2.5%;
+	background-color: #a5a5a5;
+	border: 1px solid black;
+}
+
+.scatterSvg {
+	z-index: 0;
 }
 
 #content {
 	position: absolute;
 	top: 0;
 	height: 100%;
-	width: calc(100% - 790px);
+	width: calc(100% - 780px);
 	left: 800px;
 	z-index: 1;
 	padding: 5em 0 3em 0;
@@ -192,6 +205,23 @@ option:hover {
 	text-align: center;
 }
 
+.button {
+  background-color: #777777; 
+  opacity: .5;
+  display: inline-block;
+  position: relative;
+  margin: .1%;
+  color: white;
+  width: 49.5%;
+  border: none;
+  cursor: pointer;
+  padding: 5px 10px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+}
+
 #DP_button {
 	position: absolute;
 	left: 180px;
@@ -212,11 +242,6 @@ option:hover {
 	user-select: none;
 	border: 2px solid rgb(30, 30, 30);
 }
-
-/*#DP_button:hover {
-	background-color: #666;
-	
-}*/
 
 #sideMenu_button {
 	display: inline-block;
@@ -442,6 +467,20 @@ option:hover {
 	}
 }
 
+.tooltip {
+  color: white;
+  position: absolute;
+  padding: 3px;
+  margin: 3px;
+  font: 12px sans-serif;
+  background-color: #444;
+  border: 1px solid black;
+  box-shadow: 0px 0px 12px 2px rgba(0, 0, 0, 0.7);
+  z-index:10;
+  opacity: .95;
+  pointer-events: visibleFill;
+}
+
 #details {
 	position: fixed;
 	display: none;
@@ -475,11 +514,6 @@ option:hover {
 	padding: 9px 0px;
 	margin-right: 30px;
 	margin-bottom: 10px;
-}
-
-#details #details_volume_val {
-	
-	
 }
 
 #details #details_line {
@@ -560,6 +594,7 @@ option:hover {
 	padding: 0em;
 	border: 1px solid rgb(30, 30, 30);
 	box-shadow: 0px 0px 12px 1px rgba(0, 0, 0, 0.25);
+	overflow: hidden;
 }
 
 .list-item-RP {
@@ -582,6 +617,7 @@ option:hover {
 	cursor: crosshair;
 	width: 350px;
 	height: 350px;
+	overflow: hidden;
 }
 
 .description {
@@ -750,42 +786,11 @@ option:hover {
 	cursor: crosshair;
 }
 
-
-.axis--y {
-	color: #000;
-	font-size: 13px;
-}
-
-.axis--x {
-	color: #000000;
-	font-size: 13px;
-}
-
-.axis--y path {
-	/*display: none;*/
-}
-
-.cities {
-	fill: none;
-	stroke: #d1d1d1;
-	stroke-linejoin: round;
-	stroke-linecap: round;
-	stroke-width: 2px;
-	cursor: crosshair;
-}
-
-.cities--hover {
-	/*stroke: #00e4ff;
-	stroke-width: 4px;*/
-}
-
-.city--hover {
-	stroke: #00e4ff;
-}
-
 .dot {
 	cursor: crosshair;
-	
+}
+circle.dot{
+	cursor: pointer !important;
 }
 
 .dot text {
@@ -793,19 +798,3 @@ option:hover {
 	text-shadow: 0 1px 0 #a5a5a5, 1px 0 0 #a5a5a5, 0 -1px 0 #a5a5a5, -1px 0 0 #a5a5a5;
 }
 
-/*
-.voronoi path {
-	fill: none;
-	pointer-events: all;
-}
-
-.voronoi--show path {
-	stroke: red;
-	stroke-opacity: 0.2;
-}
-
-#form {
-	position: absolute;
-	top: 20px;
-	right: 30px;
-}*/

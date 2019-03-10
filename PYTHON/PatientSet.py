@@ -103,10 +103,10 @@ class Rankings():
 
 class PatientSet():
 
-    def __init__(self, patient_set = None, outliers = [], root = 'data\\patients_v2*\\', 
+    def __init__(self, patient_set = None, outliers = [], root = 'data\\patients_v2*\\',
                  max_distance = 80, class_name = None):
         if class_name is not None: #default signifies you want to overwrite it
-            classes = pd.read_csv('data//rt_plan_clusters.csv', 
+            classes = pd.read_csv('data//rt_plan_clusters.csv',
                                    index_col = 1)
             classes = classes.drop(labels = ['Unnamed: 0'], axis = 1)
             classes.columns = classes.columns.str.strip()
@@ -182,7 +182,7 @@ class PatientSet():
             dose_matrix[patient_index, :] = new_patient.doses
             total_dose_vector[patient_index] = new_patient.total_dose
         return((patients, dose_matrix, total_dose_vector, num_patients, ids))
-    
+
     def get_patient_class(self, patient_id, doses):
         #if a vector of classes is used
         if self.classes is not None:
@@ -194,25 +194,21 @@ class PatientSet():
         else: #no class list, use default laterality
             group = self.get_default_class(patient_id, doses)
         return group
-    
+
     def get_default_class(self, patient_id, dose_vector):
         full_dose, left_biased = self.check_if_full_dose(dose_vector)
         if not full_dose:
-            group = 'unilateral'
-            group += ('-left' if left_biased == True else '-right')
+            group = (3 if left_biased == True else 4)
         elif patient_id in Constants.v2_high_throat_dose:
-            group = 'high_throat'
+            group = 2
         else:
-            group = 'default'
+            group = 1
         return group
-    
-    def get_class_list(self, class_map = None):
-        if class_map is None:
-            class_list =  [p.group for p in self.get_patients()]
-        else:
-            class_list = [class_map.get(p.group,0) for p in self.get_patients()]
+
+    def get_class_list(self):
+        class_list =  [p.group for p in self.get_patients()]
         return class_list
-            
+
     def check_if_full_dose(self, dose_vector):
         #checks difference in sternoceldomastoids to seperate out unilaterally dosed patients?
         #may be used for getting classes eventually?
@@ -223,7 +219,7 @@ class PatientSet():
         else:
             full_dose = False
         return(full_dose, (ls > rs))
-    
+
     def delete_outliers(self, outliers, distance_files, dose_files):
         id_map = {max([int(x) for x in findall('[0-9]+', file)]): distance_files.index(file)  for file in distance_files}
         ids = sorted(list(id_map.keys()))
@@ -244,7 +240,7 @@ class PatientSet():
         return dataframe
 
     def change_classes(self, class_name):
-        classes = pd.read_csv('data//rt_plan_clusters.csv', 
+        classes = pd.read_csv('data//rt_plan_clusters.csv',
                                    index_col = 1)
         classes = classes.drop(labels = ['Unnamed: 0'], axis = 1)
         classes.columns = classes.columns.str.strip()
@@ -264,6 +260,7 @@ class PatientSet():
         dose_estimates = self.predict_doses(weights, num_matches)
         patient_mean_error = np.mean(np.absolute(self.doses - dose_estimates), axis = 1)
         dose_pca = Rankings.pca(self.doses)
+        distance_pca = Rankings.pca( self.gen_tumor_distance_matrix()[0] )
         for p_idx in range(0, self.num_patients):
             patient = self.patients[p_idx]
             entry = patient.to_ordered_dict(dose_estimates[p_idx, :])
@@ -273,9 +270,15 @@ class PatientSet():
                                    key = lambda x: -x[0])
             patient_scores, internal_ids = zip(*zipped_scores)
             entry['ID_internal'] = p_idx + 1
-            entry['similarity_ssim'] = internal_ids[:self.get_num_matches(patient) + 1]
-            entry['scores_ssim'] = patient_scores[:self.get_num_matches(patient) + 1]
+            num_matches = self.get_num_matches(patient) + 1
+            while patient_scores[num_matches - 1] <= 0:
+                num_matches -= 1
+            matches = internal_ids[:num_matches]
+            match_scores = patient_scores[:num_matches]
+            entry['similarity_ssim'] = matches
+            entry['scores_ssim'] = match_scores
             entry['dose_pca'] = dose_pca[p_idx,:].tolist()
+            entry['distance_pca'] = distance_pca[p_idx, :].tolist()
             entry['mean_error'] = round(patient_mean_error[p_idx], 4)
             data.append(entry)
         #save the vast dictionary of data for the front-end
@@ -374,7 +377,7 @@ class PatientSet():
     def get_num_matches(self, patient):
         #function for determining the number of matches to use, so this can be changed easily
         matches = 4
-        if patient.group == 'default':
+        if patient.group == 1:
             matches = 11
         return matches
 

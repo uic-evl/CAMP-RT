@@ -27,7 +27,7 @@ var scenes = [],
 	
 var selectedPatient = 1;
 //patients shown on load screen?
-var patientsToShow = 3;
+var patientsToShow = 5;
 
 var totalModelCount;
 
@@ -102,13 +102,14 @@ manager.onProgress = function (url, itemsLoaded, itemsTotal) {
     document.getElementById("loadProgress").innerHTML = parseInt(itemsLoaded / itemsTotal * 100) + " %"
 };
 
+var scatter;
+
 files.forEach(function (url) {
     promises.push(d3.json(url));
 });
 
 Promise.all(promises).then(function (values) {
     start(values[0], values[1]);
-	
 });
 
 function start(organAtlas, patientsData) {
@@ -144,6 +145,8 @@ function start(organAtlas, patientsData) {
     document.addEventListener("mousemove", onDocumentMouseMove, false);
 
     animate(); // render
+	scatter = new DoseScatterPlot(patientsData); //ok If I don't make this a global I have to like, rewrite half this code
+	scatter.draw('organErrorViz', selectedPatient);
 }
 
 // ----------------------------------------------------------------
@@ -240,9 +243,7 @@ function compareID(a, b) {
 	//because there's for sure no easy way to convert ints to strings and also the ids are pre-sorted
     var a_ID = a.ID_int;
     var b_ID = b.ID_int;
-
     var comparison = 0;
-
     if (a_ID > b_ID) {
         comparison = 1;
     } else if (a_ID < b_ID) {
@@ -255,40 +256,29 @@ function populateDropDownMenu() {
 	//holds an array of patient internal ids
 	console.log("populateDropDownMenu()");
     var menu = document.getElementById("patientMenu");
-
     // copy of patients sorted
     var patients_sorted = patients.concat().sort(compareID);
-
     patients_sorted.forEach(function (patient, index) {
-
         var tempOption = document.createElement("option");
-
         tempOption.value = patient.ID_internal;
-
         tempOption.innerHTML = patient.name;
-
         menu.appendChild(tempOption);
     });
 
     // first patient 
     var firstPatient = patients_sorted[0].ID_internal;
-
     //THis appears to look at the url to see if a patient is selected there
 	//if so, sets "first patient" to this guy? otherwise, uses the lowest id (above)
     var patientURL = getQueryVariable("id");
 
     if (patientURL != false) {
-
         var convertedPatient = getInternalID(patientURL);
-
         if (convertedPatient != false) {
             firstPatient = convertedPatient;
             menu.value = convertedPatient;
         }
     }
-
     patients_sorted.length = 0;
-
     return firstPatient;
 }
 
@@ -475,9 +465,6 @@ function handleCheckBoxSingle(event) {
 
             var node = scene.getObjectByName(event.value);
             var model = scene.getObjectByName(String(event.value) + "_model");
-
-            //console.log(event.value);
-
             if (node && model) {
                 node.visible = true;
                 model.visible = true;
@@ -852,9 +839,10 @@ function init() {
 
 function updateScenes(selectedPatient, material){
 	console.log('updateScenes()');
-	var scenes = [] //scenes is a wonderful global for now
-	for (var i = 0; i < patientsToShow; i++) {
-		var id = patients[selectedPatient-1].similarity_ssim[i]
+	var scenes = []; //scenes is a wonderful global for now
+	var ssimScores = patients[selectedPatient-1].similarity_ssim;
+	for (var i = 0; i < patientsToShow && i < ssimScores.length; i++) {
+		var id = ssimScores[i]
 		var target = (i == 0)? "leftContent" : "content";
 		var newScene = showPatient(patients, material, id, target);
 		scenes.push(newScene);
@@ -1138,9 +1126,7 @@ function removeOldViews(selectedPatientObject){
 	console.log(patientViews);
 	for(var i = patientViews.length - 1; i >= 0; i--){
 		element = patientViews[i];
-		if( !matches.includes( +element.id ) ){
-			element.parentElement.removeChild(element);
-		}
+		element.parentElement.removeChild(element);
 	}
 }
 
@@ -1149,13 +1135,15 @@ function switchPatient(updatedPatient){
 		return;
 	}
 	selectedPatient = updatedPatient;
+	document.getElementById("patientMenu").value = selectedPatient
 	var patientObject = patients[selectedPatient - 1];
     pRankingOrder = patientObject.similarity_ssim;
     pScores = patientObject.scores_ssim;
-	scenes = updateScenes(selectedPatient, materialArray);//populates required views
 	removeOldViews(patientObject); //removes old views
+	scenes = updateScenes(selectedPatient, materialArray);//populates required views
 	
 	updateOrder(updatedPatient);
+	scatter.highlightSelectedPatients(updatedPatient); 
 }
 
 function updateOrder(updatedPatient) {
@@ -1422,10 +1410,10 @@ function initializeRiskPrediction(rank) {
     scenesRP.length = 0;
 	
 	var pNames = [];
-    for (var j = 0; j < patientsToShow; j++) {
+    for (var j = 0; j < patientsToShow && j < simScores.length; j++) {
         var p = document.getElementById(pRankingOrder[j]);
         p.style.display = "inline-block";
-        if (j <= 5) {
+        if (j > 5) {
 
             var pName = p.querySelector(".description");
             pNames.push(String(j) + ": " + pName.innerHTML);

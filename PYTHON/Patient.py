@@ -9,7 +9,7 @@ from Constants import Constants
 from collections import OrderedDict
 
 class Patient():
-    ##class holds information for each patient.  
+    ##class holds information for each patient.
     ##is pased a series of dataframes (distacnes, doses, info) and extracts info
     ##p_id is a dummy id, position is the position of the patient in the whole dataset
     def __init__(self, distances, doses, p_id, group, info):
@@ -18,7 +18,7 @@ class Patient():
         self.group = group
         ##self.high_throat_dose = 1 if p_id in Constants.v2_high_throat_dose else 0
         #basically ordinality of the id, so where it will be in an index
-        ##self.laterality = info['Tm Laterality (R/L)']
+        self.laterality = info['Tm Laterality (R/L)']
         self.prescribed_dose = info['Total dose']
         self.tumor_subsite = info['Tumor subsite (BOT/Tonsil/Soft Palate/Pharyngeal wall/GPS/NOS)']
         centroid_data = self.get_doses_file_info(doses)
@@ -40,7 +40,7 @@ class Patient():
         #report if there is no primary tumor
         if self.tumor_volume == 0 or np.sum(self.tumor_distances) == 0:
             Constants.no_tumor.append(self.id)
-    
+
     def to_ordered_dict(self, dose_estimates):
         #exports local information into a dictionary
         entry = OrderedDict() #why is it ordered?
@@ -59,8 +59,9 @@ class Patient():
         #skipping laterality int
         entry['tumorSubsite'] = self.tumor_subsite
         entry['total_Dose'] = self.prescribed_dose #this is confusing
+        entry['cluster'] = self.group
         return(entry)
-    
+
     def get_organ_data_dict(self, dose_estimates):
         #subset of the information for json export - is ordering important
         #should be a dictionary key = organ string, values = x,y,z,meanDose,maxDose
@@ -174,7 +175,7 @@ class Patient():
                 try:
                     dist_matrix[row, col] = (dists.loc[organ1, organ2])['Eucledian Distance (mm)']
                 except:
-                    try: 
+                    try:
                         dist_matrix[row, col] = (dists.loc[organ2, organ1])['Eucledian Distance (mm)']
                     except:
                         dist_matrix[row, col] = 0
