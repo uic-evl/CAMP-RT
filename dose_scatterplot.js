@@ -84,21 +84,22 @@ DoseScatterPlot.prototype.getFeatureScales = function(){
 DoseScatterPlot.prototype.getColorMap = function(){
 	//get a cluster value based color map.  assumes clusters index 1-n_clusters
 	//fir
-	var classColors = ['#ffff33', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#a65628', '#f781bf', '#999999', '#eeeeee'];
+	var data = this.data;
+	//make this better somehow
+	var classColors = ['orange', 'cyan', 'magenta', 'blue', 'deeppink', 'purple', 'green', 'goldenrod', 'steelblue', 'brown', 'silver', 'burlywood', 'greenyellow', 'darkslategray']
 	var errorPrinted = false;
 	//scale luminosity based on best score?
 	var luminosityScale = d3.scaleLinear()
 		.domain(d3.extent(this.data, function(d){ return d.scores_ssim[1]; }))
-		.range([.3, .8]);
+		.range([.4, .6]);
 	var colorMap = function(dataPoint){
 		var cluster = dataPoint.cluster;
-		//print error if more classes than colors, defaults excess to first color
-		if( cluster > classColors.length && !errorPrinted){
-			console.log('number of classes out of range we have colors for');
-			errorPrinted = true;
-			cluster = 1
+		if(cluster >= classColors.length){
+			var color = 'black';
 		}
-		var color = d3.hsl(classColors[cluster - 1]);
+		else{
+			var color = classColors[cluster-1];
+		}
 		color.l = luminosityScale(dataPoint.scores_ssim[1]);
 		return color;
 	}
@@ -125,7 +126,7 @@ DoseScatterPlot.prototype.drawCircles = function(){
 		.attr('fill', function(d){ 
 			return getColor(d);})
 		.attr('stroke', 'black')
-		.attr('opacity', .5)
+		.attr('opacity', .8)
 		.attr('stroke-width', 1)
 		.on('click', function(d){
 			switchPatient(d.ID_internal);//from camprt.js
@@ -140,7 +141,6 @@ DoseScatterPlot.prototype.switchAxisVariable = function(type){
 		var getAxis = function(d){ return d.dose_pca; };
 	}
 	var [xScale, yScale] = this.getAxisScales(getAxis);
-	console.log(xScale);
 	this.circles.transition().duration(800)
 		.attr('cx', function(d) {
 			return xScale(getAxis(d)[0]);})
@@ -169,7 +169,6 @@ DoseScatterPlot.prototype.highlightSelectedPatients = function(selectedPerson){
 			.attr('opacity', 1)
 			.attr('stroke-width', 2)
 			.moveToFront();
-		console.log(dataPoint);
 	});
 	//make main patient red and stuff
 	d3.select('#scatterDot' + selectedData.ID)
@@ -177,14 +176,14 @@ DoseScatterPlot.prototype.highlightSelectedPatients = function(selectedPerson){
 		.attr('stroke-width', 2)
 		.attr('fill', 'FireBrick')
 		.moveToFront();
-	console.log(this.subsetData);
 }
 
 DoseScatterPlot.prototype.setupTooltip = function(d){
 	var tooltip = this.tooltip;
 	this.circles.on('mouseover', function(d){
 		tooltip.html(d.name + '</br>' 
-			+ 'Error: ' + Math.round(d.mean_error*100)/100 + '</br>')
+			+ 'Error: ' + Math.round(d.mean_error*100)/100 + '</br>'
+			+ 'Cluster: ' + d.cluster)
 			.style('left', d3.event.pageX + 10 + 'px')
 			.style('top', d3.event.pageY - 30 + 'px');
 		tooltip.transition().duration(50).style('visibility','visible');

@@ -111,10 +111,10 @@ class PatientSet():
             classes = classes.drop(labels = ['Unnamed: 0'], axis = 1)
             classes.columns = classes.columns.str.strip()
             self.classes = classes[class_name]
-            self.class_name = class_name
+            self.num_classes = len(self.classes.unique())
         else:
             self.classes = None
-            self.class_name = 'default'
+            self.num_classes = 0
         if patient_set is None:
             outliers = outliers
             self.total_dose_predictor = None
@@ -123,7 +123,7 @@ class PatientSet():
             self.patients = patient_set.patients
             if class_name is None: #overwrite if don't specify anything
                 self.classes = patient_set.classes
-                self.class_name = patient_set.class_name
+                self.num_classes = patient_set.num_classes
             self.doses = patient_set.doses
             self.total_doses = patient_set.total_doses
             self.num_patients = patient_set.num_patients
@@ -176,6 +176,7 @@ class PatientSet():
             #misc patient info - laterality, subsite, total dose, etc
             info = metadata.loc[ids[patient_index]]
             group = self.get_patient_class(ids[patient_index], doses.set_index('ROI').mean_dose)
+            print(group)
             new_patient = Patient(distances, doses,
                                   ids[patient_index], group, info)
             patients[patient_index] = new_patient
@@ -185,15 +186,14 @@ class PatientSet():
 
     def get_patient_class(self, patient_id, doses):
         #if a vector of classes is used
+        group = self.get_default_class(patient_id, doses)
         if self.classes is not None:
             try:
-                group = self.classes[patient_id]
+                subclass = self.classes[patient_id]
+                group = (group-1)*self.num_classes + subclass 
             except:
                 print('patient ', patient_id, 'not in class list, defaulting to 0')
-                group = 0
-        else: #no class list, use default laterality
-            group = self.get_default_class(patient_id, doses)
-        return group
+        return int(group)
 
     def get_default_class(self, patient_id, dose_vector):
         full_dose, left_biased = self.check_if_full_dose(dose_vector)
@@ -212,8 +212,18 @@ class PatientSet():
     def check_if_full_dose(self, dose_vector):
         #checks difference in sternoceldomastoids to seperate out unilaterally dosed patients?
         #may be used for getting classes eventually?
-        ls = dose_vector.loc['Lt_Sternocleidomastoid_M']
-        rs = dose_vector.loc['Rt_Sternocleidomastoid_M']
+        if isinstance(dose_vector, pd.core.series.Series):
+            ls = dose_vector.loc['Lt_Sternocleidomastoid_M']
+            rs = dose_vector.loc['Rt_Sternocleidomastoid_M']
+        elif isinstance(dose_vector, (np.ndarray, np.array)):
+            ls_pos = Constants.organ_list.index('Lt_Sternocleidomastoid_M')
+            rs_pos = Constants.organ_list.index('Rt_Sternocleidomastoid_M')
+            ls = dose_vector[ls_pos]
+            rs = dose_vector[rs_pos]
+        else:
+            print('error in getting dose?')
+            ls = 1
+            rs = 1
         if np.abs(ls - rs)/max([ls, rs]) < .6:
             full_dose = True
         else:
@@ -225,7 +235,7 @@ class PatientSet():
         ids = sorted(list(id_map.keys()))
         #delete patient files with an id in the outliers
         for outlier_id in sorted(outliers, reverse = True):
-            if outlier_id in id_map:
+            if outlier_id in ids:
                 pos = id_map[outlier_id]
                 del distance_files[pos]
                 del dose_files[pos]
@@ -240,14 +250,19 @@ class PatientSet():
         return dataframe
 
     def change_classes(self, class_name):
-        classes = pd.read_csv('data//rt_plan_clusters.csv',
-                                   index_col = 1)
-        classes = classes.drop(labels = ['Unnamed: 0'], axis = 1)
-        classes.columns = classes.columns.str.strip()
-        self.classes = classes[class_name]
-        self.class_name = class_name
+        if class_name is not None:
+            classes = pd.read_csv('data//rt_plan_clusters.csv',
+                                       index_col = 1)
+            classes = classes.drop(labels = ['Unnamed: 0'], axis = 1)
+            classes.columns = classes.columns.str.strip()
+            self.classes = classes[class_name]
+            self.num_classes = len(self.classes.unique())
+        else:
+            self.classes = None
+            self.num_classes = 0
         for p in self.get_patients():
-            p.group = self.classes[p.id]
+            p.group = self.get_patient_class(p.id, p.doses)
+        print(self.get_class_list())
 
     def export(self, weights = np.array([0,1]) ,
                rank_function = 'tumor_organ_ssim',
@@ -393,7 +408,10 @@ class PatientSet():
             #weight things by their scores
             for match_idx in range(0, num_matches):
                 matched_dosages[match_idx, :] = scores[match_idx]*matched_dosages[match_idx, :]
-            patient_estimates = np.mean(matched_dosages, axis = 0)/np.mean(scores)
+            if np.mean(scores) > 0:
+                patient_estimates = np.mean(matched_dosages, axis = 0)/np.mean(scores)
+            else:
+                patient_estimates = self.get_average_patient_data('doses')
             return(patient_estimates)
 
     def run_study(self, max_matches = 20,  weights = np.array([0,1])):
@@ -428,7 +446,7 @@ class PatientSet():
         p_avg['distances'] = avg_distances / self.num_patients
         p_avg['tumor_distances'] = avg_tumor_distances / self.num_patients
         p_avg['tumor_volume'] = avg_tumor_volume / self.num_patients
-        p_avg['doses'] = avg_doses
+        p_avg['doses'] = avg_doses / self.num_patients
         #defaults to a dict, adding in a parameter to only look at one thing
         if key == 'all':
             return(p_avg)

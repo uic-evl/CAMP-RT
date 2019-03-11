@@ -73,9 +73,6 @@ var pRankingOrder, pScores;
 
 var currScene;
 
-var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset.json"];
-var promises = [];
-
 var master = document.getElementById("masterList");
 
 var materialArray;
@@ -93,7 +90,6 @@ manager.onStart = function(url, itemsLoaded, itemsTotal){
 
 manager.onLoad = function () {
 	//this may break this because I moved it to the front
-    console.log('Loading complete!');
 	initializeRiskPrediction(selectedPatient);
     document.getElementById("loadScreen").style.display = "none";
 };
@@ -104,6 +100,9 @@ manager.onProgress = function (url, itemsLoaded, itemsTotal) {
 
 var scatter;
 
+var files = ["data/organAtlas.json", "PYTHON/data/patient_datase_tv23.json"];
+var promises = [];
+
 files.forEach(function (url) {
     promises.push(d3.json(url));
 });
@@ -113,8 +112,6 @@ Promise.all(promises).then(function (values) {
 });
 
 function start(organAtlas, patientsData) {
-
-    console.log("start()");
 
     oAtlas = organAtlas[0];
     patients = patientsData;
@@ -152,7 +149,6 @@ function start(organAtlas, patientsData) {
 // ----------------------------------------------------------------
 
 function populateColorScale() {
-	console.log("populateColorScale()");
     var parentDiv = document.getElementById("colorScale");
 	//appears to make a color scale made from just like, a bunch of 10px wide divs for the hard-coded color scales
     rangeColorScale.forEach(function (color, index) {
@@ -205,7 +201,6 @@ function populateColorScale() {
 }
 
 function showColorScaleLabel(event) {
-	console.log("showColorScaleLabel");
     var details = document.getElementById("colorScaleDetails");
 
     details.style.left = event.target.offsetLeft + "px";
@@ -215,14 +210,12 @@ function showColorScaleLabel(event) {
 }
 
 function hideColorScaleLabel(event) {
-	console.log('hideColorScaleLabel');
     var details = document.getElementById("colorScaleDetails");
 
     details.style.display = "none";
 }
 
 function showColorScaleLabel2(event) {
-	console.log("showColorScaleLabel2()");
     var details = document.getElementById("colorScaleDetails2");
 
     details.style.left = event.target.offsetLeft + "px";
@@ -232,7 +225,6 @@ function showColorScaleLabel2(event) {
 }
 
 function hideColorScaleLabel2(event) {
-	console.log("hideColorScaleLabel2()");
     var details = document.getElementById("colorScaleDetails2");
 
     details.style.display = "none";
@@ -254,7 +246,6 @@ function compareID(a, b) {
 
 function populateDropDownMenu() {
 	//holds an array of patient internal ids
-	console.log("populateDropDownMenu()");
     var menu = document.getElementById("patientMenu");
     // copy of patients sorted
     var patients_sorted = patients.concat().sort(compareID);
@@ -295,7 +286,6 @@ function getInternalID(searchString) {
 }
 
 function getQueryVariable(variable) {
-	console.log("getQueryVariable()");
     var query = window.location.search.substring(1);
     var vars = query.split("&");
     for (var i = 0; i < vars.length; i++) {
@@ -310,7 +300,6 @@ function getQueryVariable(variable) {
 
 function flipGraph() {
 	//coordinate rotation and scaling for organ positions
-	console.log("flipGraph()");
     for (var i = 0; i < patients.length; i++) {
 
         var patientOrganList = patients[i].organData;
@@ -340,7 +329,6 @@ function flipGraph() {
 }
 
 function computeCenterOfGraphAndShift() {
-	console.log("computeCenterOfGraphAndShift()");
 	//coordiante translation so that the organs are centered, I think
     for (var i = 0; i < patients.length; i++) {
 
@@ -458,7 +446,6 @@ function getMax(pos) {
 }
 
 function handleCheckBoxSingle(event) {
-	console.log("handleCheckBoxSinge()");
     if (event.checked) {
 
         scenes.forEach(function (scene, index) {
@@ -475,8 +462,6 @@ function handleCheckBoxSingle(event) {
 
             var node = scene.getObjectByName(event.value);
             var model = scene.getObjectByName(String(event.value) + "_model");
-
-            //console.log(event.value);
 
             if (node && model) {
                 node.visible = true;
@@ -511,13 +496,11 @@ function handleCheckBoxSingle(event) {
             }
         });
 
-        //d3.select("#line_" + event.value).style("opacity", 0.0);
         d3.select("#line_" + event.value).attr("display", "none");
     }
 }
 
 function handleCheckBoxGroup(event) {
-	console.log("handleCheckBoxGroup()");
     var children = master.getElementsByClassName(event.id[0] + "_GroupChildren");
 
     if (event.checked) {
@@ -601,7 +584,6 @@ function handleCheckBoxGroup(event) {
 }
 
 function populateOrganMasterList() {
-	console.log("populateOrganMasterList()");
     // make partition input first
     partitions.forEach(function (group, i) {
 
@@ -693,7 +675,6 @@ function populateOrganMasterList() {
 }
 
 function checkOrganMasterList() {
-	console.log("checkOrganMasterList()");
     organs.forEach(function (organ, index) {
 
         var tempItem = document.getElementById(organ.name);
@@ -713,7 +694,6 @@ function checkOrganMasterList() {
 }
 
 function formatOrganMasterList() {
-	console.log("formatOrganMasterList()");
     var organList = master.children;
 
     for (var i = 0; i < organList.length; i++) {
@@ -727,7 +707,6 @@ function formatOrganMasterList() {
 }
 
 function init() {
-	console.log("init()");
 	//renderer for main views?
 	var getRenderer = function(canvas, isAlpha){
 		var r = new THREE.WebGLRenderer({
@@ -838,7 +817,6 @@ function init() {
 }
 
 function updateScenes(selectedPatient, material){
-	console.log('updateScenes()');
 	var scenes = []; //scenes is a wonderful global for now
 	var ssimScores = patients[selectedPatient-1].similarity_ssim;
 	for (var i = 0; i < patientsToShow && i < ssimScores.length; i++) {
@@ -851,7 +829,6 @@ function updateScenes(selectedPatient, material){
 }
 
 function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
-	console.log('placeOrganModels()');
     let loader = new THREE.VTKLoader(manager);
 
     if (!(pOrgan == "GTVn" || pOrgan == "GTVp")) {
@@ -911,7 +888,6 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
 }
 
 function showPatient(patients, materialArray, id, parentDivId){
-	console.log('showPatient()' + parentDivId);
 	var scene = new THREE.Scene();
 	var patient = patients[id-1];
 	var patientOrganList = patient.organData;
@@ -1119,11 +1095,9 @@ function showPatient(patients, materialArray, id, parentDivId){
 
 function removeOldViews(selectedPatientObject){
 	//remove list-items not matched to the patient
-	console.log('removeOldViews()');
 	var matches = selectedPatientObject.similarity_ssim;
 	var patientViews = document.getElementsByClassName('list-item');
 	var element;
-	console.log(patientViews);
 	for(var i = patientViews.length - 1; i >= 0; i--){
 		element = patientViews[i];
 		element.parentElement.removeChild(element);
@@ -1148,7 +1122,6 @@ function switchPatient(updatedPatient){
 
 function updateOrder(updatedPatient) {
 	//sorts the divs of list-items for the patients based on similarity score
-	console.log('updateOrder');
     var lastPatient = document.getElementById(pRankingOrder[scenes.length - 1]);
     var firstPatient = document.getElementById(updatedPatient);//isn't this just updatedPatient already?
     firstPatient.style.display = "none";
@@ -1176,15 +1149,17 @@ function updateOrder(updatedPatient) {
         second.style.display = "none";
     }
 	//update similarity for the first non-self match
-	pScoreElement = first.querySelector(".pScore");
-	pScoreElement.innerHTML = pScores[i + 1].toFixed(5);
-	first.style.display = "none";
-	
-    var pScoreElement1 = document.getElementById(selectedPatient).querySelector(".pScore");
-    var pScoreElement2 = firstPatient.querySelector(".pScore");
+	if(scenes.length > 1){
+		pScoreElement = first.querySelector(".pScore");
+		pScoreElement.innerHTML = pScores[i + 1].toFixed(5);
+		first.style.display = "none";
+		
+		var pScoreElement1 = document.getElementById(selectedPatient).querySelector(".pScore");
+		var pScoreElement2 = firstPatient.querySelector(".pScore");
 
-    pScoreElement2.innerHTML = pScoreElement1.innerHTML;
-    pScoreElement1.innerHTML = "";
+		pScoreElement2.innerHTML = pScoreElement1.innerHTML;
+		pScoreElement1.innerHTML = "";
+	}
 
 }
 
@@ -1404,7 +1379,6 @@ function createDoseDifferenceScene(targetId, patientInternalId, materials){
 
 function initializeRiskPrediction(rank) {
 	
-	console.log('initializeRiskPrediction()');
     var simScores = patients[rank - 1].scores_ssim;
     // remove scenes
     scenesRP.length = 0;

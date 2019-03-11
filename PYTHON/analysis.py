@@ -24,7 +24,7 @@ def show_pca_scatterplot(db, reduction_fun = Rankings.pca, on = 'dose'):
     scale = np.mean(np.absolute(residual['differences']), axis = 1)**2
     colors = db.get_class_list()
     plt.scatter(components[:,0], components[:,1], scale, c = colors, cmap='Accent')
-    plt.title(on + '-distribution PCA with class grouping ' + db.class_name)
+    plt.title(on + '-distribution PCA')
     plt.xlabel('PC 1')
     plt.ylabel('PC 2')
 
@@ -46,9 +46,7 @@ def organ_droput_test(db, weights = np.ones((Constants.num_organs,))):
     return errors
 
 db = PatientSet(patient_set = None, root = 'data\\patients_v*\\',
-                outliers = Constants.v2_bad_entries + Constants.v3_bad_entries, class_name = None)
-db.export(patient_data_file = 'data\\patient_dataset_v23.json', score_file = 'data\\all_ssim_scores_v23.csv')
-#db.change_classes('rtward3')
-show_pca_scatterplot(db, on = 'dose')
+                outliers = Constants.v2_bad_entries + Constants.v3_bad_entries + [4, 213, 5056], class_name = None)
+db.export(patient_data_file = 'data\\patient_dataset_v23_clean.json', score_file = 'data\\all_ssim_scores_v23_clean.csv')
 result = db.evaluate()
-print(db.class_name, ' ', result['mean_error'])
+print(result['mean_error'])
