@@ -45,9 +45,9 @@ def organ_droput_test(db, weights = np.ones((Constants.num_organs,))):
         errors[Constants.organ_list[x]] = base_error - result['mean_error']
     return errors
 
-db = PatientSet(patient_set = None, root = 'data\\patients_v2*\\',
-                outliers = Constants.v2_bad_entries, class_name = None)
-db.export()
+db = PatientSet(patient_set = None, root = 'data\\patients_v*\\',
+                outliers = Constants.v2_bad_entries + Constants.v3_bad_entries, class_name = None)
+db.export(patient_data_file = 'data\\patient_dataset_v23.json', score_file = 'data\\all_ssim_scores_v23.csv')
 #db.change_classes('rtward3')
 show_pca_scatterplot(db, on = 'dose')
 result = db.evaluate()
