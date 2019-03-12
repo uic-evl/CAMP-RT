@@ -99,8 +99,9 @@ manager.onProgress = function (url, itemsLoaded, itemsTotal) {
 };
 
 var scatter;
+var bubbleChart;
 
-var files = ["data/organAtlas.json", "PYTHON/data/patient_datase_tv23.json"];
+var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset.json"];
 var promises = [];
 
 files.forEach(function (url) {
@@ -144,6 +145,7 @@ function start(organAtlas, patientsData) {
     animate(); // render
 	scatter = new DoseScatterPlot(patientsData); //ok If I don't make this a global I have to like, rewrite half this code
 	scatter.draw('organErrorViz', selectedPatient);
+	OrganBubblePlot.init('bubbleChart', selectedPatient, patients)
 }
 
 // ----------------------------------------------------------------
