@@ -15,6 +15,7 @@ body {
 	position: absolute;
 	top: 0;
 	width: calc(710px + 4em + 1%);
+	min-width: 800px;
 	height: 100%;
 	z-index: 1;
 	padding: 5em 0 3em 0;
@@ -37,11 +38,12 @@ body {
 	position: absolute;
 	top: 0;
 	height: 100%;
-	width: calc(99% - 710px - 4em);
-	left: 800px;
+	width: calc(99% - 710px - 5em);
+	left: calc(710px + 5em + 1%);
 	z-index: 1;
 	padding: 5em 0 3em 0;
 	overflow-y: scroll;
+	overflow-x: hide;
 }
 #topBar{
 	position: absolute;
@@ -97,17 +99,10 @@ a {
 	z-index: 100;
 }
 
-#bubbleChart{
-	position: block;
-	background-color: 'silver';
-	width: 90%;
-	height: auto;
-}
-
 #lineChartsContainer {
 	display: block;
 	position: fixed;
-	top: 30px;
+	top: 60px;
 	left: -9000px;
 	width: 100%;
 	min-width: 1160px;
@@ -155,12 +150,12 @@ a {
 	display: block;
 	position: relative;
 	top: 25px;
-	margin: auto;
+	margin: 1em;
 	margin-bottom: 10px;
 	border: 0px solid red;
 	text-align: left;
-	width: 1160px;
-	background-color: blue;
+	width: 90%;
+	left: 5%;
 	height: 380px;
 	
 }
