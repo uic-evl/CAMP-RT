@@ -20,7 +20,7 @@ var OrganBubblePlot = (function(){
 		
 		this.width = div.clientWidth;
 		this.height = div.clientHeight
-		this.xMargin = .025*this.width;
+		this.xMargin = .04*this.width;
 		this.yMargin = .1*this.height;
 		this.binWidth = (this.width - 2*this.xMargin)/num_organs;
 		this.xAxisSize = 80;
@@ -103,7 +103,7 @@ var OrganBubblePlot = (function(){
 			.attr('id', function(d) {return organList[d] + 'axisLine';})
 			.attr('x1', function(d){return xScale(d);})
 			.attr('x2', function(d){return xScale(d);})
-			.attr('y2', 1.5*self.yMargin)
+			.attr('y2', self.yMargin)
 			.attr('y1', self.height - .5*self.yMargin- self.xAxisSize)
 			.attr('stroke', 'silver')
 			.attr('stroke-width', .05*self.binWidth)
@@ -127,11 +127,16 @@ var OrganBubblePlot = (function(){
 				.style('left', d3.event.pageX + .5*self.binWidth + 'px')
 				.style('top', d3.event.pageY - 50 + 'px');
 				self.tooltip.transition().duration(50).style('visibility','visible');
+				d3.select(this).on('mousemove', function(d){
+					self.tooltip.style('left', d3.event.pageX + .5*self.binWidth + 'px')
+						.style('top', d3.event.pageY - 50 + 'px');
+				});
 			}).on('mouseout', function(d){
 				var axisLine = d3.select( "#" + organList[d] + 'axisLine' )
 				axisLine.attr('stroke', 'silver')
 					.attr('stroke-width', .05*self.binWidth);
 				self.tooltip.transition().duration(50).style('visibility', 'hidden');
+				d3.select(this).on('mousemove', null);
 			});;
 	}
 	
@@ -183,7 +188,7 @@ var OrganBubblePlot = (function(){
 			.attr('cy', function(d){ return yScale(d.organData[organName].meanDose);})
 			.attr('r', getRadius)
 			.attr('opacity', .5)
-			.attr('fill', '#acae56')
+			.attr('fill', 'hsl(60, 60%, 50%)')
 			.attr('stroke', 'black')
 			.attr('stroke-width', .1)
 			.on('mouseover', function(d,i){
@@ -192,8 +197,20 @@ var OrganBubblePlot = (function(){
 				.style('left', d3.event.pageX + 10 + 'px')
 				.style('top', d3.event.pageY - 30 + 'px');
 				tooltip.transition().duration(50).style('visibility','visible');
+				d3.select(this)
+					.moveToFront()
+					.transition().duration(50)
+					.attr('opacity', 1)
+					.attr('stroke-width', .3)
+					.attr('stroke', 'white');
 			}).on('mouseout', function(d){
 				tooltip.transition().duration(50).style('visibility', 'hidden');
+				d3.select(this).transition().duration(50)
+					.attr('opacity', .5)
+					.attr('stroke', 'black')
+					.attr('stroke-width', .1);
+				d3.selectAll('.meanDoseRect').moveToFront();
+				d3.selectAll('.estimatedDoseRect').moveToFront();
 			});
 	}
 	

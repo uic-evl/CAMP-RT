@@ -14,8 +14,7 @@ body {
 #leftContent {
 	position: absolute;
 	top: 0;
-	width: calc(710px + 4em + 1%);
-	min-width: 800px;
+	width: calc(700px + 5em + 1%);
 	height: 100%;
 	z-index: 1;
 	padding: 5em 0 3em 0;
@@ -25,7 +24,6 @@ body {
 #organErrorViz{
 	position: relative;
 	width: calc(700px + 3em);
-	margin: 1em;
 	background-color: #a5a5a5;
 	border: 1px solid black;
 }
@@ -48,8 +46,8 @@ body {
 	position: absolute;
 	top: 0;
 	height: 100%;
-	width: calc(99% - 710px - 5em);
-	left: calc(710px + 5em + 1%);
+	width: calc(98% - 700px - 5em);
+	left: calc(700px + 5em + 1%);
 	z-index: 1;
 	padding: 5em 0 3em 0;
 	overflow-y: scroll;
@@ -159,14 +157,14 @@ a {
 #bubbleChart {
 	display: block;
 	position: relative;
-	top: 25px;
+	top: 5px;
 	margin: 1em;
 	margin-bottom: 5em;
 	border: 0px solid red;
 	text-align: left;
-	width: 70%;
-	left: 15%;
-	height: 70%;
+	width: 80%;
+	left: 10%;
+	height: 80%;
 }
 
 select {
