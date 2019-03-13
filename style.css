@@ -34,6 +34,16 @@ body {
 	z-index: 0;
 }
 
+.axis path{
+	visibility: hidden;
+}
+.axis line{
+	visibility:hidden;
+}
+.axis text{
+	fill: white;
+}
+
 #content {
 	position: absolute;
 	top: 0;

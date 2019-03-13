@@ -94,18 +94,45 @@ var OrganBubblePlot = (function(){
 			
 		var tickSpaces = [];
 		for(var i = 0; i < organList.length; i++){
-			tickSpaces.push(xScale(i));
+			tickSpaces.push(i);
 		}
 		this.svg.selectAll('.axisLine')
 			.data(tickSpaces).enter()
 			.append('line')
 			.attr('class', 'axisLine')
-			.attr('x1', function(d){return d;})
-			.attr('x2', function(d){return d;})
+			.attr('id', function(d) {return organList[d] + 'axisLine';})
+			.attr('x1', function(d){return xScale(d);})
+			.attr('x2', function(d){return xScale(d);})
 			.attr('y2', 1.5*self.yMargin)
 			.attr('y1', self.height - .5*self.yMargin- self.xAxisSize)
 			.attr('stroke', 'silver')
-			.attr('stroke-width', .05*self.binWidth);
+			.attr('stroke-width', .05*self.binWidth)
+		this.svg.selectAll('.bins')
+			.data(tickSpaces).enter()
+			.append('rect')
+			.attr('class', '.bins')
+			.attr('x', function(d){ return xScale(d) - self.binWidth/2;})
+			.attr('y', self.yMargin)
+			.attr('width', self.binWidth)
+			.attr('height', self.height - self.yMargin - self.xAxisSize)
+			.attr('opacity', 0)
+			.on('mouseover', function(d){
+				var axisLine = d3.select( "#" + organList[d] + 'axisLine' )
+				axisLine.attr('stroke', 'white')
+					.attr('stroke-width', .08*self.binWidth);
+				var organ = self.patient.organData[self.organList[d]]
+				self.tooltip.html(self.organList[d] + '</br>'
+				+ 'Predicted: ' + organ.estimatedDose + ' Gy </br>'
+				+ 'Actual: ' + organ.meanDose + ' Gy')
+				.style('left', d3.event.pageX + .5*self.binWidth + 'px')
+				.style('top', d3.event.pageY - 50 + 'px');
+				self.tooltip.transition().duration(50).style('visibility','visible');
+			}).on('mouseout', function(d){
+				var axisLine = d3.select( "#" + organList[d] + 'axisLine' )
+				axisLine.attr('stroke', 'silver')
+					.attr('stroke-width', .05*self.binWidth);
+				self.tooltip.transition().duration(50).style('visibility', 'hidden');
+			});;
 	}
 	
 	Graph.drawDoseRects = function(xScale, yScale){
