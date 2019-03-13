@@ -15,13 +15,15 @@ var OrganBubblePlot = (function(){
 	Graph.init = function(target, patientInternalId, patientData){
 		console.log('drawing');
 		div = document.getElementById(target);
+		this.data = patientData;
 		this.setPatient(patientInternalId, patientData);
 		
 		this.width = div.clientWidth;
 		this.height = div.clientHeight
 		this.xMargin = .025*this.width;
-		this.yMargin = .05*this.height;
+		this.yMargin = .1*this.height;
 		this.binWidth = (this.width - 2*this.xMargin)/num_organs;
+		this.xAxisSize = 80;
 		
 		d3.select("#"+target).selectAll('.bubbleSvg').remove();
 		this.svg = d3.select("#"+target).append('svg')
@@ -33,13 +35,17 @@ var OrganBubblePlot = (function(){
 				.attr('class','tooltip')
 				.style('visibility','hidden');
 		console.log(this.organList);
-		
+		this.drawAxes();
 		this.drawOrgans();
 	}
 	
-	Graph.setPatient = function(patientInternalId, patientData){
-		this.data = patientData;
-		this.patient = patientData[patientInternalId - 1];
+	Graph.switchPatient = function(patientInternalId){
+		this.setPatient(patientInternalId);
+		this.drawOrgans();
+	}
+	
+	Graph.setPatient = function(patientInternalId){
+		this.patient = this.data[patientInternalId - 1];
 		
 		var organList = Object.keys(this.patient.organData)
 		num_organs = organList.length;
@@ -55,20 +61,60 @@ var OrganBubblePlot = (function(){
 	}
 	
 	Graph.drawOrgans = function(){
-		var [xAxis, yAxis] = this.getAxes();
+		var [xAxis, yAxis] = this.getScales();
 		var rAxis = this.getRScale(this.patient, this.binWidth);
 		this.organList.forEach(function(d){
 			this.drawOrganBubbles(d, xAxis, yAxis, rAxis);
 		},this);
-		this.drawDoseRects(xAxis, yAxis);
+		this.drawDoseRects(xAxis, yAxis);	
+	}
+	
+	Graph.drawAxes = function(){
+		var[xScale, yScale] = this.getScales();
+		var organList = this.organList;
+		var self = this;
+		var xAxis = d3.axisBottom(xScale)
+			.ticks(this.organList.length)
+			.tickFormat(function(d){
+				return organList[d];
+			});
+		var yAxis = d3.axisLeft(yScale).ticks(5);
+		var translate = "translate( 0," + (this.height - .5*this.yMargin- this.xAxisSize).toString() + ")";
+		this.svg.append('g')
+			.attr('class', 'axis')
+			.attr('transform', translate)
+			.call(xAxis)
+			.selectAll('text')
+			.attr('transform', 'rotate(-45)')
+			.style('text-anchor', 'end')
+		this.svg.append('g')
+			.attr('class', 'axis')
+			.attr('transform', 'translate(' + .8*this.xMargin + ', ' + .5*this.yMargin + ')' )
+			.call(yAxis);
+			
+		var tickSpaces = [];
+		for(var i = 0; i < organList.length; i++){
+			tickSpaces.push(xScale(i));
+		}
+		this.svg.selectAll('.axisLine')
+			.data(tickSpaces).enter()
+			.append('line')
+			.attr('class', 'axisLine')
+			.attr('x1', function(d){return d;})
+			.attr('x2', function(d){return d;})
+			.attr('y2', 1.5*self.yMargin)
+			.attr('y1', self.height - .5*self.yMargin- self.xAxisSize)
+			.attr('stroke', 'silver')
+			.attr('stroke-width', .05*self.binWidth);
 	}
 	
 	Graph.drawDoseRects = function(xScale, yScale){
 		var patient = this.patient;
 		var width = .8*this.binWidth;
-		var height = .2*this.binWidth;
+		var height = .15*this.binWidth;
 		var self = this;
 		var drawDose = function(variable, color){
+			d3.selectAll('.' + variable + 'Rect').remove();
 			self.svg.selectAll('.'+ variable + 'Rect')
 				.data(self.organList).enter()
 				.append('rect')
@@ -82,14 +128,15 @@ var OrganBubblePlot = (function(){
 				.attr('stroke-width', .5)
 				.attr('stroke', 'black');
 		}
-		drawDose('meanDose', 'red');
-		drawDose('estimatedDose', 'blue');
+		drawDose('meanDose', '#8b0000');
+		drawDose('estimatedDose', '#3d32ff');
 	}
 	
 	Graph.drawOrganBubbles = function(organName, xScale, yScale, rScale){
 		var position = this.organList.indexOf(organName);
 		var x = xScale(position);
 		var patient = this.patient;
+		var tooltip = this.tooltip;
 		var getRadius = function(x){
 			var index = patient.similarity_ssim.indexOf(+x.ID_internal);
 			if(index == 1){ console.log("bad stuff");}
@@ -108,10 +155,19 @@ var OrganBubblePlot = (function(){
 			.attr('cx', x)
 			.attr('cy', function(d){ return yScale(d.organData[organName].meanDose);})
 			.attr('r', getRadius)
-			.attr('opacity', .4)
-			.attr('fill', 'gold')
+			.attr('opacity', .5)
+			.attr('fill', '#acae56')
 			.attr('stroke', 'black')
-			.attr('stroke-width', .1);
+			.attr('stroke-width', .1)
+			.on('mouseover', function(d,i){
+				tooltip.html(d.name + '</br>'
+				+ 'dose: ' + d.organData[organName].meanDose + ' Gy')
+				.style('left', d3.event.pageX + 10 + 'px')
+				.style('top', d3.event.pageY - 30 + 'px');
+				tooltip.transition().duration(50).style('visibility','visible');
+			}).on('mouseout', function(d){
+				tooltip.transition().duration(50).style('visibility', 'hidden');
+			});
 	}
 	
 	Graph.getRScale = function(patient, width){
@@ -124,7 +180,7 @@ var OrganBubblePlot = (function(){
 		return(rScale)
 	}
 	
-	Graph.getAxes = function(){
+	Graph.getScales = function(){
 		var xScale = d3.scaleLinear()
 			.domain([0, this.organList.length])
 			.range([this.binWidth/2 + this.xMargin, this.width - this.xMargin - this.binWidth/2]);
@@ -142,7 +198,7 @@ var OrganBubblePlot = (function(){
 		}, this);
 		var yScale = d3.scaleLinear()
 			.domain( [minDose, maxDose])
-			.range([this.height - this.yMargin, this.yMargin]);
+			.range([this.height - this.yMargin - this.xAxisSize, this.yMargin]);
 		return [xScale, yScale];
 	}
 	return Graph;

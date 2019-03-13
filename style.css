@@ -151,13 +151,12 @@ a {
 	position: relative;
 	top: 25px;
 	margin: 1em;
-	margin-bottom: 10px;
+	margin-bottom: 5em;
 	border: 0px solid red;
 	text-align: left;
-	width: 90%;
-	left: 5%;
-	height: 380px;
-	
+	width: 70%;
+	left: 15%;
+	height: 70%;
 }
 
 select {

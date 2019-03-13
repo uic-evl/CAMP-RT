@@ -101,7 +101,7 @@ manager.onProgress = function (url, itemsLoaded, itemsTotal) {
 var scatter;
 var bubbleChart;
 
-var files = ["data/organAtlas.json", "PYTHON/data/patient_datase_tv23.json"];
+var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset.json"];
 var promises = [];
 
 files.forEach(function (url) {
@@ -1117,9 +1117,9 @@ function switchPatient(updatedPatient){
     pScores = patientObject.scores_ssim;
 	removeOldViews(patientObject); //removes old views
 	scenes = updateScenes(selectedPatient, materialArray);//populates required views
-	
 	updateOrder(updatedPatient);
 	scatter.highlightSelectedPatients(updatedPatient); 
+	OrganBubblePlot.switchPatient(updatedPatient);
 }
 
 function updateOrder(updatedPatient) {
@@ -1408,9 +1408,10 @@ function initializeRiskPrediction(rank) {
     // make a list item
     var doseErrorScene = createDoseDifferenceScene('pDifference_chart',rank, materialArray2);
     scenesRP.push(doseErrorScene);
-
-	var frontPageDifferenceScene = createDoseDifferenceScene('differenceScene', rank, materialArray2);
+	
+	var frontPageDifferenceScene = createDoseDifferenceScene('differenceScene', rank, materialArray);
 	scenes.push(frontPageDifferenceScene);
+
 }
 
 function animate() {
@@ -1741,8 +1742,11 @@ function handleInputRotate(event) {
         if (targ.parentNode.hasAttribute("id")) {
 			index = getSceneIndex( +targ.parentNode.id );
             cameraToCopy = scenes[index].userData.camera;
-
-        } else {
+        } 
+		else if(targ.parentNode.parentNode.id == 'differenceScene'){
+			cameraToCopy = scenes[scenes.length - 1].userData.camera;
+		}
+		else {
             cameraToCopy = scenesRP[targ.parentNode.value - 1].userData.camera;
         }
 
