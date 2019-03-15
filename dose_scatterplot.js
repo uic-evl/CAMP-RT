@@ -17,6 +17,7 @@ DoseScatterPlot.prototype.draw = function(target, selectedPerson = null){
 	this.height = .5*this.width;
 	this.xMargin = .04*this.width;
 	this.yMargin = .03*this.width;
+	this.clusterMargin = 20;
 	d3.select("#"+target).selectAll('.scatterSvg').remove();
 	this.svg = d3.select("#"+target).insert('svg',':first-child')
 					.attr('class', 'scatterSvg')
@@ -27,10 +28,13 @@ DoseScatterPlot.prototype.draw = function(target, selectedPerson = null){
 			.attr('class','tooltip')
 			.style('visibility','hidden');
 	this.getColor = this.getColorMap();
+	this.getXAxis = function(d){ return d.dose_pca[0]; };
+	this.getYAxis = function(d){ return d.dose_pca[1]; };
 	this.drawCircles();
 	if (selectedPatient != null){
 		this.highlightSelectedPatients(selectedPerson);
 	}
+	this.drawClusterCircles(this.clusterMargin);
 	this.setupTooltip();
 	this.setupSwitchButtons();
 }
@@ -46,24 +50,35 @@ DoseScatterPlot.prototype.setupSwitchButtons = function(){
 	}
 	var doseButton = document.getElementById('doseScatterButton');
 	var distanceButton = document.getElementById('distanceScatterButton');
+	var stagingButton = document.getElementById('stagingScatterButton');
 	setSelected(doseButton);
 	setUnselected(distanceButton);
+	setUnselected(stagingButton);
 	var self = this;
 	doseButton.addEventListener('click', function(){
 		self.switchAxisVariable('dose');
 		setSelected(doseButton);
 		setUnselected(distanceButton);
+		setUnselected(stagingButton);
 	});
 	distanceButton.addEventListener('click', function(){
 		self.switchAxisVariable('distance');
 		setSelected(distanceButton);
 		setUnselected(doseButton);
+		setUnselected(stagingButton);
+	});
+	stagingButton.addEventListener('click', function(){
+		self.switchAxisVariable('staging');
+		setSelected(stagingButton);
+		setUnselected(doseButton);
+		setUnselected(distanceButton);
 	});
 }
 
-DoseScatterPlot.prototype.getAxisScales = function(getAxis){
-	var xDomain = d3.extent(this.data, function(d){return getAxis(d)[0];});
-	var yDomain = d3.extent(this.data, function(d){return getAxis(d)[1];})
+DoseScatterPlot.prototype.getAxisScales = function(){
+	self = this;
+	var xDomain = d3.extent(this.data, function(d){return self.getXAxis(d);});
+	var yDomain = d3.extent(this.data, function(d){return self.getYAxis(d);})
 	
 	var xScale = d3.scaleLinear()
 		.domain(xDomain)
@@ -100,15 +115,14 @@ DoseScatterPlot.prototype.getColorMap = function(){
 		else{
 			var color = classColors[cluster-1];
 		}
-		color.l = luminosityScale(dataPoint.scores_ssim[1]);
 		return color;
 	}
 	return colorMap;
 }
 
 DoseScatterPlot.prototype.drawCircles = function(){
-	var getAxis = function(x){ return x.dose_pca; };
-	var [xScale, yScale] = this.getAxisScales(getAxis);
+	var self = this;
+	var [xScale, yScale] = this.getAxisScales();
 	var sizeScale = this.getFeatureScales();
 	var getColor = this.getColor;
 	this.circles = this.svg.selectAll('.dot')
@@ -119,9 +133,9 @@ DoseScatterPlot.prototype.drawCircles = function(){
 		.attr('r', function(d){
 			return sizeScale(d.mean_error)})
 		.attr('cx', function(d) {
-			return xScale(getAxis(d)[0]);})
+			return xScale(self.getXAxis(d));})
 		.attr('cy', function(d) {
-			return yScale(getAxis(d)[1]);});
+			return yScale(self.getYAxis(d));});
 	this.circles
 		.attr('fill', function(d){ 
 			return getColor(d);})
@@ -133,19 +147,97 @@ DoseScatterPlot.prototype.drawCircles = function(){
 		});
 }
 
-DoseScatterPlot.prototype.switchAxisVariable = function(type){
-	var getAxis;
-	if(type == 'distance'){
-		var getAxis = function(d){ return d.distance_pca; };
-	} else{
-		var getAxis = function(d){ return d.dose_pca; };
+DoseScatterPlot.prototype.drawClusterCircles = function(margin){
+	var self = this;
+	var clusters = new Map();
+	var [xScale, yScale] = this.getAxisScales();
+	var toPoint = function(d){
+		var x = xScale(self.getXAxis(d));
+		var y = yScale(self.getYAxis(d));
+		return [x,y];
 	}
-	var [xScale, yScale] = this.getAxisScales(getAxis);
+	this.data.forEach(function(d){
+		var cluster = d.cluster;
+		if(!clusters.has(cluster)){
+			clusters.set(cluster, []);
+		}
+		var current = clusters.get(cluster);
+		current.push(toPoint(d))
+		clusters.set(cluster, current);
+	}, clusters);
+	var interpolateLine = function(x0, x1){
+		var magnitude = Math.sqrt((x1[1] - x0[1])**2 + (x1[0] - x0[0])**2);
+		var vect = [ (x1[0] - x0[0])/magnitude, (x1[1] - x0[1])/magnitude ];
+		var point = [x1[0] + vect[0]*margin, x1[1] + vect[1]*margin];
+		return point;
+	}
+	var offsetHulls = [];
+	for (var [key, value] of clusters.entries()) {
+		var hull = []
+		var convexHull = d3.polygonHull(value);
+		var centroid = d3.polygonCentroid(convexHull);
+		convexHull.forEach(function(point){
+			var offsetPoint = interpolateLine(centroid, point);
+			hull.push(offsetPoint);
+		});
+		hull.cluster = +key;
+		console.log(hull)
+		offsetHulls.push(hull);
+	}
+	var arcPath = d3.line()
+		.x(function(d){ return d[0];})
+		.y(function(d){ return d[1];})
+		.curve(d3.curveCardinalClosed);
+	var arc = this.svg.selectAll('.clusterCurves')
+		.data(offsetHulls);
+	arc.exit().remove();
+	arc.enter()
+		.append('path')
+		.attr('class','clusterCurves')
+		.attr('fill', 'none')
+		.attr('stroke', function(d) {return self.getColor(d);})
+		.attr('stroke-width', margin/10)
+		.merge(arc).transition().duration(800)
+		.attr('d', function(d){return arcPath(d);});
+	console.log(offsetHulls);
+
+}
+
+DoseScatterPlot.prototype.setAxisVariable = function(axisFunction, axis){
+	axis = +axis
+	if(axis != 1 || axis != 0){
+		console.log('invalid axis to scatterplot setAxisVariable.  Value mut be 1 or 0');
+	}
+	if(axis == 1){
+		this.getXAxis = axisFunction;
+	}else{
+		this.getYAxis = axisFunction;
+	}
+}
+
+DoseScatterPlot.prototype.animateAxisChange = function(){
+	var [xScale, yScale] = this.getAxisScales();
+	this.drawClusterCircles(this.clusterMargin);
 	this.circles.transition().duration(800)
 		.attr('cx', function(d) {
-			return xScale(getAxis(d)[0]);})
+			return xScale(self.getXAxis(d));})
 		.attr('cy', function(d) {
-			return yScale(getAxis(d)[1]);}); 
+			return yScale(self.getYAxis(d));}); 
+}
+
+DoseScatterPlot.prototype.switchAxisVariable = function(type){
+	if(type == 'distance'){
+		this.getXAxis = function(d){ return d.distance_pca[0]; };
+		this.getYAxis = function(d){ return d.distance_pca[1]; };
+	} else if(type == 'staging'){
+		this.getXAxis = function(d){ return (d.gtvp_volume > Math.E)? Math.log(d.gtvp_volume): d.gtvp_volume; };
+		this.getYAxis = function(d){ return (d.gtvn_volume > Math.E)? Math.log(d.gtvn_volume): d.gtvn_volume; };
+	}
+	else{
+		this.getXAxis = function(d){ return d.dose_pca[0]; };
+		this.getYAxis = function(d){ return d.dose_pca[1]; };
+	}
+	this.animateAxisChange();
 }
 
 DoseScatterPlot.prototype.highlightSelectedPatients = function(selectedPerson){

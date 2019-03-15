@@ -20,6 +20,12 @@ class Patient():
         #basically ordinality of the id, so where it will be in an index
         self.laterality = info['Tm Laterality (R/L)']
         self.prescribed_dose = info['Total dose']
+        try:
+            n_stage = info['N-category']
+            self.n_stage = int(n_stage[1])
+        except:
+            print('error reading nstage for ', p_id)
+            self.n_stage = -1
         self.tumor_subsite = info['Tumor subsite (BOT/Tonsil/Soft Palate/Pharyngeal wall/GPS/NOS)']
         centroid_data = self.get_doses_file_info(doses)
         #I make a new matrix, so the order of centroid data isn't the same as the orginal csv
@@ -60,6 +66,8 @@ class Patient():
         entry['tumorSubsite'] = self.tumor_subsite
         entry['total_Dose'] = self.prescribed_dose #this is confusing
         entry['cluster'] = self.group
+        entry['gtvp_volume'] = self.gtvp_volume
+        entry['gtvn_volume'] = self.gtvn_volume
         return(entry)
 
     def get_organ_data_dict(self, dose_estimates):

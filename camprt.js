@@ -101,7 +101,7 @@ manager.onProgress = function (url, itemsLoaded, itemsTotal) {
 var scatter;
 var bubbleChart;
 
-var files = ["data/organAtlas.json", "PYTHON/data/patient_datase_tv23.json"];
+var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset_v23.json"];
 var promises = [];
 
 files.forEach(function (url) {
