@@ -199,7 +199,6 @@ DoseScatterPlot.prototype.drawClusterCircles = function(margin){
 		.attr('opacity',.6)
 		.merge(arc).transition().duration(800)
 		.attr('d', function(d){return arcPath(d);});
-	console.log(offsetHulls);
 
 }
 

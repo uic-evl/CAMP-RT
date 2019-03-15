@@ -6,7 +6,6 @@ var OrganBubblePlot = (function(){
 		var self = this;
 	}
 	Graph.init = function(target, patientInternalId, patientData){
-		console.log('drawing');
 		div = document.getElementById(target);
 		this.data = patientData;
 		this.setPatient(patientInternalId, patientData);
@@ -27,7 +26,6 @@ var OrganBubblePlot = (function(){
 		this.tooltip = d3.select("div.bubbletooltip")
 				.attr('class','tooltip')
 				.style('visibility','hidden');
-		console.log(this.organList);
 		this.drawAxes();
 		this.drawOrgans();
 	}
@@ -164,7 +162,6 @@ var OrganBubblePlot = (function(){
 		var tooltip = this.tooltip;
 		var getRadius = function(x){
 			var index = patient.similarity_ssim.indexOf(+x.ID_internal);
-			if(index == 1){ console.log("bad stuff");}
 			if(index != -1){
 				return rScale(patient.scores_ssim[index]);
 			} else{
@@ -210,7 +207,6 @@ var OrganBubblePlot = (function(){
 	Graph.getRScale = function(patient, width){
 		var ratio = .4;
 		var scoreExtent = d3.extent( patient.scores_ssim.slice(1), function(d) {return d;});
-		console.log([ratio*width, width*(1-ratio)]);
 		var rScale = d3.scalePow().exponent(2)
 			.domain(scoreExtent)
 			.range([ratio*width/2, width*(1-ratio)/2]);
