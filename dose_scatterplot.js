@@ -173,7 +173,7 @@ DoseScatterPlot.prototype.drawClusterCircles = function(margin){
 	}
 	var offsetHulls = [];
 	for (var [key, value] of clusters.entries()) {
-		var hull = []
+		var hull = [];
 		var convexHull = d3.polygonHull(value);
 		var centroid = d3.polygonCentroid(convexHull);
 		convexHull.forEach(function(point){
@@ -195,11 +195,54 @@ DoseScatterPlot.prototype.drawClusterCircles = function(margin){
 		.attr('class','clusterCurves')
 		.attr('fill', 'none')
 		.attr('stroke', function(d) {return self.getColor(d);})
-		.attr('stroke-width', margin/10)
-		.attr('opacity',.6)
+		.attr('stroke-width', margin/3)
+		.attr('opacity',.3)
 		.merge(arc).transition().duration(800)
-		.attr('d', function(d){return arcPath(d);});
+		.attr('d', function(d){return arcPath(d);})
+	this.setupCurveTooltip();
+}
 
+DoseScatterPlot.prototype.setupCurveTooltip = function(){
+	var clusterStats = new Map();
+	var getMeanDose = function(d){
+		console.log(d);
+		var error = 0;
+		var count = 0;
+		Object.values(d.organData).forEach(function(d){
+			error += d.meanDose;
+			count += 1;
+		});
+		return error/count;
+	}
+	this.data.forEach(function(d){
+		var cluster = d.cluster;
+		if(!clusterStats.has(cluster)){
+			var base = new Object();
+			base.numPoints = 0;
+			base.meanDose = 0;
+			base.meanError = 0;
+			clusterStats.set(cluster, base);
+		}
+		var current = clusterStats.get(cluster);
+		current.numPoints += 1;
+		current.meanError += d.mean_error;
+		current.meanDose += getMeanDose(d);
+		clusterStats.set(cluster, current);
+	});
+	for(stats in clusterStats.values()){
+		stats.meanError = stats.meanError/stats.numPoints;
+		stats.meanDose = stats.meanDose/stats.numPoints;
+	}
+	console.log(clusterStats);
+	d3.selectAll('path').filter('.clusterCurves')
+		.on('mouseover', function(d){
+			self.tooltip.html('Cluster: ' + d.cluster)
+				.style('left', d3.event.pageX + 8 + 'px')
+				.style('top', d3.event.pageY - 20 + 'px');
+			self.tooltip.transition().duration(50).style('visibility','visible');
+		}).on('mouseout', function(d){
+			self.tooltip.transition().duration(50).style('visibility', 'hidden');
+		});
 }
 
 DoseScatterPlot.prototype.setAxisVariable = function(axisFunction, axis){
