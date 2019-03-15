@@ -2,15 +2,8 @@ var OrganBubblePlot = (function(){
 	"use strict";
 	var instance;
 	var num_organs;
-	var self = this;
 	function Graph(){
-		if (instance){
-			return instance;
-		}
-		instance = this
-	}
-	Graph.getInstance = function(){
-		return instance || new Graph();
+		var self = this;
 	}
 	Graph.init = function(target, patientInternalId, patientData){
 		console.log('drawing');

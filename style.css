@@ -24,6 +24,8 @@ body {
 #organErrorViz{
 	position: relative;
 	width: calc(700px + 3em);
+	margin: 1em;
+	margin-top: 0auto;
 	background-color: #a5a5a5;
 	border: 1px solid black;
 }
@@ -85,10 +87,6 @@ a {
 	left: 10px;
 	opacity: 0.95;
 	z-index: 11;
-}
-
-#patientMenu {
-	
 }
 
 #loadScreen {
@@ -213,14 +211,14 @@ option:hover {
 	text-align: center;
 }
 
-.button {
-  background-color: #777777; 
-  opacity: .5;
+.scatterButton {
+  background: 'hsl(240, 50%, 60%)' !important;
+  opacity: .4;
   display: inline-block;
   position: relative;
   margin: .1%;
   color: white;
-  width: 49.5%;
+  width: 32.8%;
   border: none;
   cursor: pointer;
   padding: 5px 10px;

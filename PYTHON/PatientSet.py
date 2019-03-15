@@ -190,7 +190,7 @@ class PatientSet():
         if self.classes is not None:
             try:
                 subclass = self.classes[patient_id]
-                group = (group-1)*self.num_classes + subclass 
+                group = (group-1)*self.num_classes + subclass
             except:
                 print('patient ', patient_id, 'not in class list, defaulting to 0')
         return int(group)
