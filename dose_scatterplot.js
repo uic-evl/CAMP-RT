@@ -181,10 +181,6 @@ DoseScatterPlot.prototype.drawClusterCircles = function(margin){
 			hull.push(offsetPoint);
 		});
 		hull.cluster = +key;
-<<<<<<< HEAD
-=======
-		console.log(hull)
->>>>>>> ecbeb0a2fb1a1ec50175a8b6b1074f9248545d6b
 		offsetHulls.push(hull);
 	}
 	var arcPath = d3.line()
@@ -200,15 +196,9 @@ DoseScatterPlot.prototype.drawClusterCircles = function(margin){
 		.attr('fill', 'none')
 		.attr('stroke', function(d) {return self.getColor(d);})
 		.attr('stroke-width', margin/10)
-<<<<<<< HEAD
-		.attr('opacity', .1)
-		.merge(arc).transition().duration(800)
-		.attr('d', function(d){return arcPath(d);})
-		.attr('opacity', .9);
-=======
+		.attr('opacity',.6)
 		.merge(arc).transition().duration(800)
 		.attr('d', function(d){return arcPath(d);});
->>>>>>> ecbeb0a2fb1a1ec50175a8b6b1074f9248545d6b
 	console.log(offsetHulls);
 
 }
