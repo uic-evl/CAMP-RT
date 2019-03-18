@@ -4,34 +4,36 @@
 }
 
 body {
-	color: #000;
 	font-family: sans-serif;
 	font-size: 13px;
-	background-color: #fff;
 	margin: 0px;
 }
 
 #leftContent {
 	position: absolute;
 	top: 0;
-	width: calc(700px + 5em + 1%);
+	width: calc(98% - 700px - 1.2em);
 	height: 100%;
-	z-index: 1;
 	padding: 5em 0 3em 0;
 	overflow: auto;
 }
 
 #organErrorViz{
 	position: relative;
-	width: calc(700px + 3em);
-	margin: 1em;
-	margin-top: 0auto;
-	background-color: #a5a5a5;
-	border: 1px solid black;
+	background-color: #999999;
+	display: inline-block;
+	width: calc(98% - 350px - 1em);
+	margin: .3em;
+	margin-top: 0 auto;
+	height: 48%;
+	z-index: 1;
+	vertical-align: top;
+	min-height: 397px;
+	box-shadow: 1px 1px 12px 1px rgba(0, 0, 0, 0.25);
 }
 
 .scatterSvg {
-	z-index: 0;
+	z-index: 1;
 }
 
 .axis path{
@@ -47,10 +49,10 @@ body {
 #content {
 	position: absolute;
 	top: 0;
+	z-index: 0;
 	height: 100%;
-	width: calc(98% - 700px - 5em);
-	left: calc(700px + 5em + 1%);
-	z-index: 1;
+	width: calc(700px + 2% + 1.2em);
+	left: calc(98% - 700px - 1.2em);
 	padding: 5em 0 3em 0;
 	overflow-y: scroll;
 	overflow-x: hide;
@@ -68,6 +70,7 @@ a {
 #c {
 	position: fixed;
 	left: 0px;
+	top: 0;
 	width: 100%;
 	height: 100%;
 }
@@ -115,7 +118,6 @@ a {
 	height: calc(100vh - 60px);
 	color: #eee;
 	text-align: center;
-	background-color: #a5a5a5;
 	z-index: 9;
 	overflow-y: scroll;
 }
@@ -155,14 +157,17 @@ a {
 #bubbleChart {
 	display: block;
 	position: relative;
-	top: 5px;
-	margin: 1em;
-	margin-bottom: 5em;
+	z-index: 1;
+	background-color: #999999;
+	margin: .3em;
+	margin-bottom: 1em;
+	margin-top: 1em;
 	border: 0px solid red;
 	text-align: left;
-	width: 80%;
-	left: 10%;
-	height: 80%;
+	width: 99%;
+	left: calc(.5% - .3em);
+	height: 50%;
+	box-shadow: 1px 1px 12px 1px rgba(0, 0, 0, 0.25);
 }
 
 select {
@@ -212,20 +217,21 @@ option:hover {
 }
 
 .scatterButton {
-  background: 'hsl(240, 50%, 60%)' !important;
+  background: hsl(200, 50%, 50%) !important;
   opacity: .4;
   display: inline-block;
   position: relative;
-  margin: .1%;
+  margin: .2%;
   color: white;
-  width: 32.8%;
+  width: 32%;
   border: none;
   cursor: pointer;
   padding: 5px 10px;
   text-align: center;
   text-decoration: none;
   display: inline-block;
-  font-size: 16px;
+  font-size: 1em;
+  box-shadow: 3px 3px 12px 3px rgba(0, 0, 0, 0.25);
 }
 
 #DP_button {
@@ -597,9 +603,10 @@ option:hover {
 .list-item {
 	position: relative;
 	display: inline-block;
-	margin: 1em;
+	opacity: 1;
+	z-index: 1;
+	margin: .3em;
 	padding: 0em;
-	border: 1px solid rgb(30, 30, 30);
 	box-shadow: 0px 0px 12px 1px rgba(0, 0, 0, 0.25);
 	overflow: hidden;
 }
@@ -628,8 +635,8 @@ option:hover {
 }
 
 .description {
-	color: #ffffff;;
-	background-color: #a5a5a5;
+	color: #ffffff;
+	background-color: #999999;
 	font-family: sans-serif;
 	font-size: large;
 	padding: 7px;
@@ -641,7 +648,7 @@ option:hover {
 
 .pScore {
 	color: #343434;
-	background-color: #a5a5a5;
+	background-color: #999999;
 	font-family: sans-serif;
 	font-size: large;
 	padding: 7px;
@@ -655,7 +662,7 @@ option:hover {
 .info {
 	
 	color: #343434;
-	background-color: #a5a5a5;
+	background-color: #999999;
 	width: 100%;
 	height: 26px;
 	font-family: sans-serif;

@@ -716,7 +716,7 @@ function init() {
 			antialias: true,
 			alpha: isAlpha
 		});
-		r.setClearColor(0xffffff, 1);
+		r.setClearColor(0x888888, 1);
 		r.setPixelRatio(window.devicePixelRatio);
 		r.sortObjects = true;
 		return r
@@ -844,7 +844,6 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
                 color: nodeColor,
                 opacity: 0.2,
                 transparent: true,
-                //side: THREE.DoubleSide,
                 depthTest: true,
                 depthWrite: true,
                 depthFunc: THREE.LessEqualDepth
@@ -1130,7 +1129,8 @@ function updateOrder(updatedPatient) {
 
     //insert last element from pRankingOrder in last place (before null)
     parent.insertBefore(lastPatient, null);
-	firstPatient.parentElement.prepend(firstPatient);
+	firstPatient.parentElement.insertBefore(firstPatient, firstPatient.parentElement.childNodes[2] );
+	firstPatient.style.zIndex = 1;
     // first patient always has score of 1, clear it
     var pScoreElement = firstPatient.querySelector(".pScore");
     pScoreElement.innerHTML = "";
@@ -1307,7 +1307,6 @@ function createDoseDifferenceScene(targetId, patientInternalId, materials){
     lateralityElement.innerHTML = "";
 
     element.value = 3;
-
     var targetDiv = document.getElementById(targetId);
 	if (targetDiv.childNodes.length > 0) {
 		targetDiv.removeChild(targetDiv.childNodes[0]);
@@ -1409,7 +1408,7 @@ function initializeRiskPrediction(rank) {
     var doseErrorScene = createDoseDifferenceScene('pDifference_chart',rank, materialArray2);
     scenesRP.push(doseErrorScene);
 	
-	var frontPageDifferenceScene = createDoseDifferenceScene('differenceScene', rank, materialArray);
+	var frontPageDifferenceScene = createDoseDifferenceScene('differenceScene', rank, materialArray2);
 	scenes.push(frontPageDifferenceScene);
 
 }
@@ -1423,20 +1422,20 @@ function render() {
 
     updateSize();
 
-    renderer.setClearColor(0xffffff);
+    renderer.setClearColor(0xbbbbbb);//will be background color
     renderer.setScissorTest(false);
     renderer.clear();
 
-    renderer.setClearColor(0xa5a5a5);
+    renderer.setClearColor(0x999999);//will be color in viewport?
     renderer.setScissorTest(true);
 
     updateMainView();
 
-    renderer2.setClearColor(0x444444, 0);
+    renderer2.setClearColor(0xffffff, 0);
     renderer2.setScissorTest(false);
     renderer2.clear();
 
-    renderer2.setClearColor(0xa5a5a5);
+    renderer2.setClearColor(0x888888);
     renderer2.setScissorTest(true);
 
 	updateRiskPView();
@@ -1450,7 +1449,6 @@ function updateMainView(rotMatrix) {
     pRankingOrder = patients[selectedPatient - 1].similarity_ssim;
 
 	for (var index = 0; index < scenes.length; index++) {
-
 		var scene = scenes[index];
 		var controls = scene.userData.controls;
 		var camera = scene.userData.camera;
@@ -1467,8 +1465,7 @@ function updateMainView(rotMatrix) {
 		// check if it's offscreen. If so skip it
 		if (rect.bottom < 0 || rect.top > renderer.domElement.clientHeight ||
 			rect.right < 0 || rect.left > renderer.domElement.clientWidth) {
-
-			return; // it's off screen
+			continue; // it's off screen
 		}
 
 		// update orientation marker
@@ -1564,7 +1561,6 @@ function updateRiskPView(rotMatrix) {
         // check if it's offscreen. If so skip it
         if (rect.bottom < 0 || rect.top > renderer2.domElement.clientHeight ||
             rect.right < 0 || rect.left > renderer2.domElement.clientWidth) {
-
             return; // it's off screen
         }
 

@@ -14,7 +14,7 @@ function DoseScatterPlot(data){
 DoseScatterPlot.prototype.draw = function(target, selectedPerson = null){
 	div = document.getElementById(target);
 	this.width = div.clientWidth;
-	this.height = .5*this.width;
+	this.height = div.clientHeight;
 	this.xMargin = .04*this.width;
 	this.yMargin = .03*this.width;
 	this.clusterMargin = 20;
@@ -42,11 +42,11 @@ DoseScatterPlot.prototype.draw = function(target, selectedPerson = null){
 DoseScatterPlot.prototype.setupSwitchButtons = function(){
 	var setSelected = function(element){
 		element.style.opacity = 1;
-		element.style.background = 'hsl(240, 90%, 50%)';
+		element.style.background = 'hsl(240, 90%, 30%)';
 	}
 	var setUnselected = function(element){
 		element.style.opacity = .4;
-		element.style.background = 'hsl(240, 50%, 60%)';
+		element.style.background = 'hsl(240, 50%, 30%)';
 	}
 	var doseButton = document.getElementById('doseScatterButton');
 	var distanceButton = document.getElementById('distanceScatterButton');
@@ -205,14 +205,13 @@ DoseScatterPlot.prototype.drawClusterCircles = function(margin){
 DoseScatterPlot.prototype.setupCurveTooltip = function(){
 	var clusterStats = new Map();
 	var getMeanDose = function(d){
-		console.log(d);
-		var error = 0;
+		var dose= 0;
 		var count = 0;
 		Object.values(d.organData).forEach(function(d){
-			error += d.meanDose;
-			count += 1;
+			dose = dose + d.meanDose;
+			count = count + 1;
 		});
-		return error/count;
+		return dose/count;
 	}
 	this.data.forEach(function(d){
 		var cluster = d.cluster;
@@ -229,18 +228,24 @@ DoseScatterPlot.prototype.setupCurveTooltip = function(){
 		current.meanDose += getMeanDose(d);
 		clusterStats.set(cluster, current);
 	});
-	for(stats in clusterStats.values()){
+	console.log(clusterStats);
+	for(var stats of clusterStats.values()){
 		stats.meanError = stats.meanError/stats.numPoints;
 		stats.meanDose = stats.meanDose/stats.numPoints;
 	}
-	console.log(clusterStats);
 	d3.selectAll('path').filter('.clusterCurves')
 		.on('mouseover', function(d){
-			self.tooltip.html('Cluster: ' + d.cluster)
+			d3.select(this).attr('opacity', 1);
+			var stats = clusterStats.get(d.cluster);
+			self.tooltip.html('Cluster ' + d.cluster + '</br>'
+			+ 'Size: ' + stats.numPoints + '</br>'
+			+ 'Mean Dose: ' + stats.meanDose.toFixed(1) + '</br>'
+			+ 'Mean Prediction Error: ' + stats.meanError.toFixed(1))
 				.style('left', d3.event.pageX + 8 + 'px')
 				.style('top', d3.event.pageY - 20 + 'px');
 			self.tooltip.transition().duration(50).style('visibility','visible');
 		}).on('mouseout', function(d){
+			d3.select(this).attr('opacity', .3);
 			self.tooltip.transition().duration(50).style('visibility', 'hidden');
 		});
 }
