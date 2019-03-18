@@ -8,6 +8,7 @@ d3.selection.prototype.moveToFront = function() {
 
 function DoseScatterPlot(data){
 	this.data = data;
+	this.ids = data.getInternalIdList();
 	this.selectedColor = '#e41a1c';
 }
 
@@ -28,14 +29,14 @@ DoseScatterPlot.prototype.draw = function(target, selectedPerson = null){
 			.attr('class','tooltip')
 			.style('visibility','hidden');
 	this.getColor = this.getColorMap();
-	this.getXAxis = function(d){ return d.dose_pca[0]; };
-	this.getYAxis = function(d){ return d.dose_pca[1]; };
+	this.getXAxis = function(d){ return self.data.getDosePCA(d, 1); };
+	this.getYAxis = function(d){ return self.data.getDosePCA(d, 2); };
 	this.drawCircles();
 	if (selectedPatient != null){
 		this.highlightSelectedPatients(selectedPerson);
 	}
 	this.drawClusterCircles(this.clusterMargin);
-	this.setupTooltip();
+	this.setupTooltip(selectedPerson);
 	this.setupSwitchButtons();
 }
 
@@ -77,8 +78,8 @@ DoseScatterPlot.prototype.setupSwitchButtons = function(){
 
 DoseScatterPlot.prototype.getAxisScales = function(){
 	self = this;
-	var xDomain = d3.extent(this.data, function(d){return self.getXAxis(d);});
-	var yDomain = d3.extent(this.data, function(d){return self.getYAxis(d);})
+	var xDomain = d3.extent(this.ids, function(d){return self.getXAxis(d);});
+	var yDomain = d3.extent(this.ids, function(d){return self.getYAxis(d);})
 	
 	var xScale = d3.scaleLinear()
 		.domain(xDomain)
@@ -90,8 +91,9 @@ DoseScatterPlot.prototype.getAxisScales = function(){
 }
 
 DoseScatterPlot.prototype.getFeatureScales = function(){
+	var self = this;
 	var sizeScale = d3.scalePow().exponent(2)
-		.domain( d3.extent(this.data, function(d){ return d.mean_error; }) )
+		.domain( d3.extent(this.ids, function(d){ return data.getPatientMeanError(d); }) )
 		.range([3, 8]);
 	return sizeScale;
 }
@@ -100,15 +102,15 @@ DoseScatterPlot.prototype.getColorMap = function(){
 	//get a cluster value based color map.  assumes clusters index 1-n_clusters
 	//fir
 	var data = this.data;
+	var self = this;
 	//make this better somehow
 	var classColors = ['orange', 'cyan', 'magenta', 'blue', 'deeppink', 'purple', 'green', 'goldenrod', 'steelblue', 'brown', 'silver', 'burlywood', 'greenyellow', 'darkslategray']
-	var errorPrinted = false;
 	//scale luminosity based on best score?
 	var luminosityScale = d3.scaleLinear()
-		.domain(d3.extent(this.data, function(d){ return d.scores_ssim[1]; }))
+		.domain(d3.extent(this.ids, function(d){ return self.data.getPatientSimilarityScores(d)[1]; }))
 		.range([.4, .6]);
-	var colorMap = function(dataPoint){
-		var cluster = dataPoint.cluster;
+	var colorMap = function(dataPoint, id_input = true){
+		var cluster = self.data.getCluster(dataPoint);
 		if(cluster >= classColors.length){
 			var color = 'black';
 		}
@@ -126,12 +128,12 @@ DoseScatterPlot.prototype.drawCircles = function(){
 	var sizeScale = this.getFeatureScales();
 	var getColor = this.getColor;
 	this.circles = this.svg.selectAll('.dot')
-		.data(this.data).enter()
+		.data(this.ids).enter()
 		.append('circle')
 		.attr('class', 'dot')
-		.attr('id', function(d){ return 'scatterDot' + d.ID;})
+		.attr('id', function(d){ return 'scatterDot' + d;})
 		.attr('r', function(d){
-			return sizeScale(d.mean_error)})
+			return sizeScale(self.data.getPatientMeanError(d))})
 		.attr('cx', function(d) {
 			return xScale(self.getXAxis(d));})
 		.attr('cy', function(d) {
@@ -143,23 +145,26 @@ DoseScatterPlot.prototype.drawCircles = function(){
 		.attr('opacity', .8)
 		.attr('stroke-width', 1)
 		.on('click', function(d){
-			switchPatient(d.ID_internal);//from camprt.js
+			switchPatient(d);//from camprt.js
 		});
 }
 
 DoseScatterPlot.prototype.drawClusterCircles = function(margin){
 	var self = this;
 	var clusters = new Map();
+	var clusterColors = new Map();
 	var [xScale, yScale] = this.getAxisScales();
 	var toPoint = function(d){
 		var x = xScale(self.getXAxis(d));
 		var y = yScale(self.getYAxis(d));
 		return [x,y];
 	}
-	this.data.forEach(function(d){
-		var cluster = d.cluster;
+	this.ids.forEach(function(d){
+		var cluster = self.data.getCluster(d);
 		if(!clusters.has(cluster)){
 			clusters.set(cluster, []);
+			var color = self.getColor(d);
+			clusterColors.set(cluster, color);
 		}
 		var current = clusters.get(cluster);
 		current.push(toPoint(d))
@@ -180,6 +185,7 @@ DoseScatterPlot.prototype.drawClusterCircles = function(margin){
 			var offsetPoint = interpolateLine(centroid, point);
 			hull.push(offsetPoint);
 		});
+		hull.color = clusterColors.get(key);
 		hull.cluster = +key;
 		offsetHulls.push(hull);
 	}
@@ -194,7 +200,7 @@ DoseScatterPlot.prototype.drawClusterCircles = function(margin){
 		.append('path')
 		.attr('class','clusterCurves')
 		.attr('fill', 'none')
-		.attr('stroke', function(d) {return self.getColor(d);})
+		.attr('stroke', function(d) {return d.color;})
 		.attr('stroke-width', margin/3)
 		.attr('opacity',.3)
 		.merge(arc).transition().duration(800)
@@ -204,17 +210,9 @@ DoseScatterPlot.prototype.drawClusterCircles = function(margin){
 
 DoseScatterPlot.prototype.setupCurveTooltip = function(){
 	var clusterStats = new Map();
-	var getMeanDose = function(d){
-		var dose= 0;
-		var count = 0;
-		Object.values(d.organData).forEach(function(d){
-			dose = dose + d.meanDose;
-			count = count + 1;
-		});
-		return dose/count;
-	}
-	this.data.forEach(function(d){
-		var cluster = d.cluster;
+	var self = this;
+	this.ids.forEach(function(d){
+		var cluster = self.data.getCluster(d);
 		if(!clusterStats.has(cluster)){
 			var base = new Object();
 			base.numPoints = 0;
@@ -224,11 +222,10 @@ DoseScatterPlot.prototype.setupCurveTooltip = function(){
 		}
 		var current = clusterStats.get(cluster);
 		current.numPoints += 1;
-		current.meanError += d.mean_error;
-		current.meanDose += getMeanDose(d);
+		current.meanError += self.data.getPatientMeanError(d);
+		current.meanDose += self.data.getPatientMeanDose(d);
 		clusterStats.set(cluster, current);
 	});
-	console.log(clusterStats);
 	for(var stats of clusterStats.values()){
 		stats.meanError = stats.meanError/stats.numPoints;
 		stats.meanDose = stats.meanDose/stats.numPoints;
@@ -239,8 +236,8 @@ DoseScatterPlot.prototype.setupCurveTooltip = function(){
 			var stats = clusterStats.get(d.cluster);
 			self.tooltip.html('Cluster ' + d.cluster + '</br>'
 			+ 'Size: ' + stats.numPoints + '</br>'
-			+ 'Mean Dose: ' + stats.meanDose.toFixed(1) + '</br>'
-			+ 'Mean Prediction Error: ' + stats.meanError.toFixed(1))
+			+ 'Mean Dose: ' + stats.meanDose.toFixed(1) + 'Gy </br>'
+			+ 'Mean Prediction Error: ' + stats.meanError.toFixed(1) + 'Gy' )
 				.style('left', d3.event.pageX + 8 + 'px')
 				.style('top', d3.event.pageY - 20 + 'px');
 			self.tooltip.transition().duration(50).style('visibility','visible');
@@ -274,15 +271,19 @@ DoseScatterPlot.prototype.animateAxisChange = function(){
 
 DoseScatterPlot.prototype.switchAxisVariable = function(type){
 	if(type == 'distance'){
-		this.getXAxis = function(d){ return d.distance_pca[0]; };
-		this.getYAxis = function(d){ return d.distance_pca[1]; };
+		this.getXAxis = function(d){ return self.data.getDistancePCA(d, 1); };
+		this.getYAxis = function(d){ return self.data.getDistancePCA(d, 2); };
 	} else if(type == 'staging'){
-		this.getXAxis = function(d){ return (d.gtvp_volume > Math.E)? Math.log(d.gtvp_volume): d.gtvp_volume; };
-		this.getYAxis = function(d){ return (d.gtvn_volume > Math.E)? Math.log(d.gtvn_volume): d.gtvn_volume; };
+		this.getXAxis = function(d){ 
+			var volume = self.data.gtvpVol(d);
+			return (volume > Math.E)? Math.log(volume): volume; };
+		this.getYAxis = function(d){ 
+			var volume = self.data.gtvnVol(d);
+			return (volume > Math.E)? Math.log(volume): volume; };
 	}
 	else{
-		this.getXAxis = function(d){ return d.dose_pca[0]; };
-		this.getYAxis = function(d){ return d.dose_pca[1]; };
+		this.getXAxis = function(d){ return self.data.getDosePCA(d, 1); };
+		this.getYAxis = function(d){ return self.data.getDosePCA(d, 2); };
 	}
 	this.animateAxisChange();
 }
@@ -290,6 +291,7 @@ DoseScatterPlot.prototype.switchAxisVariable = function(type){
 DoseScatterPlot.prototype.highlightSelectedPatients = function(selectedPerson){
 	//recolor everything first
 	var getColor = this.getColor;
+	var self = this;
 	this.circles
 		.attr('fill', function(d){ 
 			return getColor(d);})
@@ -297,36 +299,42 @@ DoseScatterPlot.prototype.highlightSelectedPatients = function(selectedPerson){
 		.attr('stroke-width', 1)
 		.attr('opacity', .5);
 	//get entries linked to the person
-	var selectedData = this.data[selectedPerson - 1];
-	this.subsetData = new Array();
-	selectedData.similarity_ssim.forEach(function(x){
-		this.subsetData.push(this.data[x - 1]);
+	var selectedMatches = new Array();
+	self.data.getPatientMatches(selectedPerson).forEach(function(id){
+		selectedMatches.push(id);
 	}, this);
 	//recolor people matched with selected patient, make them darker and colorfuler
-	this.subsetData.forEach(function(x){
-		var dataPoint = d3.select('#scatterDot' + x.ID)
+	selectedMatches.forEach(function(x){
+		d3.select('#scatterDot' + x)
 			.attr('opacity', 1)
 			.attr('stroke-width', 2)
 			.moveToFront();
 	});
 	//make main patient red and stuff
-	d3.select('#scatterDot' + selectedData.ID)
+	d3.select('#scatterDot' + selectedPerson)
 		.attr('opacity', 1)
 		.attr('stroke-width', 2)
 		.attr('fill', 'FireBrick')
 		.moveToFront();
 }
 
-DoseScatterPlot.prototype.setupTooltip = function(d){
+DoseScatterPlot.prototype.setupTooltip = function(selectedPatient){
 	var tooltip = this.tooltip;
-	this.circles.on('mouseover', function(d){
-		tooltip.html(d.name + '</br>' 
-			+ 'Error: ' + Math.round(d.mean_error*100)/100 + '</br>'
-			+ 'Cluster: ' + d.cluster)
+	var self = this;
+
+	this.circles.on('mouseover', function(id){
+		tooltip.html(self.data.getPatientName(id) + '</br>' 
+			+ 'Dose: ' + self.data.getPatientMeanDose(id).toFixed(3) + ' Gy</br>'
+			+ 'Error: ' + self.data.getPatientMeanError(id).toFixed(3) + ' Gy</br>'
+			+ 'Cluster: ' + self.data.getCluster(id) + '</br>'
+			+ 'x Value: ' + self.getXAxis(id).toFixed(3) + '</br>'
+			+ 'y Value: ' + self.getYAxis(id).toFixed(3))
 			.style('left', d3.event.pageX + 10 + 'px')
 			.style('top', d3.event.pageY - 30 + 'px');
 		tooltip.transition().duration(50).style('visibility','visible');
+		Controller.brush(id);
 	}).on('mouseout', function(d){
 		tooltip.transition().duration(50).style('visibility', 'hidden');
+		Controller.unbrush(d);
 	});
 }

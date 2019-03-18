@@ -62,14 +62,12 @@ var color2 = d3.scaleLinear()
     .range(rangeColorScale2);
 
 // data
-var organs, oAtlas, links, patients;
+var organs, oAtlas, links;
 var organModels = new THREE.Group();
 
 var partitions = ["Oral Cavity & Jaw", "Throat", "Salivary Glands", "Eyes", "Brainstem & Spinal Cord", "Other"];
 
 var organRef = [];
-
-var pRankingOrder, pScores;
 
 var currScene;
 
@@ -103,6 +101,7 @@ var bubbleChart;
 
 var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset_v23.json"];
 var promises = [];
+var data; 
 
 files.forEach(function (url) {
     promises.push(d3.json(url));
@@ -113,20 +112,11 @@ Promise.all(promises).then(function (values) {
 });
 
 function start(organAtlas, patientsData) {
-
     oAtlas = organAtlas[0];
-    patients = patientsData;
-
+	data = Data(patientsData, oAtlas);
     selectedPatient = populateDropDownMenu();
 
-    pRankingOrder = patients[selectedPatient - 1].similarity_ssim;
-
-    pScores = patients[selectedPatient - 1].scores_ssim;
-
     populateColorScale();
-
-    flipGraph(); // fixes orientation of organs
-    computeCenterOfGraphAndShift(); // compute center of graph and shift to origin
 
     init(); // initialize
 
@@ -143,9 +133,15 @@ function start(organAtlas, patientsData) {
     document.addEventListener("mousemove", onDocumentMouseMove, false);
 
     animate(); // render
-	scatter = new DoseScatterPlot(patientsData); //ok If I don't make this a global I have to like, rewrite half this code
+	scatter = new DoseScatterPlot(data); //ok If I don't make this a global I have to like, rewrite half this code
 	scatter.draw('organErrorViz', selectedPatient);
-	OrganBubblePlot.init('bubbleChart', selectedPatient, patients)
+	OrganBubblePlot.init('bubbleChart', selectedPatient, data);
+	Controller.setup();
+	window.addEventListener('resize', function(d){
+		scatter.draw('organErrorViz', selectedPatient);
+		OrganBubblePlot.init('bubbleChart', selectedPatient, data);
+		Controller.setup();
+	});
 }
 
 // ----------------------------------------------------------------
@@ -232,25 +228,11 @@ function hideColorScaleLabel2(event) {
     details.style.display = "none";
 }
 
-function compareID(a, b) {
-	//a function that compares two numbers because maybe they're string?
-	//because there's for sure no easy way to convert ints to strings and also the ids are pre-sorted
-    var a_ID = a.ID_int;
-    var b_ID = b.ID_int;
-    var comparison = 0;
-    if (a_ID > b_ID) {
-        comparison = 1;
-    } else if (a_ID < b_ID) {
-        comparison = -1;
-    }
-    return comparison;
-}
-
 function populateDropDownMenu() {
 	//holds an array of patient internal ids
     var menu = document.getElementById("patientMenu");
     // copy of patients sorted
-    var patients_sorted = patients.concat().sort(compareID);
+    var patients_sorted = data.getSortedPatients();
     patients_sorted.forEach(function (patient, index) {
         var tempOption = document.createElement("option");
         tempOption.value = patient.ID_internal;
@@ -276,11 +258,11 @@ function populateDropDownMenu() {
 }
 
 function getInternalID(searchString) {
-
-    for (var i = 0; i < patients.length; i++) {
-
-        if (patients[i].ID == searchString)
-            return patients[i].ID_internal;
+	var patient;
+    for (var i = 1; i <= data.PatientCount; i++) {
+		patient = data.getPatient(i);
+        if (patient.ID == searchString)
+            return patient.ID_internal;
 
     }
 
@@ -299,153 +281,6 @@ function getQueryVariable(variable) {
     return (false);
 }
 
-
-function flipGraph() {
-	//coordinate rotation and scaling for organ positions
-    for (var i = 0; i < patients.length; i++) {
-
-        var patientOrganList = patients[i].organData;
-
-        for (var pOrgan in patientOrganList) {
-
-            var tOrganX = (patientOrganList[pOrgan].x * -1);
-            var tOrganY = (patientOrganList[pOrgan].y * -1);
-            var tOrganZ = (patientOrganList[pOrgan].z * -1);
-
-            patientOrganList[pOrgan].x = tOrganY * 1.3;
-            patientOrganList[pOrgan].y = tOrganZ * 2.5;
-            patientOrganList[pOrgan].z = tOrganX * 1.1;
-        }
-    }
-
-    for (var pOrgan in oAtlas) {
-
-        var tOrganX = (oAtlas[pOrgan].x * -1);
-        var tOrganY = (oAtlas[pOrgan].y * -1);
-        var tOrganZ = (oAtlas[pOrgan].z * -1);
-
-        oAtlas[pOrgan].x = tOrganY * 1.3;
-        oAtlas[pOrgan].y = tOrganZ * 2.5;
-        oAtlas[pOrgan].z = tOrganX * 1.1;
-    }
-}
-
-function computeCenterOfGraphAndShift() {
-	//coordiante translation so that the organs are centered, I think
-    for (var i = 0; i < patients.length; i++) {
-
-        var sceneCenter = [0.0, 0.0, 0.0];
-
-        var xyzMin = new Array(3);
-        var xyzMax = new Array(3);
-
-        var positions = [];
-
-        var patientOrganList = patients[i].organData;
-
-        for (var pOrgan in patientOrganList) {
-
-            var xyz = {
-                x: patientOrganList[pOrgan].x,
-                y: patientOrganList[pOrgan].y,
-                z: patientOrganList[pOrgan].z
-            };
-
-            positions.push(xyz);
-        }
-
-        xyzMin = getMin(positions);
-        xyzMax = getMax(positions);
-
-        sceneCenter = [
-            ((xyzMin[0] + xyzMax[0]) / 2),
-            ((xyzMin[1] + xyzMax[1]) / 2),
-            ((xyzMin[2] + xyzMax[2]) / 2)
-        ];
-
-        for (var pOrgan in patientOrganList) {
-
-            patientOrganList[pOrgan].x = (patientOrganList[pOrgan].x - sceneCenter[0]);
-            patientOrganList[pOrgan].y = (patientOrganList[pOrgan].y - sceneCenter[1]);
-            patientOrganList[pOrgan].z = (patientOrganList[pOrgan].z - sceneCenter[2]);
-        }
-
-    }
-
-    var sceneCenter = [0.0, 0.0, 0.0];
-
-    var xyzMin = new Array(3);
-    var xyzMax = new Array(3);
-
-    var positions = [];
-	//shifts organs in organ atlas also?  couldn't this just be hard coded?
-    for (var pOrgan in oAtlas) {
-
-        var xyz = {
-            x: oAtlas[pOrgan].x,
-            y: oAtlas[pOrgan].y,
-            z: oAtlas[pOrgan].z
-        };
-
-        positions.push(xyz);
-    }
-
-    xyzMin = getMin(positions);
-    xyzMax = getMax(positions);
-
-    sceneCenter = [
-        ((xyzMin[0] + xyzMax[0]) / 2),
-        ((xyzMin[1] + xyzMax[1]) / 2),
-        ((xyzMin[2] + xyzMax[2]) / 2)
-        ];
-
-    for (var pOrgan in oAtlas) {
-
-        oAtlas[pOrgan].x = (oAtlas[pOrgan].x - sceneCenter[0]);
-        oAtlas[pOrgan].y = (oAtlas[pOrgan].y - sceneCenter[1]);
-        oAtlas[pOrgan].z = (oAtlas[pOrgan].z - sceneCenter[2]);
-    }
-}
-
-function getMin(pos) {
-
-    var x = pos.reduce(function (min, obj) {
-        return obj.x < min ? obj.x : min;
-    }, Infinity);
-
-    var y = pos.reduce(function (min, obj) {
-        return obj.y < min ? obj.y : min;
-    }, Infinity);
-
-    var z = pos.reduce(function (min, obj) {
-        return obj.z < min ? obj.z : min;
-    }, Infinity);
-
-    if (x == Infinity || y == Infinity || z == Infinity)
-        return [0.0, 0.0, 0.0];
-
-    return [x, y, z];
-}
-
-function getMax(pos) {
-
-    var x = pos.reduce(function (max, obj) {
-        return obj.x > max ? obj.x : max;
-    }, -Infinity);
-
-    var y = pos.reduce(function (max, obj) {
-        return obj.y > max ? obj.y : max;
-    }, -Infinity);
-
-    var z = pos.reduce(function (max, obj) {
-        return obj.z > max ? obj.z : max;
-    }, -Infinity);
-
-    if (x == -Infinity || y == -Infinity || z == -Infinity)
-        return [0.0, 0.0, 0.0];
-
-    return [x, y, z];
-}
 
 function handleCheckBoxSingle(event) {
     if (event.checked) {
@@ -811,20 +646,18 @@ function init() {
         })
     ];
     
-	var patientObject = patients[selectedPatient - 1];
-    pRankingOrder = patientObject.similarity_ssim;
-    pScores = patientObject.scores_ssim;
+	var patientObject = data.getPatient(selectedPatient);
 	scenes = updateScenes(selectedPatient, materialArray);//populates required views	
 	updateOrder(selectedPatient);
 }
 
 function updateScenes(selectedPatient, material){
 	var scenes = []; //scenes is a wonderful global for now
-	var ssimScores = patients[selectedPatient-1].similarity_ssim;
-	for (var i = 0; i < patientsToShow && i < ssimScores.length; i++) {
-		var id = ssimScores[i]
+	var matches = data.getPatientMatches(selectedPatient);
+	for (var i = 0; i < patientsToShow && i < matches.length; i++) {
+		var id = matches[i];
 		var target = (i == 0)? "leftContent" : "content";
-		var newScene = showPatient(patients, material, id, target);
+		var newScene = showPatient(material, id, target);
 		scenes.push(newScene);
 	}
 	return scenes
@@ -888,9 +721,9 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
     }
 }
 
-function showPatient(patients, materialArray, id, parentDivId){
+function showPatient(materialArray, id, parentDivId){
 	var scene = new THREE.Scene();
-	var patient = patients[id-1];
+	var patient = data.getPatient(id);
 	var patientOrganList = patient.organData;
 
 	// make a list item
@@ -993,16 +826,16 @@ function showPatient(patients, materialArray, id, parentDivId){
 		// color
 		var nodeColor;
 
-		organSphere.userData.volume = patientOrganList[pOrgan].volume;
-		organSphere.userData.minDose = patientOrganList[pOrgan].minDose;
-		organSphere.userData.meanDose = patientOrganList[pOrgan].meanDose;
-		organSphere.userData.maxDose = patientOrganList[pOrgan].maxDose;
+		organSphere.userData.volume = data.getOrganVolume(id, pOrgan);
+		organSphere.userData.minDose = data.getMinDose(id, pOrgan);
+		organSphere.userData.meanDose = data.getMeanDose(id, pOrgan);
+		organSphere.userData.maxDose = data.getMaxDose(id, pOrgan);
 		
-		organSphere.userData.estimatedDose = patientOrganList[pOrgan].estimatedDose;
+		organSphere.userData.estimatedDose = data.getEstimatedDose(id, pOrgan);
 
 		// do this in python script maybe
 		//grays are already in joules per kilogram?!?!? I might want to delete this because it's misleading to users
-		organSphere.userData.dosePerVolume = (patientOrganList[pOrgan].meanDose / patientOrganList[pOrgan].volume).toFixed(3);
+		organSphere.userData.dosePerVolume = (data.getMeanDose(id, pOrgan) / data.getOrganVolume(id, pOrgan)).toFixed(3);
 
 		if (organSphere.userData.meanDose >= 0.0) //null == -1 in json, pearson problems
 			nodeColor = color(organSphere.userData.meanDose);
@@ -1111,23 +944,22 @@ function switchPatient(updatedPatient){
 	}
 	selectedPatient = updatedPatient;
 	document.getElementById("patientMenu").value = selectedPatient
-	var patientObject = patients[selectedPatient - 1];
-    pRankingOrder = patientObject.similarity_ssim;
-    pScores = patientObject.scores_ssim;
+	var patientObject = data.getPatient(updatedPatient);
 	removeOldViews(patientObject); //removes old views
 	scenes = updateScenes(selectedPatient, materialArray);//populates required views
 	updateOrder(updatedPatient);
 	scatter.highlightSelectedPatients(updatedPatient); 
 	OrganBubblePlot.switchPatient(updatedPatient);
+	Controller.setup();
 }
 
 function updateOrder(updatedPatient) {
 	//sorts the divs of list-items for the patients based on similarity score
-    var lastPatient = document.getElementById(pRankingOrder[scenes.length - 1]);
+    var lastPatient = document.getElementById(data.getPatientMatches(selectedPatient)[scenes.length - 1]);
     var firstPatient = document.getElementById(updatedPatient);//isn't this just updatedPatient already?
     firstPatient.style.display = "none";
 
-    //insert last element from pRankingOrder in last place (before null)
+    //insert last element from patientMatches in last place (before null)
     parent.insertBefore(lastPatient, null);
 	firstPatient.parentElement.insertBefore(firstPatient, firstPatient.parentElement.childNodes[2] );
 	firstPatient.style.zIndex = 1;
@@ -1137,23 +969,24 @@ function updateOrder(updatedPatient) {
 	
 	var first;
 	var second;
+	var patientMatches = data.getPatientMatches(selectedPatient);
     for (var i = (scenes.length - 2); i > 0; i--) {
 
-        first = document.getElementById(pRankingOrder[i]);
-        second = document.getElementById(pRankingOrder[i + 1]);
+        first = document.getElementById(patientMatches[i]);
+        second = document.getElementById(patientMatches[i + 1]);
         // order div elements
         parent.insertBefore(first, second);
 		//updates the similarity score for the second patient
         pScoreElement = second.querySelector(".pScore");
         // update patient score
-        pScoreElement.innerHTML = pScores[i + 1].toFixed(5);
+        pScoreElement.innerHTML = data.getPatientSimilarityScores(selectedPatient)[i+1].toFixed(5);
         // hide patients
         second.style.display = "none";
     }
 	//update similarity for the first non-self match
 	if(scenes.length > 1){
 		pScoreElement = first.querySelector(".pScore");
-		pScoreElement.innerHTML = pScores[i + 1].toFixed(5);
+		pScoreElement.innerHTML = data.getPatientSimilarityScores(selectedPatient)[i+1].toFixed(5);
 		first.style.display = "none";
 		
 		var pScoreElement1 = document.getElementById(selectedPatient).querySelector(".pScore");
@@ -1380,13 +1213,13 @@ function createDoseDifferenceScene(targetId, patientInternalId, materials){
 
 function initializeRiskPrediction(rank) {
 	
-    var simScores = patients[rank - 1].scores_ssim;
+    var simScores = data.getPatientSimilarityScores(rank);
     // remove scenes
     scenesRP.length = 0;
 	
 	var pNames = [];
     for (var j = 0; j < patientsToShow && j < simScores.length; j++) {
-        var p = document.getElementById(pRankingOrder[j]);
+        var p = document.getElementById(data.getPatientMatches(selectedPatient)[j]);
         p.style.display = "inline-block";
         if (j > 5) {
 
@@ -1446,7 +1279,6 @@ function updateMainView(rotMatrix) {
 
     var rotMatrix = new THREE.Matrix4();
 	//scenes = updateScenes(selectedPatient, materialArray);
-    pRankingOrder = patients[selectedPatient - 1].similarity_ssim;
 
 	for (var index = 0; index < scenes.length; index++) {
 		var scene = scenes[index];
@@ -1724,7 +1556,7 @@ function onTouchStart(event) {
 
 function getSceneIndex(internalId){
 	//gets the index in the scene list from a given internal id
-	var index = patients[selectedPatient - 1].similarity_ssim.indexOf( +internalId )
+	var index = data.getPatientMatches(selectedPatient).indexOf( +internalId )
 	return(index)
 }
 
