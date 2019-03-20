@@ -21,13 +21,12 @@ var organName = document.getElementById("details_organName"),
 
 
 var scenes = [],
-    scenesRP = [],
-    renderer, renderer2;
+    renderer;
 
 	
 var selectedPatient = 1;
 //patients shown on load screen?
-var patientsToShow = 5;
+var patientsToShow = 11;
 
 var totalModelCount;
 
@@ -74,10 +73,8 @@ var currScene;
 var master = document.getElementById("masterList");
 
 var materialArray;
-var materialArray2;
 
 var canvas = document.getElementById("c");
-var canvas2 = document.getElementById("c2");
 var template = document.getElementById("template").text;
 
 var manager = new THREE.LoadingManager();
@@ -90,6 +87,7 @@ manager.onLoad = function () {
 	//this may break this because I moved it to the front
 	initializeRiskPrediction(selectedPatient);
     document.getElementById("loadScreen").style.display = "none";
+	Controller.toggleBrush(true);
 };
 
 manager.onProgress = function (url, itemsLoaded, itemsTotal) {
@@ -116,8 +114,6 @@ function start(organAtlas, patientsData) {
 	data = Data(patientsData, oAtlas);
     selectedPatient = populateDropDownMenu();
 
-    populateColorScale();
-
     init(); // initialize
 
     populateOrganMasterList();
@@ -137,6 +133,7 @@ function start(organAtlas, patientsData) {
 	scatter.draw('organErrorViz', selectedPatient);
 	OrganBubblePlot.init('bubbleChart', selectedPatient, data);
 	Controller.setup();
+	ColorScale.draw();
 	window.addEventListener('resize', function(d){
 		scatter.draw('organErrorViz', selectedPatient);
 		OrganBubblePlot.init('bubbleChart', selectedPatient, data);
@@ -145,88 +142,6 @@ function start(organAtlas, patientsData) {
 }
 
 // ----------------------------------------------------------------
-
-function populateColorScale() {
-    var parentDiv = document.getElementById("colorScale");
-	//appears to make a color scale made from just like, a bunch of 10px wide divs for the hard-coded color scales
-    rangeColorScale.forEach(function (color, index) {
-
-        var tempDiv = document.createElement("div");
-
-        tempDiv.style.height = "100%";
-        tempDiv.style.width = "10px";
-        tempDiv.style["backgroundColor"] = color;
-        tempDiv.style.display = "inline-block";
-        tempDiv.style.transition = "0.3s";
-
-        tempDiv.value = domainColorScale[index];
-        tempDiv.className = "colorScaleEntry";
-
-        parentDiv.appendChild(tempDiv);
-    });
-
-    var colorScaleEntries = document.getElementsByClassName("colorScaleEntry");
-	//adds mouseover tooltip
-    for (var i = 0, ref = colorScaleEntries.length; i < ref; i++) {
-        colorScaleEntries[i].addEventListener('mouseover', showColorScaleLabel, false);
-        colorScaleEntries[i].addEventListener('mouseout', hideColorScaleLabel, false);
-    }
-	//does it again for the blue one
-    parentDiv = document.getElementById("colorScale2");
-
-    rangeColorScale2.forEach(function (color, index) {
-
-        var tempDiv = document.createElement("div");
-
-        tempDiv.style.height = "100%";
-        tempDiv.style.width = "17px";
-        tempDiv.style["backgroundColor"] = color;
-        tempDiv.style.display = "inline-block";
-        tempDiv.style.transition = "0.3s";
-
-        tempDiv.value = domainColorScale2[index];
-        tempDiv.className = "colorScaleEntry2";
-
-        parentDiv.appendChild(tempDiv);
-    });
-
-    var colorScaleEntries2 = document.getElementsByClassName("colorScaleEntry2");
-
-    for (var i = 0, ref = colorScaleEntries2.length; i < ref; i++) {
-        colorScaleEntries2[i].addEventListener('mouseover', showColorScaleLabel2, false);
-        colorScaleEntries2[i].addEventListener('mouseout', hideColorScaleLabel2, false);
-    }
-}
-
-function showColorScaleLabel(event) {
-    var details = document.getElementById("colorScaleDetails");
-
-    details.style.left = event.target.offsetLeft + "px";
-    details.innerHTML = "" + event.target.value;
-
-    details.style.display = "block";
-}
-
-function hideColorScaleLabel(event) {
-    var details = document.getElementById("colorScaleDetails");
-
-    details.style.display = "none";
-}
-
-function showColorScaleLabel2(event) {
-    var details = document.getElementById("colorScaleDetails2");
-
-    details.style.left = event.target.offsetLeft + "px";
-    details.innerHTML = "" + event.target.value;
-
-    details.style.display = "block";
-}
-
-function hideColorScaleLabel2(event) {
-    var details = document.getElementById("colorScaleDetails2");
-
-    details.style.display = "none";
-}
 
 function populateDropDownMenu() {
 	//holds an array of patient internal ids
@@ -295,34 +210,12 @@ function handleCheckBoxSingle(event) {
             }
         });
 
-        scenesRP.forEach(function (scene, index) {
-
-            var node = scene.getObjectByName(event.value);
-            var model = scene.getObjectByName(String(event.value) + "_model");
-
-            if (node && model) {
-                node.visible = true;
-                model.visible = true;
-            }
-        });
-
         //d3.select("#line_" + event.value).style("opacity", 1.0);
         d3.select("#line_" + event.value).attr("display", null);
 
     } else {
 
         scenes.forEach(function (scene, index) {
-
-            var node = scene.getObjectByName(event.value);
-            var model = scene.getObjectByName(String(event.value) + "_model");
-
-            if (node && model) {
-                node.visible = false;
-                model.visible = false;
-            }
-        });
-
-        scenesRP.forEach(function (scene, index) {
 
             var node = scene.getObjectByName(event.value);
             var model = scene.getObjectByName(String(event.value) + "_model");
@@ -364,20 +257,6 @@ function handleCheckBoxGroup(event) {
             }
         });
 
-        scenesRP.forEach(function (scene, index) {
-
-            for (var i = 0; i < children.length; i++) {
-
-                var node = scene.getObjectByName(children[i].value);
-                var model = scene.getObjectByName(String(children[i].value) + "_model");
-
-                if (node && model) {
-                    node.visible = true;
-                    model.visible = true;
-                }
-            }
-        });
-
     } else {
 
         for (var i = 0; i < children.length; i++) {
@@ -399,20 +278,6 @@ function handleCheckBoxGroup(event) {
                     model.visible = false;
                 }
 
-            }
-        });
-
-        scenesRP.forEach(function (scene, index) {
-
-            for (var i = 0; i < children.length; i++) {
-
-                var node = scene.getObjectByName(children[i].value);
-                var model = scene.getObjectByName(String(children[i].value) + "_model");
-
-                if (node && model) {
-                    node.visible = false;
-                    model.visible = false;
-                }
             }
         });
     }
@@ -559,9 +424,6 @@ function init() {
     
 	renderer = getRenderer(canvas, false);
 
-	//renderer for dose estimation views?
-    renderer2 = getRenderer(canvas2, true);
-
     raycaster = new THREE.Raycaster();
 
     var maxAnisotropy = renderer.getMaxAnisotropy();
@@ -600,49 +462,6 @@ function init() {
         }),
             new THREE.MeshBasicMaterial({
             map: texture5
-        })
-    ];
-    //
-
-    //
-    var maxAnisotropy2 = renderer2.getMaxAnisotropy();
-
-	//Do we even use this?
-    var textureLoader2 = new THREE.TextureLoader();
-
-    var texture0_2 = textureLoader2.load('resources/anterior.png'), // xpos, Right
-        texture1_2 = textureLoader2.load('resources/posterior.png'), // xneg, Left
-        texture2_2 = textureLoader2.load('resources/superior.png'), // ypos, Top
-        texture3_2 = textureLoader2.load('resources/inferior.png'), // yneg, Bottom
-        texture4_2 = textureLoader2.load('resources/right.png'), // zpos, Back
-        texture5_2 = textureLoader2.load('resources/left.png'); // zneg, Front
-
-    texture0_2.anisotropy = maxAnisotropy2;
-    texture1_2.anisotropy = maxAnisotropy2;
-    texture2_2.anisotropy = maxAnisotropy2;
-    texture3_2.anisotropy = maxAnisotropy2;
-    texture4_2.anisotropy = maxAnisotropy2;
-    texture5_2.anisotropy = maxAnisotropy2;
-    
-    //getcontext2d. draw image
-    materialArray2 = [
-            new THREE.MeshBasicMaterial({
-            map: texture0_2
-        }),
-            new THREE.MeshBasicMaterial({
-            map: texture1_2
-        }),
-            new THREE.MeshBasicMaterial({
-            map: texture2_2
-        }),
-            new THREE.MeshBasicMaterial({
-            map: texture3_2
-        }),
-            new THREE.MeshBasicMaterial({
-            map: texture4_2
-        }),
-            new THREE.MeshBasicMaterial({
-            map: texture5_2
         })
     ];
     
@@ -950,6 +769,7 @@ function switchPatient(updatedPatient){
 	updateOrder(updatedPatient);
 	scatter.highlightSelectedPatients(updatedPatient); 
 	OrganBubblePlot.switchPatient(updatedPatient);
+	Controller.toggleBrush(false);
 	Controller.setup();
 }
 
@@ -1153,18 +973,10 @@ function createDoseDifferenceScene(targetId, patientInternalId, materials){
     for (var i = 0; i < source_scene.children.length; i++) {
 
         var organ = source_scene.children[i].clone();
-
         if (organ.userData.type == "node") {
+			
+            var organSum = Math.abs(organ.userData.meanDose - organ.userData.estimatedDose);
 
-            var organSum = 0;
-            var scene1 = scenesRP[0];
-            var scene2 = scenesRP[1];
-
-            var node1 = scene1.getObjectByName(organ.name);
-            var node2 = scene2.getObjectByName(organ.name);
-            organSum = Math.abs(node1.userData.meanDose - node2.userData.meanDose);
-
-            organ.userData.volume = undefined;
             organ.userData.minDose = undefined;
             organ.userData.meanDose = organSum.toFixed(3);
             organ.userData.maxDose = undefined;
@@ -1214,34 +1026,16 @@ function createDoseDifferenceScene(targetId, patientInternalId, materials){
 function initializeRiskPrediction(rank) {
 	
     var simScores = data.getPatientSimilarityScores(rank);
-    // remove scenes
-    scenesRP.length = 0;
-	
-	var pNames = [];
     for (var j = 0; j < patientsToShow && j < simScores.length; j++) {
         var p = document.getElementById(data.getPatientMatches(selectedPatient)[j]);
         p.style.display = "inline-block";
-        if (j > 5) {
-
-            var pName = p.querySelector(".description");
-            pNames.push(String(j) + ": " + pName.innerHTML);
-        }
     }
-    pNames[0] = "0: Estimation";
+    // -----------------------------------------
 
-    // -----------------------------------------
-    var selectedPatientScene = clonePatientScene('pTarget_chart', rank, materialArray2);
-    scenesRP.push(selectedPatientScene);
+	//var predictedDoseScene = createPredictionScene('pPrediction_chart', rank, materialArray2);
+	//scenesRP.push(predictedDoseScene);
 	
-	var predictedDoseScene = createPredictionScene('pPrediction_chart', rank, materialArray2);
-	scenesRP.push(predictedDoseScene);
-	
-    // -----------------------------------------
-    // make a list item
-    var doseErrorScene = createDoseDifferenceScene('pDifference_chart',rank, materialArray2);
-    scenesRP.push(doseErrorScene);
-	
-	var frontPageDifferenceScene = createDoseDifferenceScene('differenceScene', rank, materialArray2);
+	var frontPageDifferenceScene = createDoseDifferenceScene('differenceScene', rank, materialArray);
 	scenes.push(frontPageDifferenceScene);
 
 }
@@ -1259,24 +1053,15 @@ function render() {
     renderer.setScissorTest(false);
     renderer.clear();
 
-    renderer.setClearColor(0x999999);//will be color in viewport?
+    renderer.setClearColor(0x888888);//will be color in viewport?
     renderer.setScissorTest(true);
 
     updateMainView();
-
-    renderer2.setClearColor(0xffffff, 0);
-    renderer2.setScissorTest(false);
-    renderer2.clear();
-
-    renderer2.setClearColor(0x888888);
-    renderer2.setScissorTest(true);
-
-	updateRiskPView();
 	
 }
 
 function updateMainView(rotMatrix) {
-
+	var raycaster = new THREE.Raycaster();
     var rotMatrix = new THREE.Matrix4();
 	//scenes = updateScenes(selectedPatient, materialArray);
 
@@ -1365,108 +1150,8 @@ function updateMainView(rotMatrix) {
 
 			INTERSECTED = null;
 		}
-
 		renderer.render(scene, camera);
 	}
-
-
-}
-
-function updateRiskPView(rotMatrix) {
-    var rotMatrix = new THREE.Matrix4();
-
-    scenesRP.forEach(function (scene, index) {
-
-        var scene = scene;
-        var controls = scene.userData.controls;
-        var camera = scene.userData.camera;
-
-        var orientMarkerCube = camera.children[0];
-
-        // get the element that is a place holder for where we want to
-        // draw the scene
-        var element = scene.userData.element;
-
-        // get its position relative to the page's viewport
-        var rect = element.getBoundingClientRect();
-
-        // check if it's offscreen. If so skip it
-        if (rect.bottom < 0 || rect.top > renderer2.domElement.clientHeight ||
-            rect.right < 0 || rect.left > renderer2.domElement.clientWidth) {
-            return; // it's off screen
-        }
-
-        // update orientation marker
-        rotMatrix.extractRotation(controls.object.matrix);
-
-        // set the viewport
-        var width = rect.right - rect.left;
-        var height = rect.bottom - rect.top;
-        var left = rect.left;
-        var bottom = renderer2.domElement.clientHeight - rect.bottom;
-
-        renderer2.setViewport(left, bottom, width, height);
-        renderer2.setScissor(left, bottom, width, height);
-
-        // raycaster
-        raycaster.setFromCamera(mouseNorm, currScene.userData.camera);
-
-        var intersects = raycaster.intersectObjects(currScene.children);
-
-        if (intersects.length >= 1 && detailsOnRotate) {
-
-            for (var i = intersects.length - 1; i >= 0; i--) {
-
-                if (intersects[i].object.userData.type == "node") {
-                    nodeHover = intersects[i].object;
-
-                    var tempObject = scene.getObjectByName(nodeHover.name + "_outline");
-
-                    if (INTERSECTED != tempObject) {
-
-                        if (INTERSECTED) {
-                            INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
-
-                            for (var organ in oAtlas) {
-
-                                d3.select("#line_" + organ).attr("stroke", "#d1d1d1");
-                                d3.select("#line_" + organ).style("stroke", null).style("stroke-width", null);
-                            }
-                        }
-
-                        INTERSECTED = tempObject;
-
-                        if (INTERSECTED) {
-                            INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
-                            INTERSECTED.material.color.setHex(0x00e4ff);
-                            d3.select("#line_" + nodeHover.name).style("stroke", "#00e4ff").style("stroke-width", "4px").raise();
-                     
-                        }
-                    }
-
-                    break;
-
-
-                } 
-
-            }
-        } else {
-
-            if (INTERSECTED) {
-                INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
-
-            }
-
-            INTERSECTED = null;
-            for (var organ in oAtlas) {
-
-                d3.select("#line_" + organ).style("stroke", null).style("stroke-width", null);
-            }
-            
-        }
-
-        renderer2.render(scene, camera);
-    });
 }
 
 function updateSize() {
@@ -1476,12 +1161,6 @@ function updateSize() {
 
     if (canvas.width !== width || canvas.height != height)
         renderer.setSize(width, height, false);
-
-    width = canvas2.clientWidth;
-    height = canvas2.clientHeight;
-
-    if (canvas2.width !== width || canvas2.height != height)
-        renderer2.setSize(width, height, false);
 }
 
 function populateAndPlaceDetails(state) {
@@ -1595,25 +1274,14 @@ function syncAllCameras(cameraToCopy) {
         camera.position.setLength(cameraDistZ);
         camera.lookAt(scene.position);
     };
-
-    scenesRP.forEach(function (scene, index) {
-        var camera = scene.userData.camera;
-        var controls = scene.userData.controls;
-
-        camera.position.subVectors(cameraToCopy.position, controls.target);
-        camera.position.setLength(cameraDistZ);
-        camera.lookAt(scene.position);
-    });
 }
 
 function onMouseUp(event) {
-
     detailsOnRotate = true;
     clearInterval(syncCamerasInterval);
 }
 
 function onTouchEnd(event) {
-
     detailsOnRotate = true;
     clearInterval(syncCamerasInterval);
 }
@@ -1625,12 +1293,8 @@ function onDocumentMouseMove(event) {
 
         if (targ.className == "scene") {
 
-            if (targ.parentNode.hasAttribute("id")) {
-				let index = getSceneIndex(+targ.parentNode.id);
-                currScene = scenes[index];
-            } else {
-                currScene = scenesRP[targ.parentNode.value - 1];
-            }
+			let index = getSceneIndex(+targ.parentNode.id);
+			currScene = (index > -1)? scenes[index]: scenes[scenes.length-1];
 
             mouse.x = event.clientX;
             mouse.y = event.clientY;
@@ -1653,23 +1317,6 @@ document.getElementById("opacSlider").oninput = function () {
 
             if (tempObject)
                 tempObject.material.opacity = opac;
-
         }
-
-
-    });
-
-    scenesRP.forEach(function (scene, index) {
-
-        for (var pOrgan in oAtlas) {
-
-            var tempObject = scene.getObjectByName(pOrgan + "_model");
-
-            if (tempObject)
-                tempObject.material.opacity = opac;
-
-        }
-
-
     });
 }

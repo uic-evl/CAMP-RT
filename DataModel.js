@@ -5,8 +5,44 @@ var Data = function(patientData, oAtlas) {
 	var oAtlas = oAtlas;
 	var public = {};
 	var patientCount = data.length;
-	
+	var clusterColors = ['orange', 'cyan', 'magenta', 'navy', 'deeppink', 'purple', 'green', 'goldenrod','steelblue', 'brown', 'silver', 'burlywood', 'greenyellow', 'darkslategray'];
 	var functions = {
+		
+		getMeanDoseExtents: function(){
+			var max = 0;
+			var min = 0;
+			var organs = this.getOrganList();
+			data.forEach(function(p){
+				organs.forEach(function(o){
+					var organ = p.organData[o];
+					var dose = organ.meanDose;
+					max = (max > dose)? max:dose;
+					min = (min < dose)? min:dose;
+				});
+			});
+			return [min, max];
+		},
+		
+		getDoseErrorExtents: function(){
+			var max = 0;
+			var min = 0;
+			var organs = this.getOrganList();
+			data.forEach(function(p){
+				organs.forEach(function(o){
+					var organ = p.organData[o];
+					var error  = Math.abs(organ.meanDose - organ.estimatedDose);
+					max = (max > error)? max:error;
+					min = (min < error)? min:error;
+				});
+			});
+			return [min, max];
+		},
+		
+		getClusterColor: function(id){
+			var cluster = this.getCluster(id);
+			return clusterColors[cluster-1];
+		},
+		
 		getInternalIdList: function(){
 			var ids = new Array();
 			data.forEach(function(d){
@@ -35,7 +71,7 @@ var Data = function(patientData, oAtlas) {
 			return patient.organData;
 		},
 		
-		getOrganList: function(id = 0){
+		getOrganList: function(id = 1){
 			var organs = this.getPatientOrganData(id);
 			var organList = Object.keys(organs);
 			var remove = function(name){

@@ -16,35 +16,10 @@
     </div>
 	
 	<div id="topBar">
-        <div id="lineChartsContainer">
-            <canvas id="c2"></canvas>
-            <div id="pTarget_chart"></div>
-            <div id="pPrediction_chart"></div>
-            <div style="display: inline-block; position: relative; top:65px; margin: auto;width: auto; height: auto; border: 0px solid red;">
-                <div id="colorScale2">
-                    <div id="colorScaleDetails2"></div>
-                    <div id="unitLabel2">(GY)</div>
-
-                    <div class="scaleLabels2" style="left: -1px;">0</div>
-                    <div class="scaleLabels2" style="right: -40px;">20 +</div>
-
-                </div>
-                <div id="pDifference_chart"></div>
-            </div>
-        </div>
         <div id="navbar">
             <div id="dropMenu">
                 <select id="patientMenu" onchange="dropDown(this);">
                 </select>
-            </div>
-            <div id="DP_button" onclick="handleDosePrediction(this)" onmouseenter="toggleOn(this)" onmouseleave="toggleOff(this)">Dose Estimation</div>
-            <div id="colorScale">
-                <div id="colorScaleDetails"></div>
-                <div id="unitLabel">(GY)</div>
-
-                <div class="scaleLabels1" style="left: -1px;">0</div>
-                <div class="scaleLabels1" style="right: -40px;">108 +</div>
-
             </div>
             <div style="position: absolute; right: 10px; bottom: 5px; width: auto; height: 31px; border: 0px solid red;">
                 <div style="float: left; border: 2px solid rgb(30, 30, 30); padding: 0px 20px 0px 5px; border-right-width: 0px;">
@@ -117,6 +92,10 @@
 		<canvas id="c"></canvas>
 		<div id="differenceScene" style='margin:0;padding:0;'></div>
 	</div>
+	<div id='rightContent'>
+		<div id='doseColorScale' class='colorBar'></div>
+		<div id='doseErrorColorScale' class='colorBar'></div>
+	</div>
 	
 	
 	<div class='tooltip' style='visibility:hidden;'></div>
@@ -167,39 +146,6 @@
             sideNavClosed = !sideNavClosed;
         }
 
-        var toggle = false;
-
-        function handleDosePrediction(e) {
-
-            lineChartsContainer = document.getElementById("lineChartsContainer");
-
-            if (toggle) {
-                lineChartsContainer.style.left = -9000 + "px";
-                e.style["backgroundColor"] = "#323232";
-                toggle = false;
-
-            } else {
-                lineChartsContainer.style.left = "0px";
-                e.style["backgroundColor"] = "#a5a5a5";
-                toggle = true;
-            }
-        }
-
-        function toggleOn(e) {
-            
-            if (!toggle) {
-                e.style["backgroundColor"] = "#a5a5a5";
-            }
-        }
-
-        function toggleOff(e) {
-
-            if (!toggle) {
-                e.style["backgroundColor"] = "#323232";
-            }
-        }
-
-
         function showPatients() {
 
             var count = patientsToShow;
@@ -238,6 +184,7 @@
     </script>
 	<script type="text/javascript" src="controller.js"></script>
 	<script type="text/javascript" src="DataModel.js"></script>
+	<script type="text/javascript" src="colorScale.js"></script>
 	<script type="text/javascript" src="dose_scatterplot.js"></script>
 	<script type="text/javascript" src="BubblePlot.js"></script>
     <script type="text/javascript" src="camprt.js"></script>

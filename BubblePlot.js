@@ -14,12 +14,12 @@ var OrganBubblePlot = (function(){
 		this.width = div.clientWidth;
 		this.height = div.clientHeight
 		this.xMargin = .005*this.width;
-		this.yMargin = .08*this.height;
+		this.yMargin = .05*this.height;
 		this.binWidth = (this.width - 2*this.xMargin)/num_organs;
-		this.xAxisSize = 80;
+		this.xAxisSize = 90;
 		this.yAxisSize = 30;
 		
-		d3.select("#"+target).selectAll('.bubbleSvg').remove();
+		d3.selectAll('.bubbleSvg').remove();
 		this.svg = d3.select("#"+target).append('svg')
 						.attr('class', 'bubbleSvg')
 						.attr('width', this.width)
@@ -135,30 +135,39 @@ var OrganBubblePlot = (function(){
 		var width = .8*this.binWidth;
 		var height = .15*this.binWidth;
 		var self = this;
+		var getShape = d3.symbol().type(d3.symbolTriangle)
+			.size((width**2)/4);
+		d3.selectAll('.doseRect').remove();
 		var drawDose = function(variable, color){
-			d3.selectAll('.' + variable + 'Rect').remove();
-			self.svg.selectAll('.'+ variable + 'Rect')
+			var getY = function(o) {
+				if(variable == 'meanDose'){
+					var dose = self.data.getMeanDose(self.patient, o);
+				} else{
+					var dose = self.data.getEstimatedDose(self.patient, o);
+				}
+				return yScale(dose) - height/2; 
+			};
+			self.svg.selectAll('.doseRect').filter('.'+variable)
 				.data(self.organList).enter()
-				.append('rect')
-				.attr('class', 'doseRect')
-				.attr('x', function(o,index){ return xScale(index) - width/2;})
-				.attr('y', function(o) {
-					if(variable == 'meanDose'){
-						var dose = self.data.getMeanDose(self.patient, o);
-					} else{
-						var dose = self.data.getEstimatedDose(self.patient, o);
-					}
-					return yScale(dose) - height/2; 
+				.append('path')
+				.attr('class', 'doseRect ' + variable)
+				.attr('id', function(){ 
+					return (variable=='meanDose')? ('organBubble' + self.patient): null;
+				})
+				.attr('d', getShape)
+				.attr('transform', function(d,i){ 
+					return 'translate(' + xScale(i) + ',' + getY(d) + ')';
 				})
 				.attr('fill', color)
 				.attr('width', width)
 				.attr('height', height)
-				.attr('opacity', .8)
-				.attr('stroke-width', .5)
+				.attr('opacity', .9)
+				.attr('stroke-width', 1)
 				.attr('stroke', 'black');
+			console.log(self.svg.selectAll('.doseRect').filter('.'+variable).attr('fill'));
 		}
-		drawDose('meanDose', '#8b0000');
 		drawDose('estimatedDose', '#3d32ff');
+		drawDose('meanDose', this.data.getClusterColor(patient));
 	}
 	
 	Graph.drawOrganBubbles = function(organName, xScale, yScale, rScale){
@@ -171,7 +180,7 @@ var OrganBubblePlot = (function(){
 			var score = self.data.getSimilarity(self.patient, x);
 			return rScale(score);
 		}
-		this.svg.selectAll('.organDot').filter('.' + organName).remove();
+		d3.selectAll('.organDot').filter('.' + organName).remove();
 		var bubbles = this.svg.selectAll('.organDot').filter('.' + organName)
 			.data(this.patientMatches).enter()
 			.append('circle')
@@ -182,8 +191,10 @@ var OrganBubblePlot = (function(){
 			.attr('cy', function(d){ 
 				return yScale(self.data.getMeanDose(d, organName));})
 			.attr('r', getRadius)
-			.attr('opacity', .5)
-			.attr('fill', 'hsl(60, 60%, 50%)')
+			.attr('opacity', .4)
+			.attr('fill', function(d){ 
+				return self.data.getClusterColor(d);
+			})
 			.attr('stroke', 'black')
 			.attr('stroke-width', .1)
 			.on('mouseover', function(d){
