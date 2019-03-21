@@ -135,7 +135,7 @@ var OrganBubblePlot = (function(){
 		var width = .8*this.binWidth;
 		var height = .15*this.binWidth;
 		var self = this;
-		var getShape = d3.symbol().type(d3.symbolTriangle)
+		var getShape = d3.symbol().type(d3.symbolCross)
 			.size((width**2)/4);
 		d3.selectAll('.doseRect').remove();
 		var drawDose = function(variable, color){
@@ -147,7 +147,7 @@ var OrganBubblePlot = (function(){
 				}
 				return yScale(dose) - height/2; 
 			};
-			self.svg.selectAll('.doseRect').filter('.'+variable)
+			return self.svg.selectAll('.doseRect').filter('.'+variable)
 				.data(self.organList).enter()
 				.append('path')
 				.attr('class', 'doseRect ' + variable)
@@ -164,7 +164,6 @@ var OrganBubblePlot = (function(){
 				.attr('opacity', .9)
 				.attr('stroke-width', 1)
 				.attr('stroke', 'black');
-			console.log(self.svg.selectAll('.doseRect').filter('.'+variable).attr('fill'));
 		}
 		drawDose('estimatedDose', '#3d32ff');
 		drawDose('meanDose', this.data.getClusterColor(patient));

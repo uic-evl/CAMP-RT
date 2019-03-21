@@ -161,7 +161,6 @@ option:hover {
 .scatterButton {
   background: hsl(200, 50%, 50%) !important;
   opacity: .4;
-  display: inline-block;
   position: relative;
   margin: .05vh;
   color: white;
@@ -253,13 +252,12 @@ option:hover {
 
 .colorBar{
 	position: relative;
-	width: 60%;
+	width: calc(100% - 1em);
 	height: 30vh;
 	z-index: 2;
-	margin: 1em;
+	margin-right: 1em;
+	overflow: visible;
 	margin-top: 3em;
-	background-color: #888888;
-	box-shadow: 0px 0px 13px 2px rgba(0, 0, 0, 0.7);
 }
 
 .checkboxContainer {
@@ -471,8 +469,23 @@ option:hover {
 .scene {
 	cursor: crosshair;
 	width: 100%;
-	height: calc(100% - 3.2em);
+	height: calc(100% - 2.5em);
 	overflow: hidden;
+}
+
+.sceneToggleButton{
+	width: 63px;
+	font-size: 1.4em;
+	cursor: pointer;
+	padding: .2em;
+	margin-top: .5em;
+	text-align: center;
+	background-color: 'hsl(240, 30%, 70%)';
+	height: 1.7em;
+	margin: 0 auto;
+	display: inline-block;
+	border: .3px solid #333333;
+	top: .5em;
 }
 
 .description {
@@ -491,8 +504,7 @@ option:hover {
 .pScore, .description {
 	background-color: #888888;
 	font-family: sans-serif;
-	font-size: 1.5em;
-	height: 1.7em;
+	font-size: 1.4em;
 	padding: 0.2em;
 	margin: 0 auto;
 	width: 50%;

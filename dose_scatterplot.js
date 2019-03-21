@@ -155,11 +155,11 @@ DoseScatterPlot.prototype.drawCircles = function(selectedPatient){
 	var sizeScale = this.getFeatureScales();
 	var getColor = this.getColor;
 	var getShape = d3.symbol().type(function(d){
-		return (d == selectedPatient)? d3.symbolTriangle:d3.symbolCircle;
+		return (d == selectedPatient)? d3.symbolCross:d3.symbolCircle;
 	}).size(function(d){
 		return sizeScale(self.data.getPatientMeanError(d));
 	});
-	var triangle = d3.symbol().type(d3.symbolTriangle);
+	var triangle = d3.symbol().type(d3.symbolCross);
 	d3.selectAll('.point').remove();
 	this.circles = this.svg.selectAll('.point')
 		.data(this.ids).enter()
@@ -329,7 +329,7 @@ DoseScatterPlot.prototype.highlightSelectedPatients = function(selectedPerson){
 	
 	var sizeScale = this.getFeatureScales();
 	var getShape = d3.symbol().type(function(d){
-			return (d == selectedPerson)? d3.symbolTriangle:d3.symbolCircle;
+			return (d == selectedPerson)? d3.symbolCross:d3.symbolCircle;
 		}).size(function(d){
 			return sizeScale(self.data.getPatientMeanError(d));
 		});

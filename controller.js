@@ -3,13 +3,38 @@ var Controller = (function(){
 	var bubbleData = {};
 	var enableBrush = false;
 	var doseColor = d3.scaleLinear()
-		.domain([0, 105])
+		.domain([0,70])
 		.range(['#ffffe0','#8b0000']);
 	var doseErrorColor = d3.scaleLinear()
 		.domain([0, 20])
 		.range(['#999999','#3d32ff']);
 
 	return {
+		
+		switchScene: function(scene, type, data){
+			var id = scene.userData.element.parentElement.id;
+			scene.children.forEach(function(d){
+				if(d.userData.type == 'node'){
+					var organName = d.name;
+					if(type.toLowerCase() == 'predict'){
+						var dose = data.getEstimatedDose(id, organName);
+						var color = doseColor(dose);
+					} else if(type.toLowerCase() == 'error'){
+						var dose = data.getEstimationError(id, organName);
+						var color = doseErrorColor(dose);
+					} else{
+						var dose = data.getMeanDose(id, organName);
+						var color = doseColor(dose);
+					}
+					d.material.color.set(color);
+					d.userData.meanDose = dose;
+					var model = scene.getObjectByName(organName + '_model');
+					if(model != undefined){
+						model.material.color.set(color);
+					}
+				}
+			});
+		},
 		
 		getDoseColor: function(d){ return doseColor(d); },
 		
