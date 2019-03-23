@@ -14,7 +14,7 @@ var Controller = (function(){
 		switchScene: function(scene, type, data){
 			var id = scene.userData.element.parentElement.id;
 			scene.children.forEach(function(d){
-				if(d.userData.type == 'node'){
+				if(d.userData.type == 'node' && d.name != 'GTVp' && d.name != 'GTVn'){
 					var organName = d.name;
 					if(type.toLowerCase() == 'predict'){
 						var dose = data.getEstimatedDose(id, organName);
@@ -27,7 +27,16 @@ var Controller = (function(){
 						var color = doseColor(dose);
 					}
 					d.material.color.set(color);
-					d.userData.meanDose = dose;
+
+					d.userData.meanDose = dose.toFixed(3);
+					d.userData.dosePerVolume = (dose/data.getOrganVolume(id, organName)).toFixed(3);
+					if(type.toLowerCase() == 'actual'){
+						d.userData.maxDose = data.getMaxDose(id, organName).toFixed(3);
+						d.userData.minDose = data.getMinDose(id, organName).toFixed(3);
+					} else{
+						d.userData.maxDose = '';
+						d.userData.minDose = '';
+					}
 					var model = scene.getObjectByName(organName + '_model');
 					if(model != undefined){
 						model.material.color.set(color);

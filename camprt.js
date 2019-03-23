@@ -570,7 +570,7 @@ function showPatient(materialArray, id, parentDivId){
 	var MovingCube = new THREE.Mesh(MovingCubeGeom, MovingCubeMat);
 
 	camera.add(MovingCube);
-	MovingCube.position.set(121, -121, -250);
+	MovingCube.position.set(110, -110, -250);
 
 	//
 	var controls = new THREE.OrbitControls(scene.userData.camera, scene.userData.element);
