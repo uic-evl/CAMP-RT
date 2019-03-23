@@ -103,6 +103,9 @@ var Controller = (function(){
 			}).on('mouseout', function(d){
 				var id = this.parentNode.id;
 				self.unbrush(id);
+			}).on('click', function(d){
+				var id = this.parentNode.id;
+				switchPatient(id);
 			});
 		}
 	}

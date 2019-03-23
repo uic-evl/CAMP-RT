@@ -80,7 +80,7 @@ manager.onProgress = function (url, itemsLoaded, itemsTotal) {
 var scatter;
 var bubbleChart;
 
-var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset_rtward3Only.json"];
+var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset_v23.json"];
 var promises = [];
 var data; 
 
@@ -775,15 +775,15 @@ function formatFirstPatient(updatedPatient){
 		differenceButton.innerHTML = name;
 		firstPatient.insertBefore(differenceButton, firstPatient.children[1]);
 		if(name == 'Actual'){
-			differenceButton.style.backgroundColor = '#888888';
+			differenceButton.style.opacity = 1;
 		}
 	});
 	d3.selectAll('.sceneToggleButton').on('click', function(){
 		var buttons = document.getElementsByClassName('sceneToggleButton');
 		Array.prototype.forEach.call(buttons, function(e){
-			e.style.backgroundColor = '';
+			e.style.opacity = '';
 		});
-		this.style.backgroundColor = "#888888"
+		this.style.opacity = 1;
 		Controller.switchScene(scenes[0], this.innerHTML, data);
 	});
 }

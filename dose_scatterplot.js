@@ -45,11 +45,9 @@ DoseScatterPlot.prototype.draw = function(target, selectedPerson = null){
 DoseScatterPlot.prototype.setupSwitchButtons = function(){
 	var setSelected = function(element){
 		element.style.opacity = 1;
-		element.style.background = 'hsl(240, 90%, 30%)';
 	}
 	var setUnselected = function(element){
 		element.style.opacity = .4;
-		element.style.background = 'hsl(240, 50%, 30%)';
 	}
 	var doseButton = document.getElementById('doseScatterButton');
 	var distanceButton = document.getElementById('distanceScatterButton');
