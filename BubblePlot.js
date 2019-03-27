@@ -10,7 +10,6 @@ var OrganBubblePlot = (function(){
 		this.data = patientData;
 		this.ids = patientData.getInternalIdList();
 		this.setPatient(patientInternalId);
-		
 		this.width = div.clientWidth;
 		this.height = div.clientHeight
 		this.xMargin = .005*this.width;
@@ -106,11 +105,12 @@ var OrganBubblePlot = (function(){
 			.attr('height', self.height - self.yMargin - self.xAxisSize)
 			.attr('opacity', 0)
 			.on('mouseover', function(d){
-				var axisLine = d3.select( "#" + organList[d] + 'axisLine' )
-				axisLine.attr('stroke', 'white')
-					.attr('stroke-width', .08*self.binWidth);
+				// var axisLine = d3.select( "#" + organList[d] + 'axisLine' )
+				// axisLine.attr('stroke', 'white')
+					// .attr('stroke-width', .08*self.binWidth);
 				var id = self.patient;
 				var organ = self.organList[d];
+				Controller.brushOrgan(organ);
 				self.tooltip.html( organ + '</br>'
 				+ 'Predicted: ' + self.data.getEstimatedDose(id, organ) + ' Gy </br>'
 				+ 'Actual: ' + self.data.getMeanDose(id, organ) + ' Gy')
@@ -122,9 +122,12 @@ var OrganBubblePlot = (function(){
 						.style('top', d3.event.pageY - 50 + 'px');
 				});
 			}).on('mouseout', function(d){
-				var axisLine = d3.select( "#" + organList[d] + 'axisLine' )
-				axisLine.attr('stroke', 'silver')
-					.attr('stroke-width', .05*self.binWidth);
+				// var axisLine = d3.select( "#" + organList[d] + 'axisLine' )
+				// axisLine.attr('stroke', 'silver')
+					// .attr('stroke-width', .05*self.binWidth);
+				//var id = self.patient;
+				var organ = self.organList[d];
+				Controller.unbrushOrgan(organ);
 				self.tooltip.transition().duration(50).style('visibility', 'hidden');
 				d3.select(this).on('mousemove', null);
 			});;

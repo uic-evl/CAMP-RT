@@ -11,6 +11,37 @@ var Controller = (function(){
 
 	return {
 		
+		brushOrgan: function(organ){
+			try{
+				var axisLine = d3.select( "#" + organ + 'axisLine' );
+				axisLine.attr('stroke', 'white')
+					.attr('stroke-width', .1*OrganBubblePlot.binWidth);
+				scenes.forEach(function(scene){
+					var node = scene.getObjectByName(organ);
+					var model = scene.getObjectByName(organ + '_model');
+					//model.material.color.set('white');
+					model.material.opacity = 1;
+				});
+			} catch{}
+		},
+		
+		unbrushOrgan: function(organ){
+			try{
+				var axisLine = d3.select( "#" + organ + 'axisLine' )
+				var currentWidth = axisLine.attr('stroke-width');
+				axisLine.attr('stroke', 'silver')
+					.attr('stroke-width', .05*OrganBubblePlot.binWidth);
+				scenes.forEach(function(scene){
+					var node = scene.getObjectByName(organ);
+					var model = scene.getObjectByName(organ + '_model');
+					var organColor = doseColor(node.userData.meanDose);
+					//model.material.color.set(organColor);
+					var currentOpacity = document.getElementById("opacSlider").value/100.0;
+					model.material.opacity = currentOpacity;
+				});
+			} catch{}
+		},
+		
 		switchScene: function(scene, type, data){
 			var id = scene.userData.element.parentElement.id;
 			scene.children.forEach(function(d){

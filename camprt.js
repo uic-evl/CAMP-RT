@@ -199,16 +199,13 @@ function handleCheckBoxSingle(event) {
     } else {
 
         scenes.forEach(function (scene, index) {
-
             var node = scene.getObjectByName(event.value);
             var model = scene.getObjectByName(String(event.value) + "_model");
-
             if (node && model) {
                 node.visible = false;
                 model.visible = false;
             }
         });
-
         d3.select("#line_" + event.value).attr("display", "none");
     }
 }
@@ -217,11 +214,8 @@ function handleCheckBoxGroup(event) {
     var children = master.getElementsByClassName(event.id[0] + "_GroupChildren");
 
     if (event.checked) {
-
         for (var i = 0; i < children.length; i++) {
-
             children[i].checked = true;
-
             d3.select("#line_" + children[i].value).attr("display", null);
         }
 
@@ -239,23 +233,18 @@ function handleCheckBoxGroup(event) {
 
             }
         });
-
     } else {
 
         for (var i = 0; i < children.length; i++) {
-
             children[i].checked = false;
-            
             d3.select("#line_" + children[i].value).attr("display", "none");
         }
 
         scenes.forEach(function (scene, index) {
-
             for (var i = 0; i < children.length; i++) {
-
                 var node = scene.getObjectByName(children[i].value);
                 var model = scene.getObjectByName(String(children[i].value) + "_model");
-				
+			
                 if (node && model) {
                     node.visible = false;
                     model.visible = false;
@@ -890,12 +879,13 @@ function updateMainView(rotMatrix) {
 		raycaster.setFromCamera(mouseNorm, currScene.userData.camera);
 
 		var intersects = raycaster.intersectObjects(currScene.children);
-
+		
 		if (intersects.length >= 1 && detailsOnRotate) {
-
 			for (var i = intersects.length - 1; i >= 0; i--) {
 
 				if (intersects[i].object.userData.type == "node") {
+					Controller.brushOrgan(intersects[i].object.name);
+					
 
 					nodeHover = intersects[i].object;
 					var tempObject = scene.getObjectByName(nodeHover.name + "_outline");
@@ -918,18 +908,22 @@ function updateMainView(rotMatrix) {
 						populateAndPlaceDetails("SHOW");
 
 					}
-
+				
 					break;
 
 				} else {
+					if(nodeHover != null){
+						Controller.unbrushOrgan(nodeHover.name);
+					}
 					populateAndPlaceDetails("HIDE");
 				}
-
+				
 
 			}
 		} else {
-
+			
 			if (INTERSECTED) {
+				Controller.unbrushOrgan(INTERSECTED.parent.name);
 				INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
 				// details
 				populateAndPlaceDetails("HIDE");
@@ -996,7 +990,6 @@ function populateAndPlaceDetails(state) {
         maxDoseVal.innerHTML = nodeHover.userData.maxDose + "";
 
     } else if (state == "HIDE") {
-
         nodeDetails.style.display = "none";
         nodeDetails.style.top = -500 + "px";
         nodeDetails.style.left = -500 + "px";
