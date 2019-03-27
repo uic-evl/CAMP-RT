@@ -16,7 +16,7 @@ var OrganBubblePlot = (function(){
 		this.xMargin = .005*this.width;
 		this.yMargin = .05*this.height;
 		this.binWidth = (this.width - 2*this.xMargin)/num_organs;
-		this.xAxisSize = 90;
+		this.xAxisSize = 110;
 		this.yAxisSize = 30;
 		
 		d3.selectAll('.bubbleSvg').remove();

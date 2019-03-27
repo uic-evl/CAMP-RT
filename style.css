@@ -15,7 +15,7 @@ body {
 	width: calc(95% - 660px - 4em);
 	height: 100%;
 	overflow: auto;
-	padding: 5em 0 0em 0;
+	padding: 4em 0 0em 0;
 }
 
 #organErrorViz{
@@ -54,7 +54,7 @@ body {
 	left: calc(95% - 660px - 4em);
 	overflow-y: scroll;
 	overflow-x: hide;
-	padding: 5em 0 0em 0;
+	padding: 4em 0 0em 0;
 }
 #topBar{
 	position: absolute;
@@ -107,8 +107,8 @@ a {
 	border: 0px solid red;
 	text-align: left;
 	width: calc(100% - 2em);
-	height: calc(100% - 1em - 390px);
-	min-height: 300px;
+	height: calc(100% - 3em - 390px);
+	min-height: 280px;
 	box-shadow: 1px 1px 12px 1px rgba(0, 0, 0, 0.25);
 }
 
@@ -152,7 +152,7 @@ option:hover {
 	width: 100%;
 	min-width: 1160px;
 	/*height: 80px;*/
-	height: 60px;
+	height: 50px;
 	z-index: 10;
 	box-shadow: 0px 0px 13px 2px rgba(0, 0, 0, 0.7);
 	text-align: center;
@@ -248,7 +248,7 @@ option:hover {
 	width: 4%;
 	left: 96%;
 	height:100%;
-	padding-top: 5em;
+	padding-top: 4em;
 }
 
 .colorBar{
@@ -452,7 +452,7 @@ option:hover {
 	padding: 0em;
 	width: 320px;
 	height: 390px;
-	box-shadow: 1px 1px 12px 1px rgba(0, 0, 0, 0.25);
+	box-shadow: 0px 20px 10px 1px rgba(0, 0, 0, 0.25);
 }
 
 #differenceScene {
@@ -484,6 +484,7 @@ option:hover {
 	display: inline-block;
 	position: relative;
 	border-radius: 5px 5px 0px 0px;
+	box-shadow: .01em -.01em .05em hsl(200, 10%, 20%);
 }
 
 .description {

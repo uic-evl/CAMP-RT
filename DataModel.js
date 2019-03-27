@@ -10,7 +10,7 @@ var Data = function(patientData, oAtlas) {
 		
 		getMeanDoseExtents: function(){
 			var max = 0;
-			var min = 0;
+			var min = 100;
 			var organs = this.getOrganList();
 			data.forEach(function(p){
 				organs.forEach(function(o){
@@ -25,7 +25,7 @@ var Data = function(patientData, oAtlas) {
 		
 		getDoseErrorExtents: function(){
 			var max = 0;
-			var min = 0;
+			var min = 100;
 			var organs = this.getOrganList();
 			data.forEach(function(p){
 				organs.forEach(function(o){

@@ -80,7 +80,7 @@ manager.onProgress = function (url, itemsLoaded, itemsTotal) {
 var scatter;
 var bubbleChart;
 
-var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset_v23.json"];
+var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset_rtward3Only.json"];
 var promises = [];
 var data; 
 
@@ -617,13 +617,7 @@ function showPatient(materialArray, id, parentDivId){
 		var outlineMesh = new THREE.Mesh(geometry, outlineMaterial.clone());
 
 		outlineMesh.name = pOrgan + "_outline";
-
-		if (organSphere.name == "GTVp")
-			outlineMesh.scale.multiplyScalar(1.6);
-		else if (organSphere.name == "GTVn")
-			outlineMesh.scale.multiplyScalar(1.5);
-		else
-			outlineMesh.scale.multiplyScalar(1.3);
+		outlineMesh.scale.multiplyScalar(1.3);
 
 		// color
 		var nodeColor;
@@ -638,10 +632,14 @@ function showPatient(materialArray, id, parentDivId){
 		// do this in python script maybe
 		//grays are already in joules per kilogram?!?!? I might want to delete this because it's misleading to users
 		organSphere.userData.dosePerVolume = (data.getMeanDose(id, pOrgan) / data.getOrganVolume(id, pOrgan)).toFixed(3);
-
-		if (organSphere.userData.meanDose >= 0.0) //null == -1 in json, pearson problems
+		if(organSphere.name == 'GTVn' || organSphere.name == 'GTVp'){
+			nodeColor = 'black';
+			outlineMesh.scale.multiplyScalar(1.2);
+			let tumorOutline = Controller.getDoseColor(organSphere.userData.meanDose);
+			outlineMesh.material.color.set( tumorOutline );
+		} else if (organSphere.userData.meanDose >= 0.0){ //null == -1 in json, pearson problems
 			nodeColor = Controller.getDoseColor(organSphere.userData.meanDose);
-		else {
+		}else {
 			nodeColor = '#a0a0a0'; 
 			organSphere.userData.meanDose = undefined;
 			organSphere.userData.dosePerVolume = undefined;

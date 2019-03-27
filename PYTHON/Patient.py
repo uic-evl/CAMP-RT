@@ -16,6 +16,7 @@ class Patient():
         #patient ID number
         self.id = p_id
         self.group = group
+        self.neck_boost = (info['Neck boost (Y/N)'] == 'Y')
         ##self.high_throat_dose = 1 if p_id in Constants.v2_high_throat_dose else 0
         #basically ordinality of the id, so where it will be in an index
         self.laterality = info['Tm Laterality (R/L)']

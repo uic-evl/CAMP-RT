@@ -150,7 +150,7 @@ class PatientSet():
         num_patients = len(ids)
         metadata = pd.read_csv(metadata_file,
                                index_col = 0, #index is the "Dummy ID"
-                               usecols = [0,1,2,3,4,5,6,7,8,9,10,11,31]
+                               usecols = [0,1,2,3,4,5,6,7,8,9,10,11,18,31]
                                ).loc[ids]
         patients = OrderedDict()
         dose_matrix = np.zeros((num_patients, len(Constants.organ_list)))
@@ -514,13 +514,15 @@ class PatientSet():
         patient_mean_error = self.labeled_mean_error(differences, axis = 1)
         organ_mean_error = self.labeled_mean_error(differences, axis = 0)
         total_mean_error = np.mean(np.abs(differences))
+        percent_error = np.sum(np.abs(differences), axis = 1)/np.sum(self.doses, axis = 1)
         total_rmse = np.sqrt(np.mean(differences**2))
         result_dict = {'prediction': estimates,
                        'patient_mean_error': patient_mean_error,
                        'mean_error': total_mean_error,
                        'rmse': total_rmse,
                        'differences': differences,
-                       'organ_mean_error': organ_mean_error}
+                       'organ_mean_error': organ_mean_error,
+                       'percent_error': percent_error}
         if key is not None:
             try:
                 return(result_dict[key])
