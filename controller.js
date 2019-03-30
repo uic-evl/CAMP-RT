@@ -89,6 +89,7 @@ var Controller = (function(){
 				//highlight patient matches in other views on mousover
 				var patientView = document.getElementById(id);
 				if(patientView != null){
+					patientView.style.boxShadow = '0px 5px 5px 10px white';
 					var description = patientView.querySelector('.description');
 					description.style.color = 'white';;
 				}
@@ -116,6 +117,7 @@ var Controller = (function(){
 			if(enableBrush){
 				var patientView = document.getElementById(id);
 				if(patientView != null){
+					patientView.style.boxShadow = '';
 					var description = patientView.querySelector('.description');
 					description.style.color = 'black';
 				}

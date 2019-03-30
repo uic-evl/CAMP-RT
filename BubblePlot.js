@@ -201,7 +201,7 @@ var OrganBubblePlot = (function(){
 			.attr('stroke-width', .1)
 			.on('mouseover', function(d){
 				tooltip.html(self.data.getPatientName(d) + '</br>'
-				+ 'dose: ' + self.data.getPatientMeanDose(d) + ' Gy')
+				+ 'dose: ' + self.data.getMeanDose(d, organName).toFixed(2) + ' Gy')
 				.style('left', d3.event.pageX + 10 + 'px')
 				.style('top', d3.event.pageY - 30 + 'px');
 				tooltip.transition().duration(50).style('visibility','visible');

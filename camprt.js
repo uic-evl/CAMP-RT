@@ -80,7 +80,7 @@ manager.onProgress = function (url, itemsLoaded, itemsTotal) {
 var scatter;
 var bubbleChart;
 
-var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset_rtward3Only.json"];
+var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset_v23.json"];
 var promises = [];
 var data; 
 
@@ -745,14 +745,15 @@ function switchPatient(updatedPatient){
 
 function formatFirstPatient(updatedPatient){
 	var firstPatient = document.getElementById(updatedPatient);
+	var titleWidth = 140;
+	var tabWidth = (firstPatient.clientWidth - titleWidth)/3;
 	firstPatient.style.display = "none";
 	firstPatient.parentElement.insertBefore(firstPatient, firstPatient.parentElement.childNodes[2] );
 	firstPatient.style.zIndex = 1;
 	var description = firstPatient.querySelector('.description');
 	description.innerHTML += ' &#10010'
 		.fontcolor(data.getClusterColor(updatedPatient));//add a colored cross by the selected patients name
-	description.style.width = '131px';//320 is whole width
-    // first patient always has score of 1, clear it
+	description.style.width = titleWidth + 'px';//320 is whole width
     firstPatient.querySelector(".pScore").remove();
 	var buttonNames = ['Error', 'Predict', 'Actual'];
 	buttonNames.forEach(function(name){
@@ -760,6 +761,7 @@ function formatFirstPatient(updatedPatient){
 		var differenceButton = document.createElement('div')
 		differenceButton.className = 'sceneToggleButton';
 		differenceButton.innerHTML = name;
+		differenceButton.style.width = tabWidth+ 'px';
 		firstPatient.insertBefore(differenceButton, firstPatient.children[1]);
 		if(name == 'Actual'){
 			differenceButton.style.opacity = 1;

@@ -30,8 +30,8 @@ DoseScatterPlot.prototype.draw = function(target, selectedPerson = null){
 	this.tooltip = d3.select("div.tooltip")
 			.attr('class','tooltip')
 			.style('visibility','hidden');
-	this.getXAxis = function(d){ return self.data.getDosePCA(d, 1); };
-	this.getYAxis = function(d){ return self.data.getDosePCA(d, 2); };
+	this.getXAxis = function(d){ return self.data.getDistancePCA(d, 1); };
+	this.getYAxis = function(d){ return self.data.getDistancePCA(d, 2); };
 	this.drawCircles(selectedPerson);
 	if (selectedPatient != null){
 		this.highlightSelectedPatients(selectedPerson);
@@ -52,8 +52,8 @@ DoseScatterPlot.prototype.setupSwitchButtons = function(){
 	var doseButton = document.getElementById('doseScatterButton');
 	var distanceButton = document.getElementById('distanceScatterButton');
 	var stagingButton = document.getElementById('stagingScatterButton');
-	setSelected(doseButton);
-	setUnselected(distanceButton);
+	setSelected(distanceButton);
+	setUnselected(doseButton);
 	setUnselected(stagingButton);
 	var self = this;
 	doseButton.addEventListener('click', function(){
