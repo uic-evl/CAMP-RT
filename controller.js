@@ -2,6 +2,7 @@ var Controller = (function(){
 	var scatterData = {};
 	var bubbleData = {};
 	var enableBrush = false;
+	var brushedOrgans = [];
 	var doseColor = d3.scaleLinear()
 		.domain([0,70])
 		.range(['#ffffe0','#8b0000']);
@@ -22,23 +23,27 @@ var Controller = (function(){
 					//model.material.color.set('white');
 					model.material.opacity = 1;
 				});
+				brushedOrgans.push(organ);
 			} catch{}
 		},
 		
-		unbrushOrgan: function(organ){
+		unbrushOrgan: function(){
 			try{
-				var axisLine = d3.select( "#" + organ + 'axisLine' )
-				var currentWidth = axisLine.attr('stroke-width');
-				axisLine.attr('stroke', 'silver')
-					.attr('stroke-width', .05*OrganBubblePlot.binWidth);
-				scenes.forEach(function(scene){
-					var node = scene.getObjectByName(organ);
-					var model = scene.getObjectByName(organ + '_model');
-					var organColor = doseColor(node.userData.meanDose);
-					//model.material.color.set(organColor);
-					var currentOpacity = document.getElementById("opacSlider").value/100.0;
-					model.material.opacity = currentOpacity;
+				brushedOrgans.forEach(function(organ){
+					var axisLine = d3.select( "#" + organ + 'axisLine' )
+					var currentWidth = axisLine.attr('stroke-width');
+					axisLine.attr('stroke', 'silver')
+						.attr('stroke-width', .05*OrganBubblePlot.binWidth);
+					scenes.forEach(function(scene){
+						var node = scene.getObjectByName(organ);
+						var model = scene.getObjectByName(organ + '_model');
+						var organColor = doseColor(node.userData.meanDose);
+						//model.material.color.set(organColor);
+						var currentOpacity = document.getElementById("opacSlider").value/100.0;
+						model.material.opacity = currentOpacity;
+					});
 				});
+				brushedOrgans = [];
 			} catch{}
 		},
 		
@@ -138,6 +143,7 @@ var Controller = (function(){
 		},
 		 
 		setup: function(){
+			//setup general listenrs
 			var self = this;
 			d3.selectAll('.description').on('mouseover', function(d){
 				var id = this.parentNode.id;
@@ -149,6 +155,7 @@ var Controller = (function(){
 				var id = this.parentNode.id;
 				switchPatient(id);
 			});
+			
 		}
 	}
 })();

@@ -127,7 +127,7 @@ var OrganBubblePlot = (function(){
 					// .attr('stroke-width', .05*self.binWidth);
 				//var id = self.patient;
 				var organ = self.organList[d];
-				Controller.unbrushOrgan(organ);
+				Controller.unbrushOrgan();
 				self.tooltip.transition().duration(50).style('visibility', 'hidden');
 				d3.select(this).on('mousemove', null);
 			});;

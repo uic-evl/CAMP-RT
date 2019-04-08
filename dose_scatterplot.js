@@ -231,7 +231,7 @@ DoseScatterPlot.prototype.drawClusterCircles = function(margin){
 		.attr('class','clusterCurves')
 		.attr('fill', 'none')
 		.attr('stroke', function(d) {return d.color;})
-		.attr('stroke-width', margin/3)
+		.attr('stroke-width', margin/1.5)
 		.attr('opacity',.3)
 		.merge(arc).transition().duration(800)
 		.attr('d', function(d){return arcPath(d);})

@@ -7,12 +7,15 @@ body {
 	font-family: sans-serif;
 	font-size: 13px;
 	margin: 0px;
+	--scene-width: 22em;
+	--scene-height: 29em;
+	--scene-margin: .8em;
 }
 
 #leftContent {
 	position: absolute;
 	top: 0;
-	width: calc(95% - 660px - 4em);
+	width: calc(95% - 2*var(--scene-width) - 4*var(--scene-margin));
 	height: 100%;
 	overflow: auto;
 	padding: 4em 0 0em 0;
@@ -22,10 +25,10 @@ body {
 	position: relative;
 	background-color: #888888;
 	display: inline-block;
-	width: calc(100% - 330px - 4em);
-	margin: 1em;
+	width: calc(100% - var(--scene-width) - 4*var(--scene-margin));
+	margin: var(--scene-margin);
 	margin-top: 0 auto;
-	height: calc(390px - 1.4em);
+	height: calc( var(--scene-height) - 1.4*var(--scene-margin));
 	z-index: 2;
 	vertical-align: top;
 	box-shadow: 1px 1px 12px 1px rgba(0, 0, 0, 0.25);
@@ -49,8 +52,8 @@ body {
 	position: absolute;
 	top: 0;
 	height: 100%;
-	width: calc(1% + 4em + 660px);
-	left: calc(95% - 660px - 4em);
+	width: calc(2% + 2*var(--scene-width) + 4*var(--scene-margin));
+	left: calc(95% - 2*var(--scene-width) - 4*var(--scene-margin));
 	overflow-y: scroll;
 	overflow-x: visible;
 	padding-top: 4em;
@@ -102,11 +105,11 @@ a {
 	position: relative;
 	z-index: 1;
 	background-color: #888888;
-	margin: 1em;
+	margin: var(--scene-margin);
 	border: 0px solid red;
 	text-align: left;
 	width: calc(100% - 2em);
-	height: calc(100% - 3em - 390px);
+	height: calc(100% - var(--scene-height) - 3*var(--scene-margin));
 	min-height: 280px;
 	box-shadow: 1px 1px 12px 1px rgba(0, 0, 0, 0.25);
 }
@@ -447,25 +450,18 @@ option:hover {
 	position: relative;
 	display: inline-block;
 	z-index: 1;
-	margin: 1em;
+	margin: var(--scene-margin);
 	padding: 0em;
-	width: 320px;
-	height: 390px;
+	width: var(--scene-width);
+	height: var(--scene-height);
 	box-shadow: 0px 20px 10px 1px rgba(0, 0, 0, 0.25);
-}
-
-#differenceScene {
-	position: relative;
-	display: inline-block;
-	margin: 1em;
-	padding: 0em;
 }
 
 .scene {
 	cursor: crosshair;
 	width: 100%;
-	height: calc(100% - 3.2em);
 	overflow: hidden;
+	height: calc(99% - 3em);
 }
 
 .sceneToggleButton{
@@ -512,16 +508,15 @@ option:hover {
 	color: #343434;
 	background-color: #888888;
 	width: 100%;
-	height: 1.5em;
 	font-family: sans-serif;
 	font-size: 1.1em;
 	padding: .2em;
 	overflow: visible;
+	height: 1.3em;
 }
 
 .totDose {
 	float: left;
-	padding-right: 20px;
 	height: 100%;
 	text-align: left;
 }

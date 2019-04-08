@@ -513,6 +513,7 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
 }
 
 function showPatient(materialArray, id, parentDivId){
+	//adds a patient view I think
 	var scene = new THREE.Scene();
 	var patient = data.getPatient(id);
 	var patientOrganList = patient.organData;
@@ -559,7 +560,7 @@ function showPatient(materialArray, id, parentDivId){
 	var MovingCube = new THREE.Mesh(MovingCubeGeom, MovingCubeMat);
 
 	camera.add(MovingCube);
-	MovingCube.position.set(110, -110, -250);
+	MovingCube.position.set(90, -90, -260);
 
 	//
 	var controls = new THREE.OrbitControls(scene.userData.camera, scene.userData.element);
@@ -728,6 +729,7 @@ function removeOldViews(selectedPatientObject){
 }
 
 function switchPatient(updatedPatient){
+	//event to call when a new patient is brought into the focuse
 	if(updatedPatient == selectedPatient){ 
 		return;
 	}
@@ -744,8 +746,9 @@ function switchPatient(updatedPatient){
 }
 
 function formatFirstPatient(updatedPatient){
+	//messes with the html to give the first patient view tabs instead of a sim score
 	var firstPatient = document.getElementById(updatedPatient);
-	var titleWidth = 140;
+	var titleWidth = 140;//largest width that fits the longest id
 	var tabWidth = (firstPatient.clientWidth - titleWidth)/3;
 	firstPatient.style.display = "none";
 	firstPatient.parentElement.insertBefore(firstPatient, firstPatient.parentElement.childNodes[2] );
@@ -753,9 +756,9 @@ function formatFirstPatient(updatedPatient){
 	var description = firstPatient.querySelector('.description');
 	description.innerHTML += ' &#10010'
 		.fontcolor(data.getClusterColor(updatedPatient));//add a colored cross by the selected patients name
-	description.style.width = titleWidth + 'px';//320 is whole width
+	description.style.width = titleWidth + 'px';
     firstPatient.querySelector(".pScore").remove();
-	var buttonNames = ['Error', 'Predict', 'Actual'];
+	var buttonNames = ['Error', 'Pred.', 'Real'];
 	buttonNames.forEach(function(name){
 		var sceneElement = firstPatient.querySelector('.scene');
 		var differenceButton = document.createElement('div')
@@ -763,7 +766,7 @@ function formatFirstPatient(updatedPatient){
 		differenceButton.innerHTML = name;
 		differenceButton.style.width = tabWidth+ 'px';
 		firstPatient.insertBefore(differenceButton, firstPatient.children[1]);
-		if(name == 'Actual'){
+		if(name == 'Real'){
 			differenceButton.style.opacity = 1;
 		}
 	});
@@ -810,7 +813,7 @@ function updateOrder(updatedPatient) {
 }
 
 function initializeRiskPrediction(rank) {
-	
+	//I don't know what this does but removing it breaks everything.  
     var simScores = data.getPatientSimilarityScores(rank);
     for (var j = 0; j < patientsToShow && j < simScores.length; j++) {
         var p = document.getElementById(data.getPatientMatches(selectedPatient)[j]);
@@ -840,9 +843,9 @@ function render() {
 }
 
 function updateMainView(rotMatrix) {
+	//roates views, also does hover event and brushing for nodes
 	var raycaster = new THREE.Raycaster();
     var rotMatrix = new THREE.Matrix4();
-	//scenes = updateScenes(selectedPatient, materialArray);
 
 	for (var index = 0; index < scenes.length; index++) {
 		var scene = scenes[index];
@@ -939,7 +942,7 @@ function updateMainView(rotMatrix) {
 }
 
 function updateSize() {
-
+	//pretty sure this makes the canvas always the same size as the main thing
     var width = canvas.clientWidth;
     var height = canvas.clientHeight;
 
@@ -948,7 +951,7 @@ function updateSize() {
 }
 
 function populateAndPlaceDetails(state) {
-
+	//I think this is hte organ-centroid tooltip
     if (state == "SHOW") {
 
         nodeDetails.style.display = "block";
@@ -1086,7 +1089,7 @@ function onDocumentMouseMove(event) {
 }
 
 document.getElementById("opacSlider").oninput = function () {
-
+	//changes the opacity of the organs when the slider in the top is moved;
     var opac = (this.value / 100.0);
 	ColorScale.setOpacity(opac);
 	console
