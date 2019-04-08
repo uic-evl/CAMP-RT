@@ -22,7 +22,6 @@ var organName = document.getElementById("details_organName"),
 
 var scenes = [],
     renderer;
-
 	
 var selectedPatient = 1;
 //patients shown on load screen?
@@ -66,37 +65,50 @@ manager.onStart = function(url, itemsLoaded, itemsTotal){
 	document.getElementById("loadScreen").style.display = "block";
 }
 
-manager.onLoad = function () {
-	//this may break this because I moved it to the front
-	initializeRiskPrediction(selectedPatient);
-    document.getElementById("loadScreen").style.display = "none";
-	Controller.toggleBrush(true);
-};
-
-manager.onProgress = function (url, itemsLoaded, itemsTotal) {
-    document.getElementById("loadProgress").innerHTML = parseInt(itemsLoaded / itemsTotal * 100) + " %"
-};
-
 var scatter;
 var bubbleChart;
-
+var data;
+var meshes;
 var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset_v23.json"];
 var promises = [];
-var data; 
 
 files.forEach(function (url) {
     promises.push(d3.json(url));
 });
 
 Promise.all(promises).then(function (values) {
-    start(values[0], values[1]);
+	oAtlas = values[0][0];
+	data = Data(values[1], oAtlas);
+	meshes = loadOrganMeshes();
 });
 
-function start(organAtlas, patientsData) {
-    oAtlas = organAtlas[0];
-	data = Data(patientsData, oAtlas);
-    selectedPatient = populateDropDownMenu();
+manager.onLoad = function () {
+	//this may break this because I moved it to the front
+	start();
+};
 
+manager.onProgress = function (url, itemsLoaded, itemsTotal) {
+    document.getElementById("loadProgress").innerHTML = parseInt(itemsLoaded / itemsTotal * 100) + " %"
+};
+
+function loadOrganMeshes(){
+	let loader = new THREE.VTKLoader(manager);
+	let organs = data.getOrganList();
+	var meshes = {};
+	organs.forEach(function(organ){
+		loader.load('resources/models/' + organ + '.vtk', function(geometry){
+			geometry.computeVertexNormals();
+            geometry.center();
+
+			meshes[String(organ)] = geometry;
+		});
+	});
+	return meshes;
+}
+
+function start() {
+	
+    selectedPatient = populateDropDownMenu();
     init(); // initialize
 
     populateOrganMasterList();
@@ -122,6 +134,9 @@ function start(organAtlas, patientsData) {
 		OrganBubblePlot.init('bubbleChart', selectedPatient, data);
 		Controller.setup();
 	});
+	initializeRiskPrediction(selectedPatient);
+	document.getElementById("loadScreen").style.display = "none";
+	Controller.toggleBrush(true);
 }
 
 // ----------------------------------------------------------------
@@ -253,8 +268,6 @@ function handleCheckBoxGroup(event) {
             }
         });
     }
-
-
 }
 
 function populateOrganMasterList() {
@@ -455,17 +468,10 @@ function updateScenes(selectedPatient, material){
 }
 
 function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
-    let loader = new THREE.VTKLoader(manager);
-
     if (!(pOrgan == "GTVn" || pOrgan == "GTVp")) {
-
-        loader.load('resources/models/' + pOrgan + '.vtk', function (geometry) {
-
-            geometry.computeVertexNormals();
-            geometry.center();
-
-            let material = new THREE.MeshBasicMaterial({
-                color: nodeColor,
+		var geometry = meshes[String(pOrgan)];
+		let material = new THREE.MeshBasicMaterial({
+				color: nodeColor,
                 opacity: 0.2,
                 transparent: true,
                 depthTest: true,
@@ -473,42 +479,41 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
                 depthFunc: THREE.LessEqualDepth
             });
 
-            let mesh = new THREE.Mesh(geometry, material);
-            mesh.name = (String(pOrgan) + "_model");
-            mesh.userData.type = "node_model";
+        let mesh = new THREE.Mesh(geometry, material);
+		mesh.name = (String(pOrgan) + "_model");
+		mesh.userData.type = "node_model";
 
-            mesh.position.x = organProperties.x;
-            mesh.position.y = organProperties.y;
-            mesh.position.z = organProperties.z;
+		mesh.position.x = organProperties.x;
+		mesh.position.y = organProperties.y;
+		mesh.position.z = organProperties.z;
 
-            mesh.rotation.x = -Math.PI / 2.0;
-            mesh.rotation.z = -Math.PI / 2;
+		mesh.rotation.x = -Math.PI / 2.0;
+		mesh.rotation.z = -Math.PI / 2;
+
+		// oral cavity
+		if (pOrgan == "Tongue")
+			mesh.renderOrder = -10;
+		else if (pOrgan == "Genioglossus_M")
+			mesh.renderOrder = -10;
+		else if (pOrgan == "Lt_Ant_Digastric_M")
+			mesh.renderOrder = -10;
+		else if (pOrgan == "Mylogeniohyoid_M")
+			mesh.renderOrder = -10;
+		else if (pOrgan == "Rt_Ant_Digastric_M")
+			mesh.renderOrder = -10;
+
+		else if (pOrgan == "Extended_Oral_Cavity")
+			mesh.renderOrder = -9;
+
+		// throat
+		else if (pOrgan == "Larynx")
+			mesh.renderOrder = -10;
+		else if (pOrgan == "Supraglottic_Larynx")
+			mesh.renderOrder = -9;
 
 
-            // oral cavity
-            if (pOrgan == "Tongue")
-                mesh.renderOrder = -10;
-            else if (pOrgan == "Genioglossus_M")
-                mesh.renderOrder = -10;
-            else if (pOrgan == "Lt_Ant_Digastric_M")
-                mesh.renderOrder = -10;
-            else if (pOrgan == "Mylogeniohyoid_M")
-                mesh.renderOrder = -10;
-            else if (pOrgan == "Rt_Ant_Digastric_M")
-                mesh.renderOrder = -10;
-
-            else if (pOrgan == "Extended_Oral_Cavity")
-                mesh.renderOrder = -9;
-
-            // throat
-            else if (pOrgan == "Larynx")
-                mesh.renderOrder = -10;
-            else if (pOrgan == "Supraglottic_Larynx")
-                mesh.renderOrder = -9;
-
-
-            scene.add(mesh);
-        });
+		scene.add(mesh);
+	
     }
 }
 
@@ -737,11 +742,19 @@ function switchPatient(updatedPatient){
 	document.getElementById("patientMenu").value = selectedPatient
 	var patientObject = data.getPatient(updatedPatient);
 	removeOldViews(patientObject); //removes old views
-	scenes = updateScenes(selectedPatient, materialArray);//populates required views
+	var sceneLoaded = new Promise( function(resolve, reject){
+		Controller.toggleBrush(false);
+		var newScenes = updateScenes(selectedPatient, materialArray);//populates required views
+		resolve(newScenes);
+	});
+	sceneLoaded.then(function(newScenes){
+		scenes = newScenes;
+		initializeRiskPrediction(selectedPatient);
+		Controller.toggleBrush(true);
+	});
 	updateOrder(updatedPatient);
 	scatter.highlightSelectedPatients(updatedPatient); 
 	OrganBubblePlot.switchPatient(updatedPatient);
-	Controller.toggleBrush(false);
 	Controller.setup();
 }
 

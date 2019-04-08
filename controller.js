@@ -52,7 +52,7 @@ var Controller = (function(){
 			scene.children.forEach(function(d){
 				if(d.userData.type == 'node' && d.name != 'GTVp' && d.name != 'GTVn'){
 					var organName = d.name;
-					if(type.toLowerCase() == 'predict'){
+					if(type.toLowerCase() == 'pred.'){
 						var dose = data.getEstimatedDose(id, organName);
 						var color = doseColor(dose);
 					} else if(type.toLowerCase() == 'error'){
