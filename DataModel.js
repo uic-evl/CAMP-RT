@@ -155,7 +155,17 @@ var Data = function(patientData, oAtlas) {
 		
 		getPatientMatches: function(id){
 			var patient = this.getPatient(id);
-			return patient.similarity_ssim;
+			//double check that the patient is it's first match
+			let matches = patient.similarity_ssim;
+			let position = matches.indexOf(+id);
+			if(position != 0){
+				console.log(matches);
+				matches.splice(position, 1);
+				matches.unshift(+id);
+				let scores = patient.scores_ssim;
+				scores.unshift( scores.splice(position, 1) );
+			}
+			return matches;
 		},
 		
 		getPatientSimilarityScores: function(id){

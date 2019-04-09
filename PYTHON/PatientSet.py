@@ -374,7 +374,7 @@ class PatientSet():
                 scores[row, col] = np.nanmean(score)
         #scores is a semetric matrix, normalize from 0-1 in case I use something that's not the ssim
         scores += np.transpose(scores)
-        scores = (scores - scores.min()) / (scores.max() - scores.min())
+        scores = .999*(scores - scores.min()) / (scores.max() - scores.min())
         return(scores)
 
     def predict_doses(self,weights, num_matches = 5):
