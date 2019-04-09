@@ -742,6 +742,7 @@ function switchPatient(updatedPatient){
 	document.getElementById("patientMenu").value = selectedPatient
 	var patientObject = data.getPatient(updatedPatient);
 	removeOldViews(patientObject); //removes old views
+	//waits for new scenes to load
 	var sceneLoaded = new Promise( function(resolve, reject){
 		Controller.toggleBrush(false);
 		var newScenes = updateScenes(selectedPatient, materialArray);//populates required views
@@ -761,28 +762,31 @@ function switchPatient(updatedPatient){
 function formatFirstPatient(updatedPatient){
 	//messes with the html to give the first patient view tabs instead of a sim score
 	var firstPatient = document.getElementById(updatedPatient);
-	var titleWidth = 140;//largest width that fits the longest id
-	var tabWidth = (firstPatient.clientWidth - titleWidth)/3;
 	firstPatient.style.display = "none";
 	firstPatient.parentElement.insertBefore(firstPatient, firstPatient.parentElement.childNodes[2] );
 	firstPatient.style.zIndex = 1;
-	var description = firstPatient.querySelector('.description');
-	description.innerHTML += ' &#10010'
-		.fontcolor(data.getClusterColor(updatedPatient));//add a colored cross by the selected patients name
-	description.style.width = titleWidth + 'px';
     firstPatient.querySelector(".pScore").remove();
-	var buttonNames = ['Error', 'Pred.', 'Real'];
-	buttonNames.forEach(function(name){
-		var sceneElement = firstPatient.querySelector('.scene');
+	var description = firstPatient.querySelector('.description');
+	let crossColor = data.getClusterColor(updatedPatient);
+	description.innerHTML = description.innerHTML 
+		+ '<span style=\'font-size:.9em;padding:0px;margin:0px;color:' 
+		+ crossColor 
+		+ ';\'>&#10010</span>';//add a colored cross by the selected patients name
+	var patientSceneTop = firstPatient.querySelector('.patientSceneTop');
+	patientSceneTop.style.gridTemplateColumns = '1fr 1fr 1fr 1fr';
+	var buttonNames = ['Real', 'Error', 'Pred.'];
+	buttonNames.forEach(function(name,idx){
 		var differenceButton = document.createElement('div')
 		differenceButton.className = 'sceneToggleButton';
 		differenceButton.innerHTML = name;
-		differenceButton.style.width = tabWidth+ 'px';
-		firstPatient.insertBefore(differenceButton, firstPatient.children[1]);
+		differenceButton.style.gridColumnStart = idx + 2;
+		differenceButton.style.gridRowStart = 1;
+		patientSceneTop.append(differenceButton);
 		if(name == 'Real'){
 			differenceButton.style.opacity = 1;
 		}
 	});
+	
 	d3.selectAll('.sceneToggleButton').on('click', function(){
 		var buttons = document.getElementsByClassName('sceneToggleButton');
 		Array.prototype.forEach.call(buttons, function(e){

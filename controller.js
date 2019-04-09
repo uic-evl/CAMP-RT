@@ -146,13 +146,13 @@ var Controller = (function(){
 			//setup general listenrs
 			var self = this;
 			d3.selectAll('.description').on('mouseover', function(d){
-				var id = this.parentNode.id;
+				var id = this.parentNode.parentNode.id;
 				self.brush(id);
 			}).on('mouseout', function(d){
-				var id = this.parentNode.id;
+				var id = this.parentNode.parentNode.id;
 				self.unbrush(id);
 			}).on('click', function(d){
-				var id = this.parentNode.id;
+				var id = this.parentNode.parentNode.id;
 				switchPatient(id);
 			});
 			
