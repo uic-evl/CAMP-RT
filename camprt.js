@@ -69,7 +69,7 @@ var scatter;
 var bubbleChart;
 var data;
 var meshes;
-var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset_v23.json"];
+var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset_v3.json"];
 var promises = [];
 
 files.forEach(function (url) {
@@ -750,10 +750,10 @@ function switchPatient(updatedPatient){
 	});
 	sceneLoaded.then(function(newScenes){
 		scenes = newScenes;
+		updateOrder(updatedPatient);
 		initializeRiskPrediction(selectedPatient);
 		Controller.toggleBrush(true);
 	});
-	updateOrder(updatedPatient);
 	scatter.highlightSelectedPatients(updatedPatient); 
 	OrganBubblePlot.switchPatient(updatedPatient);
 	Controller.setup();
@@ -802,8 +802,11 @@ function updateOrder(updatedPatient) {
     var lastPatient = document.getElementById(data.getPatientMatches(selectedPatient)[scenes.length - 1]);
 	formatFirstPatient(updatedPatient);
     //insert last element from patientMatches in last place (before null)
-    parent.insertBefore(lastPatient, null);
-	
+    try{
+		parent.insertBefore(lastPatient, null);
+	} catch{
+		console.log('insert failed ' + lastPatient);
+	}
 	var first;
 	var second;
 	var patientMatches = data.getPatientMatches(selectedPatient);
@@ -851,8 +854,9 @@ function render() {
     renderer.setClearColor(0xbbbbbb);//will be background color
     renderer.setScissorTest(false);
     renderer.clear();
-
-    renderer.setClearColor(0x888888);//will be color in viewport?
+	let plotBackgroundColor = getComputedStyle(document.body).getPropertyValue('--plot-background-color');
+	plotBackgroundColor = parseInt( plotBackgroundColor.replace('#','0x'), 16);
+    renderer.setClearColor( plotBackgroundColor );//will be color in viewport?
     renderer.setScissorTest(true);
 
     updateMainView();

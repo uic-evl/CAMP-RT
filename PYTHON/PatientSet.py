@@ -176,7 +176,6 @@ class PatientSet():
             #misc patient info - laterality, subsite, total dose, etc
             info = metadata.loc[ids[patient_index]]
             group = self.get_patient_class(ids[patient_index], doses.set_index('ROI').mean_dose)
-            print(group)
             new_patient = Patient(distances, doses,
                                   ids[patient_index], group, info)
             patients[patient_index] = new_patient
@@ -212,15 +211,16 @@ class PatientSet():
     def check_if_full_dose(self, dose_vector):
         #checks difference in sternoceldomastoids to seperate out unilaterally dosed patients?
         #may be used for getting classes eventually?
-        if isinstance(dose_vector, pd.core.series.Series):
-            ls = dose_vector.loc['Lt_Sternocleidomastoid_M']
-            rs = dose_vector.loc['Rt_Sternocleidomastoid_M']
-        elif isinstance(dose_vector, (np.ndarray, np.array)):
-            ls_pos = Constants.organ_list.index('Lt_Sternocleidomastoid_M')
-            rs_pos = Constants.organ_list.index('Rt_Sternocleidomastoid_M')
-            ls = dose_vector[ls_pos]
-            rs = dose_vector[rs_pos]
-        else:
+        try:
+            if isinstance(dose_vector, pd.core.series.Series):
+                ls = dose_vector.loc['Lt_Sternocleidomastoid_M']
+                rs = dose_vector.loc['Rt_Sternocleidomastoid_M']
+            else:
+                ls_pos = Constants.organ_list.index('Lt_Sternocleidomastoid_M')
+                rs_pos = Constants.organ_list.index('Rt_Sternocleidomastoid_M')
+                ls = dose_vector[ls_pos]
+                rs = dose_vector[rs_pos]
+        except:
             print('error in getting dose?')
             ls = 1
             rs = 1
@@ -262,7 +262,6 @@ class PatientSet():
             self.num_classes = 0
         for p in self.get_patients():
             p.group = self.get_patient_class(p.id, p.doses)
-        print(self.get_class_list())
 
     def export(self, weights = np.array([0,1]) ,
                rank_function = 'tumor_organ_ssim',
@@ -276,6 +275,7 @@ class PatientSet():
         patient_mean_error = np.mean(np.absolute(self.doses - dose_estimates), axis = 1)
         dose_pca = Rankings.pca(self.doses)
         distance_pca = Rankings.pca( self.gen_tumor_distance_matrix()[0] )
+        print(distance_pca)
         for p_idx in range(0, self.num_patients):
             patient = self.patients[p_idx]
             entry = patient.to_ordered_dict(dose_estimates[p_idx, :])
@@ -482,30 +482,10 @@ class PatientSet():
         feature_names = Constants.organ_list
         for patient_idx in range(0, self.num_patients):
             patient = self.patients[patient_idx]
-            features[patient_idx, :] = patient.tumor_distances
+            features[patient_idx, :] = np.nan_to_num(patient.tumor_distances)
         #standarization, not needed for binary trees though
 #        features = (features - np.mean(features, axis = 0))/(np.std(features, axis = 0))
         return (features, feature_names)
-
-    def gen_patient_feature_matrix(self):
-        #function to get a matrix I can try some dose prediction on?
-        features = np.zeros((self.num_patients, 14))
-        feature_names = ['gtvp volume', 'gtvn volume', 'prescribed dose', 'total_organ_volume',
-                         'BOT','GPS','Tonsil','NOS', 'gtvp_x', 'gtvp_y', 'gtvp_z', 'Left', 'Right', 'Bilateral']
-        laterality_map = {'L': 0, 'R': 1, 'Bilateral': 2}
-        subsite_map = {'BOT': 0, 'GPS': 1, 'Tonsil': 2, 'NOS': 3}
-        for patient_idx in range(0, self.num_patients):
-            patient = self.patients[patient_idx]
-            features[patient_idx, 0] = patient.gtvp_volume
-            features[patient_idx, 1] = patient.gtvn_volume
-            features[patient_idx, 2] = patient.prescribed_dose
-            features[patient_idx, 3] = np.sum(patient.volumes)
-            features[patient_idx, 4 + subsite_map[patient.tumor_subsite]] = 1
-            features[patient_idx, 8:11] = patient.gtvp_position[:]
-            features[patient_idx, 11 + laterality_map[patient.laterality]] = 1
-        #standarization, not needed for binary trees though
-        features = (features - np.mean(features, axis = 0))/(np.std(features, axis = 0))
-        return((features, feature_names))
 
     def evaluate(self, rank_function = 'tumor_organ_ssim', key = None, weights = np.array([0,1]), num_matches = 10):
         #gives a bunch of different metrics for evaluating a given metric

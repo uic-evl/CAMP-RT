@@ -6,7 +6,9 @@ Created on Mon Feb  4 15:18:10 2019
 """
 import numpy as np
 from Constants import Constants
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
+
+GTV = namedtuple('GTV', ['volume', 'position', 'doses', 'dists'])
 
 class Patient():
     ##class holds information for each patient.
@@ -28,7 +30,7 @@ class Patient():
             print('error reading nstage for ', p_id)
             self.n_stage = -1
         self.tumor_subsite = info['Tumor subsite (BOT/Tonsil/Soft Palate/Pharyngeal wall/GPS/NOS)']
-        centroid_data = self.get_doses_file_info(doses)
+        centroid_data = self.get_doses_file_info(doses, distances)
         #I make a new matrix, so the order of centroid data isn't the same as the orginal csv
         self.doses = centroid_data[:, 4]
         self.min_doses = centroid_data[:, 5]
@@ -39,7 +41,6 @@ class Patient():
         self.centroids = centroid_data[:, 0:3]
         #distances is a symetric matrix sorted by the Constants.organ_list
         self.distances = self.gen_distance_matrix(distances)
-        (self.gtvp_dists, self.gtvn_dists) = self.get_tumor_distances(distances)
         #store the entries without gtvp for future study
         (self.tumor_volume, self.tumor_distances, self.tumor_position) = self.get_main_tumor()
         self.check_missing_organs(doses)
@@ -54,10 +55,10 @@ class Patient():
         entry['ID'] = str(self.id)
         entry['ID_int'] = int(self.id)
         entry['name'] = "Patient " + str(self.id)
-        entry['tumorVolume'] = max([self.gtvn_volume, self.gtvp_volume])
+        entry['tumorVolume'] = max([gtv.volume for gtv in self.gtvs])
         entry['organData'] = self.get_organ_data_dict(dose_estimates)
-        entry['hasGTVp'] = str((self.gtvp_volume > 0)).lower()
-        entry['hasGTVn'] = str((self.gtvn_volume > 0)).lower()
+        entry['hasGTVp'] = str((self.gtvs[0].volume > 0)).lower()
+        entry['hasGTVn'] = str((self.gtvs[1].volume > 0)).lower()
         #placeholders, will need to be populated by the Patientset class
         #there are non-ssim version in the original data but I think thats depricated (was for pearson?)
         entry['similarity_ssim'] = [0]
@@ -67,8 +68,8 @@ class Patient():
         entry['tumorSubsite'] = self.tumor_subsite
         entry['total_Dose'] = self.prescribed_dose #this is confusing
         entry['cluster'] = self.group
-        entry['gtvp_volume'] = self.gtvp_volume
-        entry['gtvn_volume'] = self.gtvn_volume
+        entry['gtvp_volume'] = self.gtvs[0].volume
+        entry['gtvn_volume'] = self.gtvs[1].volume
         return(entry)
 
     def get_organ_data_dict(self, dose_estimates):
@@ -87,25 +88,27 @@ class Patient():
             organ_dict['maxDose'] = self.max_doses[x]
             organ_dict['estimatedDose'] = 0 if np.isnan(dose_estimates[x]) else round(dose_estimates[x], 2)
             data[organ] = organ_dict
-        if self.gtvp_volume > 0:
+        if self.gtvs[0].volume > 0:
+            gtvp = self.gtvs[0]
             gtvp_dict = OrderedDict()
-            gtvp_dict['x'] = self.gtvp_position[0]
-            gtvp_dict['y'] = self.gtvp_position[1]
-            gtvp_dict['z'] = self.gtvp_position[2]
-            gtvp_dict['volume'] = self.gtvp_volume
-            gtvp_dict['meanDose'] = self.gtvp_doses[1]
-            gtvp_dict['maxDose'] = self.gtvp_doses[2]
-            gtvp_dict['minDose'] = self.gtvp_doses[0]
+            gtvp_dict['x'] = gtvp.position[0]
+            gtvp_dict['y'] = gtvp.position[1]
+            gtvp_dict['z'] = gtvp.position[2]
+            gtvp_dict['volume'] = gtvp.volume
+            gtvp_dict['meanDose'] = gtvp.doses[1]
+            gtvp_dict['maxDose'] = gtvp.doses[2]
+            gtvp_dict['minDose'] = gtvp.doses[0]
             data['GTVp'] = gtvp_dict
-        if self.gtvn_volume > 0:
+        if self.gtvs[1].volume > 0:
             gtvn_dict = OrderedDict()
-            gtvn_dict['x'] = self.gtvn_position[0]
-            gtvn_dict['y'] = self.gtvn_position[1]
-            gtvn_dict['z'] = self.gtvn_position[2]
-            gtvn_dict['volume'] = self.gtvn_volume
-            gtvn_dict['meanDose'] = self.gtvn_doses[1]
-            gtvn_dict['maxDose'] = self.gtvn_doses[2]
-            gtvn_dict['minDose'] = self.gtvn_doses[0]
+            gtvn = self.gtvs[1]
+            gtvn_dict['x'] = gtvn.position[0]
+            gtvn_dict['y'] = gtvn.position[1]
+            gtvn_dict['z'] = gtvn.position[2]
+            gtvn_dict['volume'] = gtvn.volume
+            gtvn_dict['meanDose'] = gtvn.doses[1]
+            gtvn_dict['maxDose'] = gtvn.doses[2]
+            gtvn_dict['minDose'] = gtvn.doses[0]
             data['GTVn'] = gtvn_dict
         return(data)
 
@@ -118,36 +121,42 @@ class Patient():
             Constants.missing_organs[self.id] = {'organs': diff}
         return
 
-    def get_doses_file_info(self, doses):
+    def get_doses_file_info(self, doses, dists):
         #rename the columns so they're consistent, now done in dataset so I can read which set it's from
 #        doses.columns = Constants.centroid_file_names
         #move centroids so the center of the cloud is at zero?
         centroids = self.center_centroids(doses)
         centroids = centroids.set_index('ROI')
-        #extract the primary tumor info.
-        try:
-            gtvp = centroids.loc['GTVp']
-            self.gtvp_volume = gtvp.volume
-            self.gtvp_position = gtvp[['x','y','z']].values
-            self.gtvp_doses = gtvp[['min_dose','mean_dose','max_dose']]
-        except:
-            self.gtvp_volume = float(0)
-            self.gtvp_position = np.array([0,0,0])
-            self.gtvp_doses = np.array([0,0,0])
         #extract a secondary tumor (only gets the first one?)
         #several patients have no gtvp but a gtvn
-        try:
-            gtvn = centroids.loc['GTVn']
-            if not isinstance(gtvn.volume, float):
-                Constants.multiple_gtvn.append(self.id)
-                gtvn = gtvn.iloc[0]
-            self.gtvn_volume = gtvn.volume
-            self.gtvn_position = gtvn[['x','y','z']].values
-            self.gtvn_doses = gtvn[['min_dose','mean_dose','max_dose']]
-        except:
-            self.gtvn_volume = float(0)
-            self.gtvn_position = np.array([0,0,0])
-            self.gtvn_doses = np.array([0,0,0])
+        
+        def getGTV(name):
+            try:
+                gtv = centroids.loc[name]
+                if not isinstance(gtv.volume, float):
+                    Constants.multiple_gtv.append(self.id)
+                    gtv = gtv.iloc[0]
+                volume = gtv.volume
+                position = gtv[['x','y','z']].values
+                doses = gtv[['min_dose','mean_dose','max_dose']]
+                distances = self.get_tumor_distances(name, dists)
+            except:
+                volume = float(0)
+                position = np.array([0,0,0])
+                doses = np.array([0,0,0])
+                distances = np.zeros((Constants.num_organs,))
+            return( GTV(volume, position, doses, distances) )
+        self.gtvs = [getGTV('GTVp'), getGTV('GTVn')]
+        gtvn_count = 2
+        while(True):
+            gtv_name = 'GTVn' + str(gtvn_count)
+            newGTV = getGTV(gtv_name)
+            if newGTV.volume > 0:
+                self.gtvs.append(newGTV)
+                gtvn_count += 1
+            else:
+                break
+        print(len(self.gtvs))
         #get the info the centers, volumes, nad doses for all the things
         centroid_matrix = np.zeros((Constants.num_organs,7)) #row = x,y,z,volume,dose
         for idx in range(0, Constants.num_organs):
@@ -192,43 +201,35 @@ class Patient():
         dist_matrix += np.transpose(dist_matrix)
         return(dist_matrix)
 
-    def get_tumor_distances(self, dists):
+    def get_tumor_distances(self, name, dists):
         #gets the tumor-organ distances
-        gtvp_dists = np.zeros((Constants.num_organs,))
-        gtvn_dists = np.zeros((Constants.num_organs,))
+        gtv_dists = np.zeros((Constants.num_organs,))
         dists = dists.set_index(['Reference ROI', 'Target ROI']).sort_index()
         for idx in range(0, Constants.num_organs):
             organ = Constants.organ_list[idx]
             try:
-                tumor_row = dists.loc['GTVp', organ]
-                gtvp_dists[idx] = tumor_row['Eucledian Distance (mm)']
+                tumor_row = dists.loc[name, organ]
+                gtv_dists[idx] = tumor_row['Eucledian Distance (mm)']
             except:
                 try:
-                    tumor_row = dists.loc[organ, 'GTVp']
-                    gtvp_dists[idx] = tumor_row['Eucledian Distance (mm)']
+                    tumor_row = dists.loc[organ, name]
+                    gtv_dists[idx] = tumor_row['Eucledian Distance (mm)']
                 except:
-                    gtvp_dists[idx] = float(0)
-            try:
-                tumor_row = dists.loc['GTVn', organ]
-                gtvn_dists[idx] = tumor_row['Eucledian Distance (mm)']
-            except:
-                try:
-                    tumor_row = dists.loc[Constants.organ_list[idx], 'GTVn']
-                    gtvn_dists[idx] = tumor_row['Eucledian Distance (mm)']
-                except:
-                    gtvn_dists[idx] = float(0)
-        return((gtvp_dists, gtvn_dists))
+                    gtv_dists[idx] = float(0)
+        return(gtv_dists)
 
     def get_main_tumor(self):
         #basically gives a proxy so we use only the most important tumor?
-        tumor_volume = self.gtvn_volume + self.gtvp_volume
-        tumor_distances = (self.gtvn_dists*self.gtvn_volume + self.gtvp_dists*self.gtvp_volume)/(
-                self.gtvn_volume + self.gtvp_volume)
-        tumor_position = (self.gtvn_position*self.gtvn_volume + self.gtvp_position*self.gtvp_volume)/(
-                self.gtvn_volume + self.gtvp_volume)
-        if (self.gtvn_volume != 0 and np.sum(self.gtvn_dists) == 0) or (
-                self.gtvn_volume == 0 and np.sum(self.gtvn_dists) != 0) or (
-                        self.gtvp_volume != 0 and np.sum(self.gtvp_dists) == 0) or (
-                            self.gtvp_volume == 0 and np.sum(self.gtvp_dists) != 0):
-            print('patient ', self.id, 'is having some issues with tumor consistency')
+        tumor_volume = 0.0
+        tumor_distances = np.zeros((Constants.num_organs,))
+        tumor_position = np.zeros((3,))
+        try:
+            for gtv in self.gtvs:
+                tumor_volume += gtv.volume
+                tumor_distances += gtv.volume*gtv.dists
+                tumor_position += gtv.volume*gtv.position
+            tumor_distances /= tumor_volume
+            tumor_position /= tumor_position
+        except:
+            print('error reading tumor volume for ', self.id, self.gtvs)
         return(tumor_volume, tumor_distances, tumor_position)

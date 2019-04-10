@@ -209,8 +209,24 @@ DoseScatterPlot.prototype.drawClusterCircles = function(margin){
 	var offsetHulls = [];
 	for (var [key, value] of clusters.entries()) {
 		var hull = [];
-		var convexHull = d3.polygonHull(value);
-		var centroid = d3.polygonCentroid(convexHull);
+		if(value.length <= 1){
+			continue;
+		}
+		try{
+			var convexHull = d3.polygonHull(value);
+			var centroid = d3.polygonCentroid(convexHull);
+		}catch{
+			var convexHull = value;
+			var centroid = [0,0];
+			value.forEach(function(point){
+				centroid[0] += point[0];
+				centroid[1] += point[1];
+			});
+			centroid[0] /= value.length;
+			centroid[1] /= value.length;
+			convexHull.push([centroid[0] + margin, centroid[1] + margin]);
+			convexHull.splice(1, 0, [centroid[0] - margin, centroid[1] - margin]);
+		}
 		convexHull.forEach(function(point){
 			var offsetPoint = interpolateLine(centroid, point);
 			hull.push(offsetPoint);
