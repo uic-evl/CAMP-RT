@@ -100,46 +100,6 @@ class Rankings():
             denominator *= (mean_v**2 + mean_w**2 + c1)
         return numerator/denominator
 
-class ErrorChecker():
-
-    def __init__(self):
-        self.ra_eye = Constants.organ_list.index('Rt_Anterior_Seg_Eyeball')
-        self.rp_eye = Constants.organ_list.index('Rt_Posterior_Seg_Eyeball')
-        self.la_eye = Constants.organ_list.index('Lt_Anterior_Seg_Eyeball')
-        self.lp_eye = Constants.organ_list.index('Lt_Posterior_Seg_Eyeball')
-        self.brainstem = Constants.organ_list.index('Brainstem')
-        self.spinal_cord = Constants.organ_list.index('Spinal_Cord')
-        self.eye_threshold = 14
-        self.spine_threshold = 40
-        self.brainstem_threshold = 40
-
-    def check_organ(self, db, index, threshold):
-        dose = db.doses[:, index]
-        ids = db.ids
-        outliers = np.where(dose > threshold)[0].tolist()
-        bad_ids = []
-        for position in outliers:
-            bad_ids.append(ids[position])
-        return((outliers, bad_ids))
-
-    def check(self, db):
-        outliers = {}
-        eye_outliers = []
-        for eye in [self.ra_eye, self.rp_eye, self.la_eye, self.lp_eye]:
-            eye_outliers += self.check_organ(db, eye, self.eye_threshold)[1]
-        brainstem_outliers = self.check_organ(db, self.brainstem, self.brainstem_threshold)[1]
-        spine_outliers = self.check_organ(db, self.spinal_cord, self.spine_threshold)[1]
-        for patient in db.ids:
-            if patient in eye_outliers:
-                outliers[patient] = outliers.get(patient, set([]))
-                outliers[patient].add('eye')
-            if patient in brainstem_outliers:
-                outliers[patient] = outliers.get(patient, set([]))
-                outliers[patient].add('brainstem')
-            if patient in spine_outliers:
-                outliers[patient] = outliers.get(patient, set([]))
-                outliers[patient].add('spinal_cord')
-        return outliers
 
 
 class PatientSet():
@@ -156,7 +116,7 @@ class PatientSet():
             self.classes = None
             self.num_classes = 0
         self.read_patient_data(root, outliers, use_distances)
-
+        print('\npatient data loaded...\n')
 #        if patient_set is None:
 #            outliers = outliers
 #            self.total_dose_predictor = None
@@ -198,10 +158,17 @@ class PatientSet():
 
         patients = OrderedDict()
         dose_matrix = np.zeros((num_patients, Constants.num_organs))
+        max_dose_matrix = np.zeros((num_patients, Constants.num_organs))
+        min_dose_matrix = np.zeros((num_patients, Constants.num_organs))
+        centroid_matrix = np.zeros((num_patients, Constants.num_organs, 3))
         total_dose_vector = np.zeros((num_patients,))
+        prescribed_dose_vector = np.zeros((num_patients,))
         tumor_distance_matrix = np.zeros((num_patients, Constants.num_organs))
         organ_distance_matrix = np.zeros((Constants.num_organs, Constants.num_organs, num_patients))
         volume_matrix = np.zeros((num_patients,Constants.num_organs))
+        laterality_list = []
+        subsite_list = []
+        gtv_list = []
         classes = np.zeros((num_patients,))
         #putting all the data into a patient object for further objectification
 
@@ -230,20 +197,45 @@ class PatientSet():
                                   info, use_distances = use_distances)
             patients[patient_index] = new_patient
             classes[patient_index] = group
+            laterality_list.append(new_patient.laterality)
+            subsite_list.append(new_patient.tumor_subsite)
+            gtv_list.append(new_patient.gtvs)
             dose_matrix[patient_index, :] = new_patient.doses
+            max_dose_matrix[patient_index, :] = new_patient.max_doses
+            min_dose_matrix[patient_index, :] = new_patient.min_doses
             tumor_distance_matrix[patient_index, :] = new_patient.tumor_distances
             total_dose_vector[patient_index] = new_patient.total_dose
+            prescribed_dose_vector[patient_index] = new_patient.prescribed_dose
             volume_matrix[patient_index, :] = new_patient.volumes
+            centroid_matrix[patient_index, :, :] = new_patient.centroids
             if use_distances:
                 organ_distance_matrix[:, :, patient_index] = np.nan_to_num(new_patient.distances)
         self.doses = np.nan_to_num(dose_matrix)
+        self.max_doses = np.nan_to_num(max_dose_matrix)
+        self.min_doses = np.nan_to_num(min_dose_matrix)
         self.tumor_distances = np.nan_to_num(tumor_distance_matrix)
         self.volumes = np.nan_to_num(volume_matrix)
         self.classes = np.nan_to_num(classes)
-        self.organ_distances = np.nan_to_num(organ_distance_matrix)
+        if use_distances:
+            self.organ_distances = np.nan_to_num(organ_distance_matrix)
+        else:
+            self.organ_distances = self.load_saved_distances()
+        self.prescribed_doses = np.nan_to_num(prescribed_dose_vector)
+        self.centroids = np.nan_to_num(centroid_matrix)
+        self.lateralities = laterality_list
+        self.subsites = subsite_list
         self.ids = ids
         return
-
+    
+    def load_saved_distances(self, file = 'data/mean_organ_distances.csv'):
+        try:
+            distances = pd.read_csv(file, index_col = 0)
+            distances = distances.values
+        except:
+            print('error, no mean-organ distance file found')
+            distances = np.zeros((Constants.num_organs, Constants.num_organs))
+        return distances
+    
     def get_patient_class(self, patient_id, doses):
         #if a vector of classes is used
         group = self.get_default_class(patient_id, doses)
@@ -320,58 +312,6 @@ class PatientSet():
         for p in self.get_patients():
             p.group = self.get_patient_class(p.id, p.doses)
 
-    def export(self, weights = np.array([0,1]) ,
-               rank_function = 'tumor_organ_ssim',
-               num_matches = 9,
-               patient_data_file = 'data\\patient_dataset.json',
-               score_file = 'data\\all_ssim_scores.csv'):
-        #exports the dataset into the json format peter is using for the frontend
-        data = []
-        scores = self.gen_score_matrix(weights)
-        dose_estimates = self.predict_doses(weights, num_matches)
-        patient_mean_error = np.mean(np.absolute(self.doses - dose_estimates), axis = 1)
-        dose_pca = Rankings.pca(self.doses)
-        distance_pca = Rankings.pca( self.gen_tumor_distance_matrix() )
-        print(distance_pca)
-        for p_idx in range(0, self.num_patients):
-            patient = self.patients[p_idx]
-            entry = patient.to_ordered_dict(dose_estimates[p_idx, :])
-            ssim_scores = scores[p_idx,:]
-            ssim_scores[p_idx] = 1
-            zipped_scores = sorted(zip(ssim_scores, np.arange(1, len(ssim_scores) + 1)),
-                                   key = lambda x: -x[0])
-            patient_scores, internal_ids = zip(*zipped_scores)
-            entry['ID_internal'] = p_idx + 1
-            num_matches = self.get_num_matches(patient) + 1
-            while patient_scores[num_matches - 1] <= 0:
-                num_matches -= 1
-            matches = internal_ids[:num_matches]
-            match_scores = patient_scores[:num_matches]
-            entry['similarity_ssim'] = matches
-            entry['scores_ssim'] = match_scores
-            entry['dose_pca'] = dose_pca[p_idx,:].tolist()
-            entry['distance_pca'] = distance_pca[p_idx, :].tolist()
-            entry['mean_error'] = round(patient_mean_error[p_idx], 4)
-            data.append(entry)
-        #save the vast dictionary of data for the front-end
-        try:
-            def default(o):
-                if isinstance(o, np.int32):
-                    return int(o)
-            with open(patient_data_file, 'w+') as f:  # generate JSON
-                json.dump( data, f, indent=4, default = default)
-            print('successfully save patient data to ', patient_data_file)
-            #save a labeled matrix of similarity scores for other people
-        except:
-            print('error exporting patient data to json')
-        try:
-            raw_scores = self.gen_score_matrix(1, classes = False)
-            score_df = pd.DataFrame(raw_scores, index = self.ids, columns = self.ids)
-            score_df.to_csv(score_file)
-            print('successfully saved similarity score matrix to ', score_file)
-        except:
-            print('error saving ssim score matrix')
-
     def save_organ_distances(self, file = 'data/mean_organ_distances.csv'):
         mean_dists = self.organ_distances.mean(axis = 2)
         if np.sum(mean_dists) == 0:
@@ -380,6 +320,59 @@ class PatientSet():
         else:
             organ_dist_df = pd.DataFrame(mean_dists, index = Constants.organ_list, columns = Constants.organ_list)
         organ_dist_df.to_csv(file)
+        
+#    def export(self, weights = np.array([0,1]) ,
+#               rank_function = 'tumor_organ_ssim',
+#               num_matches = 9,
+#               patient_data_file = 'data\\patient_dataset.json',
+#               score_file = 'data\\all_ssim_scores.csv'):
+#        #exports the dataset into the json format peter is using for the frontend
+#        data = []
+#        scores = self.gen_score_matrix(weights)
+#        dose_estimates = self.predict_doses(weights, num_matches)
+#        patient_mean_error = np.mean(np.absolute(self.doses - dose_estimates), axis = 1)
+#        dose_pca = Rankings.pca(self.doses)
+#        distance_pca = Rankings.pca( self.gen_tumor_distance_matrix() )
+#        print(distance_pca)
+#        for p_idx in range(0, self.num_patients):
+#            patient = self.patients[p_idx]
+#            entry = patient.to_ordered_dict(dose_estimates[p_idx, :])
+#            ssim_scores = scores[p_idx,:]
+#            ssim_scores[p_idx] = 1
+#            zipped_scores = sorted(zip(ssim_scores, np.arange(1, len(ssim_scores) + 1)),
+#                                   key = lambda x: -x[0])
+#            patient_scores, internal_ids = zip(*zipped_scores)
+#            entry['ID_internal'] = p_idx + 1
+#            num_matches = self.get_num_matches(patient) + 1
+#            while patient_scores[num_matches - 1] <= 0:
+#                num_matches -= 1
+#            matches = internal_ids[:num_matches]
+#            match_scores = patient_scores[:num_matches]
+#            entry['similarity_ssim'] = matches
+#            entry['scores_ssim'] = match_scores
+#            entry['dose_pca'] = dose_pca[p_idx,:].tolist()
+#            entry['distance_pca'] = distance_pca[p_idx, :].tolist()
+#            entry['mean_error'] = round(patient_mean_error[p_idx], 4)
+#            data.append(entry)
+#        #save the vast dictionary of data for the front-end
+#        try:
+#            def default(o):
+#                if isinstance(o, np.int32):
+#                    return int(o)
+#            with open(patient_data_file, 'w+') as f:  # generate JSON
+#                json.dump( data, f, indent=4, default = default)
+#            print('successfully save patient data to ', patient_data_file)
+#            #save a labeled matrix of similarity scores for other people
+#        except:
+#            print('error exporting patient data to json')
+#        try:
+#            raw_scores = self.gen_score_matrix(1, classes = False)
+#            score_df = pd.DataFrame(raw_scores, index = self.ids, columns = self.ids)
+#            score_df.to_csv(score_file)
+#            print('successfully saved similarity score matrix to ', score_file)
+#        except:
+#            print('error saving ssim score matrix')
+
 
 
 #    def get_patients(self):

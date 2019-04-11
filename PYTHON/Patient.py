@@ -157,7 +157,6 @@ class Patient():
                 gtvn_count += 1
             else:
                 break
-        print(len(self.gtvs))
         #get the info the centers, volumes, nad doses for all the things
         centroid_matrix = np.zeros((Constants.num_organs,7)) #row = x,y,z,volume,dose
         for idx in range(0, Constants.num_organs):
