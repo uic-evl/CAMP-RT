@@ -14,7 +14,7 @@ class Patient():
     ##class holds information for each patient.
     ##is pased a series of dataframes (distacnes, doses, info) and extracts info
     ##p_id is a dummy id, position is the position of the patient in the whole dataset
-    def __init__(self, distances, doses, p_id, group, info):
+    def __init__(self, distances, doses, p_id, group, info, use_distances = False):
         #patient ID number
         self.id = p_id
         self.group = group
@@ -40,7 +40,8 @@ class Patient():
         self.volumes = centroid_data[:, 3]
         self.centroids = centroid_data[:, 0:3]
         #distances is a symetric matrix sorted by the Constants.organ_list
-        self.distances = self.gen_distance_matrix(distances)
+        if use_distances:
+            self.distances = self.gen_distance_matrix(distances)
         #store the entries without gtvp for future study
         (self.tumor_volume, self.tumor_distances, self.tumor_position) = self.get_main_tumor()
         self.check_missing_organs(doses)
@@ -129,7 +130,7 @@ class Patient():
         centroids = centroids.set_index('ROI')
         #extract a secondary tumor (only gets the first one?)
         #several patients have no gtvp but a gtvn
-        
+
         def getGTV(name):
             try:
                 gtv = centroids.loc[name]

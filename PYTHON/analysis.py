@@ -4,7 +4,7 @@ Created on Fri Mar  8 10:08:52 2019
 
 @author: Andrew
 """
-from PatientSet import PatientSet, Rankings
+from PatientSet import PatientSet, Rankings, ErrorChecker
 from Patient import Patient
 from Constants import Constants
 import pandas as pd
@@ -33,9 +33,10 @@ def correlate_avg(db, key1, key2):
     return(np.correlate(avg[key1], avg[key2]))
 
 
-db = PatientSet(patient_set = None, root = 'data\\patients_v3*\\',
-                outliers = Constants.v3_real_bad_entries + Constants.v3_no_tumor + Constants.v3_bad_positions, class_name = None)
-
-db.export(patient_data_file = 'data\\patient_dataset_v3.json', score_file = 'data\\all_ssim_scores_v3.csv')
+db = PatientSet(root = 'data\\patients_v3*\\',
+                outliers = Constants.v3_real_bad_entries + Constants.v3_no_tumor + Constants.v3_bad_positions,
+                class_name = None, use_distances = True)
+ErrorChecker().check_eyes(db)
+#db.export(patient_data_file = 'data\\patient_dataset_v3.json', score_file = 'data\\all_ssim_scores_v3.csv')
 #result = db.evaluate()
 #print(result['mean_error'])
