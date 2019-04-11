@@ -111,18 +111,35 @@ class ErrorChecker():
         self.spinal_cord = Constants.organ_list.index('Spinal_Cord')
         self.eye_threshold = 14
         self.spine_threshold = 40
+        self.brainstem_threshold = 40
 
-    def check_eyes(self, db):
-        doses = db.doses
+    def check_organ(self, db, index, threshold):
+        dose = db.doses[:, index]
         ids = db.ids
-        outliers = []
-        for organ in [self.ra_eye, self.rp_eye, self.la_eye, self.lp_eye]:
-            eye_dose = doses[:, organ]
-            outliers += np.where(eye_dose > self.eye_threshold)[0].tolist()
+        outliers = np.where(dose > threshold)[0].tolist()
         bad_ids = []
         for position in outliers:
             bad_ids.append(ids[position])
         return((outliers, bad_ids))
+
+    def check(self, db):
+        outliers = {}
+        eye_outliers = []
+        for eye in [self.ra_eye, self.rp_eye, self.la_eye, self.lp_eye]:
+            eye_outliers += self.check_organ(db, eye, self.eye_threshold)[1]
+        brainstem_outliers = self.check_organ(db, self.brainstem, self.brainstem_threshold)[1]
+        spine_outliers = self.check_organ(db, self.spinal_cord, self.spine_threshold)[1]
+        for patient in db.ids:
+            if patient in eye_outliers:
+                outliers[patient] = outliers.get(patient, set([]))
+                outliers[patient].add('eye')
+            if patient in brainstem_outliers:
+                outliers[patient] = outliers.get(patient, set([]))
+                outliers[patient].add('brainstem')
+            if patient in spine_outliers:
+                outliers[patient] = outliers.get(patient, set([]))
+                outliers[patient].add('spinal_cord')
+        return outliers
 
 
 class PatientSet():
@@ -355,13 +372,14 @@ class PatientSet():
         except:
             print('error saving ssim score matrix')
 
-    def save_organ_distances(file = 'data/mean_organ_distances.csv'):
+    def save_organ_distances(self, file = 'data/mean_organ_distances.csv'):
         mean_dists = self.organ_distances.mean(axis = 2)
         if np.sum(mean_dists) == 0:
             print('error, trying to save emtpy organ list')
             return
         else:
-            organ_dist_df = pd.DataFrame(mean_dists, index = self.ids, columns = self.ids)
+            organ_dist_df = pd.DataFrame(mean_dists, index = Constants.organ_list, columns = Constants.organ_list)
+        organ_dist_df.to_csv(file)
 
 
 #    def get_patients(self):
