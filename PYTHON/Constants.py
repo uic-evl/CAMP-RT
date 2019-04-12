@@ -7,53 +7,6 @@ Created on Thu Jan 31 14:47:15 2019
 
 class Constants():
     #all non-tumor organs being included (some datasets have more)
-    #currently soreted based on the organ atals
-#    organ_list = ['Extended_Oral_Cavity',
-#                  'Genioglossus_M',
-#                  'Hard_Palate',
-#                  'Lower_Lip',
-#                  'Lt_Ant_Digastric_M',
-#                  'Lt_Lateral_Pterygoid_M',
-#                  'Lt_Masseter_M',
-#                  'Lt_Medial_Pterygoid_M',
-#                  'Mandible',
-#                  'Mylogeniohyoid_M',
-#                  'Rt_Ant_Digastric_M',
-#                  'Rt_Lateral_Pterygoid_M',
-#                  'Rt_Masseter_M',
-#                  'Rt_Medial_Pterygoid_M',
-#                  'Soft_Palate',
-#                  'Tongue',
-#                  'Upper_Lip',
-#                  'Cricoid_cartilage',
-#                  'Cricopharyngeal_Muscle',
-#                  'Esophagus',
-#                  'Hyoid_bone',
-#                  'IPC',
-#                  'Larynx',
-#                  'Lt_Sternocleidomastoid_M',
-#                  'Lt_thyroid_lobe',
-#                  'MPC',
-#                  'Rt_Sternocleidomastoid_M',
-#                  'Rt_thyroid_lobe',
-#                  'SPC',
-#                  'Supraglottic_Larynx',
-#                  'Thyroid_cartilage',
-#                  'Lt_Parotid_Gland',
-#                  'Lt_Submandibular_Gland',
-#                  'Rt_Parotid_Gland',
-#                  'Rt_Submandibular_Gland',
-#                  'Lt_Anterior_Seg_Eyeball',
-#                  'Lt_Posterior_Seg_Eyeball',
-#                  'Rt_Anterior_Seg_Eyeball',
-#                  'Rt_Posterior_Seg_Eyeball',
-#                  'Brainstem',
-#                  'Lt_Brachial_Plexus',
-#                  'Rt_Brachial_Plexus',
-#                  'Spinal_Cord',
-#                  'Lt_Mastoid',
-#                  'Rt_Mastoid'
-#            ]
     #organ list set via affinity propogation clustering
     organ_list = ['Esophagus',
          'Spinal_Cord',
@@ -108,18 +61,16 @@ class Constants():
                      'GTV-N': 'GTVn',
                      'GTV_n': 'GTVn',
                      'GTVn1': 'GTVn',
-                     #'GTVn2': 'GTVn', #this one is causing issues with getting distance data
                      'GTV primary': 'GTVp',
                      'GTV-P': 'GTVp',
                      'GTV_p': 'GTVp',
                      'GTV_P': 'GTVp',
                      'GTV P': 'GTVp',
                      'GTV nodes': 'GTVn',
-                     #'GTV tongue': 'GTVp',
                      'GTV-N1': 'GTVn',
                      'GTV N': 'GTVn',
-                     'GTV-NR': 'GTVn' #there is also an NL?
-                     #'GTV-N2': 'GTVn'
+                     'GTV-NR': 'GTVn2', #I am only aware of this for 10144, may need more robust solution later
+                     'GTV-NL': 'GTVn3'
                      }
     v3_bad_entries = list(set([131, 5001, 5003, 5042, 5053, 10009, 10011, 10013, 10015, 10018, 10020, 10022, 10029, 10044, 10065, 10075, 10085, 10086, 10094, 10103, 10130, 10132, 10140, 10157, 10176,10191, 17, 39, 101, 115, 2020, 10011, 10043, 10074, 10080, 10094, 10145, 10148, 10174, 10181, 10018, 10019, 10022, 10041, 10044, 10129, 31, 37, 101, 105, 112, 115, 121, 133, 165, 2000, 2016, 5025, 10019, 10021, 10040, 10046, 10113, 10147, 10148, 10154, 3, 10, 112, 131, 145, 2000, 2016, 5041, 5043, 10021, 10040, 10041, 10044, 10046, 10071, 10080, 10103, 10129, 10130, 10138, 10143, 10154, 10155, 10181, 10184, 10191, 10193, 10197, 10197, 46, 121, 5039, 10020, 10044, 10022, 10018, 5041, 131, 10021, 10071, 10184, 10065]))
     v3_real_bad_entries = list(set([10138, 10103, 10086, 10147, 2000, 3, 10191]))
