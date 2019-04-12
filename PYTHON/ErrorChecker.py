@@ -17,6 +17,7 @@ class ErrorChecker():
         self.rp_eye = Constants.organ_list.index('Rt_Posterior_Seg_Eyeball')
         self.la_eye = Constants.organ_list.index('Lt_Anterior_Seg_Eyeball')
         self.lp_eye = Constants.organ_list.index('Lt_Posterior_Seg_Eyeball')
+        self.eyes = [self.ra_eye, self.rp_eye, self.la_eye, self.lp_eye]
         self.brainstem = Constants.organ_list.index('Brainstem')
         self.spinal_cord = Constants.organ_list.index('Spinal_Cord')
         self.eye_threshold = 14
@@ -24,8 +25,8 @@ class ErrorChecker():
         self.brainstem_threshold = 40
         
     def get_thresholds(self, db):
-        thresholds = db.prescribed_doses + 10
-        thresholds[[self.ra_eye, self.rp_eye, self.la_eye, self.lp_eye]] = self.eye_threshold
+        thresholds = (db.prescribed_doses.max() + 10)*np.ones((Constants.num_organs,))
+        thresholds[self.eyes] = self.eye_threshold
         thresholds[self.spinal_cord] = self. spine_threshold
         thresholds[self.brainstem] = self.brainstem_threshold
         return thresholds
@@ -44,3 +45,20 @@ class ErrorChecker():
                 outliers[id] = outliers.get(id, set([]))
                 outliers[id].add(organ)
         return outliers
+
+    def check_missing_organs(self, db):
+        bad_patients = set([])
+        no_volume = np.where(db.doses <= 0.00001)
+        for missing_organ in range(len(no_volume[0])):
+            patient = no_volume[0][missing_organ]
+            organ = no_volume[1][missing_organ]
+            if organ not in self.eyes:
+                bad_patients.add(patient)
+        for patient in range(len(db.gtvs)):
+            gtv_set = db.gtvs[patient]
+            tumor_volume = np.sum([gtv.volume for gtv in gtv_set])
+            if tumor_volume <= .00001:
+                bad_patients.add(patient)
+        print(bad_patients)
+        return bad_patients
+        

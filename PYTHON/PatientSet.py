@@ -15,93 +15,6 @@ import matplotlib.pyplot as plt
 from Constants import Constants
 from Patient import Patient
 
-class Rankings():
-    #ranking functions that generate a score, takes in pateint objects
-    def pca(points, n_components = 2):
-        points = points - np.mean(points, axis = 0)
-        cov = np.cov(points, rowvar = False)
-        ev, eig = np.linalg.eigh(cov)
-        args = np.argsort(ev)[::-1]
-        ev = ev[args[0:n_components]]
-        eig = eig[:, args[0:n_components]]
-        principle_components = np.dot(points, eig)
-        return(principle_components)
-
-    def cluster_organs(db):
-        #clusters, and then sorts the clusters and containing values by position along the
-        #principle component of the organs
-        from sklearn.cluster import AffinityPropagation
-        avg = db.get_average_patient_data()
-        centroids = avg['centroids']
-        estimator = AffinityPropagation()
-        estimator.fit(centroids)
-        centroid_principle_component = Rankings.pca(centroids)
-        #initialize list of empty stuff, and average pca value
-        clusters = { label: [[],0] for label in np.unique(estimator.labels_)}
-        for x in range(0, Constants.num_organs):
-            cluster = clusters[estimator.labels_[x]]
-            pc = centroid_principle_component[x]
-            cluster[0].append( (Constants.organ_list[x], pc) )
-            cluster[0] = sorted(cluster[0], key = lambda x: x[1])
-            cluster[1] = cluster[1] + pc
-            clusters[estimator.labels_[x]] = cluster
-        #average mean pca points
-        for key,value in clusters.items():
-            clusters[key][1] /= len(clusters[key][0])
-        cluster_list = sorted(clusters.values(), key = lambda x: x[1])
-        organs = []
-        for group in cluster_list:
-            for organ_tuple in group[0]:
-                organs.append( organ_tuple[0] )
-        return(organs)
-
-    def min_dose_error(p1, p2):
-        error = np.mean(np.abs(p1.doses - p2.doses))
-        return(1/(error + .000001))
-
-    def tumor_distance_matrix(p1):
-        x = p1.tumor_distances
-        x = x.reshape(len(x),1)*np.absolute(x.reshape(1,len(x)))
-        return(x)
-
-    def raw_tumor_organ_ssim(p1, p2):
-        return compare_ssim( Rankings.tumor_distance_matrix(p1),
-              Rankings.tumor_distance_matrix(p2), win_size = 7)
-
-    def tumor_organ_ssim(p1, p2, weights):
-        #this is basically just an ensemble of different distances metrics at this point
-        scores = np.zeros((len(weights),))
-        if p1.full_dose != p2.full_dose:# or p1.high_throat_dose != p2.high_throat_dose: #only compare people with full or half radiation with each other
-            return 0
-        if p1.full_dose == 0 and p1.laterality != p2.laterality: #for half radiation, group by laterality
-            return 0
-        percent_different = lambda x,y: 1- np.abs(x - y)/(x + y + .0000001)
-        if(weights[0] > 0):
-            #ssim seems to do better than other things?
-            scores[0] = percent_different( p1.tumor_volume/np.sum(p1.volumes), p2.tumor_volume/np.sum(p2.volumes))
-            #this one is the most important
-        scores[1] = Rankings.raw_tumor_organ_ssim(p1,p2)
-        #I was normalizing here, but moved it so I can rescale the data
-        final_score = np.sum(scores*weights)/np.mean(weights)
-        return(final_score)
-
-    def local_ssim(x,y,v = None, w = None):
-        c1 = .000001
-        c2  = .000001
-        mean_x = np.mean(x)
-        mean_y = np.mean(y)
-        covariance = np.cov(x,y)
-        numerator = (2*mean_x*mean_y + c1) * (covariance[0,1] + covariance[1,0] + c2)
-        denominator = (mean_x**2 + mean_y**2 + c1)*(np.var(x) + np.var(y) + c2)
-        if v is not None and 2 is not None:
-            mean_v = np.mean(v)
-            mean_w = np.mean(w)
-            numerator *= (2*mean_v*mean_w + c1)
-            denominator *= (mean_v**2 + mean_w**2 + c1)
-        return numerator/denominator
-
-
-
 class PatientSet():
 
     def __init__(self, outliers = [], root = 'data\\patients_v2*\\', class_name = None, use_distances = False):
@@ -117,24 +30,6 @@ class PatientSet():
             self.num_classes = 0
         self.read_patient_data(root, outliers, use_distances)
         print('\npatient data loaded...\n')
-#        if patient_set is None:
-#            outliers = outliers
-#            self.total_dose_predictor = None
-#            (self.patients, self.doses, self.total_doses, self.num_patients, self.ids) = self.read_patient_data(root, outliers)
-#        else:
-#            self.patients = patient_set.patients
-#            if class_name is None: #overwrite if don't specify anything
-#                self.classes = patient_set.classes
-#                self.num_classes = patient_set.num_classes
-#            self.doses = patient_set.doses
-#            self.total_doses = patient_set.total_doses
-#            self.num_patients = patient_set.num_patients
-#            self.ids = patient_set.ids
-#        self.organ_kmeans = self.get_organ_clusters(max_distance)
-#        print('\npatient data loaded...\n')
-
-#    def set_max_distance(self, distance):
-#        self.organ_kmeans = self.get_organ_clusters(distance)
 
     def read_patient_data(self, root, outliers, use_distances):
 
@@ -225,6 +120,7 @@ class PatientSet():
         self.lateralities = laterality_list
         self.subsites = subsite_list
         self.ids = ids
+        self.gtvs = gtv_list
         return
     
     def load_saved_distances(self, file = 'data/mean_organ_distances.csv'):

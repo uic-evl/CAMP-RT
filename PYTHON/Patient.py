@@ -228,8 +228,9 @@ class Patient():
                 tumor_volume += gtv.volume
                 tumor_distances += gtv.volume*gtv.dists
                 tumor_position += gtv.volume*gtv.position
+            print(self.id, ' ', tumor_volume)
             tumor_distances /= tumor_volume
-            tumor_position /= tumor_position
+            tumor_position /= tumor_volume
         except:
-            print('error reading tumor volume for ', self.id, self.gtvs)
+            print('error reading tumor volume for ', self.id)
         return(tumor_volume, tumor_distances, tumor_position)
