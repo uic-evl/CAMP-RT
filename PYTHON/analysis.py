@@ -7,6 +7,7 @@ Created on Fri Mar  8 10:08:52 2019
 from PatientSet import PatientSet
 from ErrorChecker import ErrorChecker
 from Constants import Constants
+from Models import *
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -28,11 +29,11 @@ import matplotlib.pyplot as plt
 #    plt.ylabel('PC 2')
 
 
-db = PatientSet(root = 'data\\patients_v3*\\',
-                outliers = [],
+db = PatientSet(root = 'data\\patients_v*\\',
                 class_name = None, 
                 use_distances = False)
-ErrorChecker().check_missing_organs(db)
-#db.export(patient_data_file = 'data\\patient_dataset_v3.json', score_file = 'data\\all_ssim_scores_v3.csv')
-#result = db.evaluate()
-#print(result['mean_error'])
+print(db.get_num_patients())
+model = TsimModel()
+similarity = model.get_similarity(db)
+result = KnnEstimator().evaluate(similarity, db.doses)
+print(result.mean())

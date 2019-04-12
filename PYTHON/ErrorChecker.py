@@ -5,7 +5,6 @@ Created on Thu Apr 11 12:07:35 2019
 @author: Andrew
 """
 import numpy as np
-from PatientSet import PatientSet
 from Constants import Constants
 from collections import namedtuple
 
@@ -47,11 +46,18 @@ class ErrorChecker():
         return outliers
 
     def check_missing_organs(self, db):
+        #checks for absence of no-eye organs and tumorless cases
         bad_patients = set([])
-        no_volume = np.where(db.doses <= 0.00001)
+        no_volume = np.where(db.volumes <= 0.00001)
         for missing_organ in range(len(no_volume[0])):
             patient = no_volume[0][missing_organ]
             organ = no_volume[1][missing_organ]
+            if organ not in self.eyes:
+                bad_patients.add(patient)
+        no_dose = np.where(db.doses <= 0.00001)
+        for missing_organ in range(len(no_dose[0])):
+            patient = no_dose[0][missing_organ]
+            organ = no_dose[1][missing_organ]
             if organ not in self.eyes:
                 bad_patients.add(patient)
         for patient in range(len(db.gtvs)):
@@ -59,6 +65,12 @@ class ErrorChecker():
             tumor_volume = np.sum([gtv.volume for gtv in gtv_set])
             if tumor_volume <= .00001:
                 bad_patients.add(patient)
-        print(bad_patients)
         return bad_patients
+    
+    def get_clean_subset(self, db):
+        bad_patients = self.check_missing_organs(db)
+        all_patients = set(range(db.get_num_patients()))
+        good_patients = all_patients - bad_patients
+        print(bad_patients)
+        return sorted(good_patients)
         

@@ -5,8 +5,6 @@ Created on Fri Apr 12 10:15:21 2019
 @author: Andrew
 """
 import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
 from Constants import Constants
 
 class Rankings():
@@ -76,7 +74,7 @@ class TsimModel():
         else:
             organs = self.organs
         index = np.ix_(patients, organs)
-        adjacency = self.get_adjacency_lists(data.organ_distances.mean(axis=2), organs)
+        adjacency = self.get_adjacency_lists(data.organ_distances, organs)
         distances = data.tumor_distances[index]
         volumes = data.volumes[index]
         scores = self.similarity(adjacency, distances, volumes)
@@ -102,6 +100,7 @@ class TsimModel():
                 score_matrix[patient1, patient2] = np.mean(scores)
         score_matrix += np.transpose(score_matrix)
         #scale to between 0 and .99
+        print(score_matrix)
         score_matrix = .99*(score_matrix - score_matrix.min())/(score_matrix.max() - score_matrix.min())
         return score_matrix
                 
@@ -123,7 +122,3 @@ class TsimModel():
         else:
             print('error, zero denomiator in ssim function')
             return 0
-    
-model = TsimModel()
-similarity = model.get_similarity(db)
-result = KnnEstimator().evaluate(similarity, db.doses)

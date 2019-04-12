@@ -9,15 +9,14 @@ import json
 import numpy as np
 import pandas as pd
 from collections import OrderedDict
-from skimage.measure import compare_ssim, compare_mse
-import random
-import matplotlib.pyplot as plt
 from Constants import Constants
 from Patient import Patient
+from ErrorChecker import ErrorChecker 
 
 class PatientSet():
 
-    def __init__(self, outliers = [], root = 'data\\patients_v2*\\', class_name = None, use_distances = False):
+    def __init__(self, outliers = [], root = 'data\\patients_v2*\\', class_name = None, 
+                 use_distances = False, use_clean_subset = True):
         if class_name is not None: #default signifies you want to overwrite it
             classes = pd.read_csv('data//rt_plan_clusters.csv',
                                    index_col = 1)
@@ -29,6 +28,8 @@ class PatientSet():
             self.classes = None
             self.num_classes = 0
         self.read_patient_data(root, outliers, use_distances)
+        if use_clean_subset:
+            self.clean_values()
         print('\npatient data loaded...\n')
 
     def read_patient_data(self, root, outliers, use_distances):
@@ -112,16 +113,38 @@ class PatientSet():
         self.volumes = np.nan_to_num(volume_matrix)
         self.classes = np.nan_to_num(classes)
         if use_distances:
-            self.organ_distances = np.nan_to_num(organ_distance_matrix)
+            self.organ_distances = np.nan_to_num(organ_distance_matrix).mean(axis = 2)
         else:
             self.organ_distances = self.load_saved_distances()
         self.prescribed_doses = np.nan_to_num(prescribed_dose_vector)
         self.centroids = np.nan_to_num(centroid_matrix)
-        self.lateralities = laterality_list
-        self.subsites = subsite_list
-        self.ids = ids
+        self.lateralities = np.array(laterality_list)
+        self.subsites = np.array(subsite_list)
+        self.ids = np.array(ids)
         self.gtvs = gtv_list
-        return
+        
+    def clean_values(self):
+        error_checker = ErrorChecker()
+        p = error_checker.get_clean_subset(self)
+        p = sorted(p)
+        self.doses = self.doses[p]
+        self.max_doses = self.max_doses[p]
+        self.min_doses = self.min_doses[p]
+        self.tumor_distances = self.tumor_distances[p]
+        self.volumes = self.volumes[p]
+        self.classes = self.classes[p]
+        self.prescribed_doses = self.prescribed_doses[p]
+        self.centroids = self.centroids[p]
+        self.lateralities = self.lateralities[p]
+        self.subsites = self.subsites[p]
+        self.ids = self.ids[p]
+        new_gtvs = []
+        for patient in p:
+            new_gtvs.append(self.gtvs[patient])
+        self.gtvs = new_gtvs
+    
+    def get_num_patients(self):
+        return( self.doses.shape[0] )
     
     def load_saved_distances(self, file = 'data/mean_organ_distances.csv'):
         try:
