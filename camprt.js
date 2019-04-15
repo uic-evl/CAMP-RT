@@ -740,10 +740,10 @@ function switchPatient(updatedPatient){
 		scenes = newScenes;
 		updateOrder(updatedPatient);
 		initializeRiskPrediction(selectedPatient);
-		Controller.toggleBrush(true);
 		OrganBubblePlot.switchPatient(updatedPatient);
 		scatter.highlightSelectedPatients(updatedPatient); 
 		Controller.setup();
+		Controller.toggleBrush(true);
 	});
 }
 

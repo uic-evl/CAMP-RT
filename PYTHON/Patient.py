@@ -39,6 +39,7 @@ class Patient():
         self.total_dose = np.sum(self.doses)
         self.volumes = centroid_data[:, 3]
         self.centroids = centroid_data[:, 0:3]
+        self.get_lymph_node_data(info)
         #distances is a symetric matrix sorted by the Constants.organ_list
         if use_distances:
             self.distances = self.gen_distance_matrix(distances)
@@ -50,68 +51,11 @@ class Patient():
         if self.tumor_volume == 0 or np.sum(self.tumor_distances) == 0:
             Constants.no_tumor.append(self.id)
 
-    def to_ordered_dict(self, dose_estimates):
-        #exports local information into a dictionary
-        entry = OrderedDict() #why is it ordered?
-        entry['ID'] = str(self.id)
-        entry['ID_int'] = int(self.id)
-        entry['name'] = "Patient " + str(self.id)
-        entry['tumorVolume'] = max([gtv.volume for gtv in self.gtvs])
-        entry['organData'] = self.get_organ_data_dict(dose_estimates)
-        entry['hasGTVp'] = str((self.gtvs[0].volume > 0)).lower()
-        entry['hasGTVn'] = str((self.gtvs[1].volume > 0)).lower()
-        #placeholders, will need to be populated by the Patientset class
-        #there are non-ssim version in the original data but I think thats depricated (was for pearson?)
-        entry['similarity_ssim'] = [0]
-        entry['scores_ssim'] = [0]
-        entry['laterality'] = self.laterality
-        #skipping laterality int
-        entry['tumorSubsite'] = self.tumor_subsite
-        entry['total_Dose'] = self.prescribed_dose #this is confusing
-        entry['cluster'] = self.group
-        entry['gtvp_volume'] = self.gtvs[0].volume
-        entry['gtvn_volume'] = self.gtvs[1].volume
-        return(entry)
-
-    def get_organ_data_dict(self, dose_estimates):
-        #subset of the information for json export - is ordering important
-        #should be a dictionary key = organ string, values = x,y,z,meanDose,maxDose
-        data = OrderedDict()
-        for x in range(0, Constants.num_organs):
-            organ = Constants.organ_list[x]
-            organ_dict = OrderedDict()
-            organ_dict['x'] = self.centroids[x, 0]
-            organ_dict['y'] = self.centroids[x, 1]
-            organ_dict['z'] = self.centroids[x, 2]
-            organ_dict['volume'] = self.volumes[x]
-            organ_dict['meanDose'] = self.doses[x]
-            organ_dict['minDose'] = self.min_doses[x]
-            organ_dict['maxDose'] = self.max_doses[x]
-            organ_dict['estimatedDose'] = 0 if np.isnan(dose_estimates[x]) else round(dose_estimates[x], 2)
-            data[organ] = organ_dict
-        if self.gtvs[0].volume > 0:
-            gtvp = self.gtvs[0]
-            gtvp_dict = OrderedDict()
-            gtvp_dict['x'] = gtvp.position[0]
-            gtvp_dict['y'] = gtvp.position[1]
-            gtvp_dict['z'] = gtvp.position[2]
-            gtvp_dict['volume'] = gtvp.volume
-            gtvp_dict['meanDose'] = gtvp.doses[1]
-            gtvp_dict['maxDose'] = gtvp.doses[2]
-            gtvp_dict['minDose'] = gtvp.doses[0]
-            data['GTVp'] = gtvp_dict
-        if self.gtvs[1].volume > 0:
-            gtvn_dict = OrderedDict()
-            gtvn = self.gtvs[1]
-            gtvn_dict['x'] = gtvn.position[0]
-            gtvn_dict['y'] = gtvn.position[1]
-            gtvn_dict['z'] = gtvn.position[2]
-            gtvn_dict['volume'] = gtvn.volume
-            gtvn_dict['meanDose'] = gtvn.doses[1]
-            gtvn_dict['maxDose'] = gtvn.doses[2]
-            gtvn_dict['minDose'] = gtvn.doses[0]
-            data['GTVn'] = gtvn_dict
-        return(data)
+    def get_lymph_node_data(self, info):
+        lymph_nodes = info['Affected Lymph node cleaned']
+        nodes = [node.strip() for node in lymph_nodes.split(',')]
+        print(nodes)
+        
 
     def check_missing_organs(self, doses):
         #check if any organs are missing using the dose file, and store them
@@ -228,7 +172,6 @@ class Patient():
                 tumor_volume += gtv.volume
                 tumor_distances += gtv.volume*gtv.dists
                 tumor_position += gtv.volume*gtv.position
-            print(self.id, ' ', tumor_volume)
             tumor_distances /= tumor_volume
             tumor_position /= tumor_volume
         except:

@@ -12,75 +12,6 @@ import numpy as np
 import json
 import matplotlib.pyplot as plt
 
-#def show_pca_scatterplot(db, reduction_fun = Rankings.pca, on = 'dose'):
-#    residual = db.evaluate()
-#    if on == 'distance':
-#        x = db.gen_tumor_distance_matrix()[0]
-#    elif on == 'error':
-#        x = np.absolute(residual['differences'])
-#    else:
-#        on = 'dose'
-#        x = db.doses
-#    components = reduction_fun(x)
-#    scale = np.mean(np.absolute(residual['differences']), axis = 1)**2
-#    colors = db.get_class_list()
-#    plt.scatter(components[:,0], components[:,1], scale, c = colors, cmap='Accent')
-#    plt.title(on + '-distribution PCA')
-#    plt.xlabel('PC 1')
-#    plt.ylabel('PC 2')
-
-#    def export(self, weights = np.array([0,1]) ,
-#               rank_function = 'tumor_organ_ssim',
-#               num_matches = 9,
-#               patient_data_file = 'data\\patient_dataset.json',
-#               score_file = 'data\\all_ssim_scores.csv'):
-#        #exports the dataset into the json format peter is using for the frontend
-#        data = []
-#        scores = self.gen_score_matrix(weights)
-#        dose_estimates = self.predict_doses(weights, num_matches)
-#        patient_mean_error = np.mean(np.absolute(self.doses - dose_estimates), axis = 1)
-#        dose_pca = Rankings.pca(self.doses)
-#        distance_pca = Rankings.pca( self.gen_tumor_distance_matrix() )
-#        print(distance_pca)
-#        for p_idx in range(0, self.num_patients):
-#            patient = self.patients[p_idx]
-#            entry = patient.to_ordered_dict(dose_estimates[p_idx, :])
-#            ssim_scores = scores[p_idx,:]
-#            ssim_scores[p_idx] = 1
-#            zipped_scores = sorted(zip(ssim_scores, np.arange(1, len(ssim_scores) + 1)),
-#                                   key = lambda x: -x[0])
-#            patient_scores, internal_ids = zip(*zipped_scores)
-#            entry['ID_internal'] = p_idx + 1
-#            num_matches = self.get_num_matches(patient) + 1
-#            while patient_scores[num_matches - 1] <= 0:
-#                num_matches -= 1
-#            matches = internal_ids[:num_matches]
-#            match_scores = patient_scores[:num_matches]
-#            entry['similarity_ssim'] = matches
-#            entry['scores_ssim'] = match_scores
-#            entry['dose_pca'] = dose_pca[p_idx,:].tolist()
-#            entry['distance_pca'] = distance_pca[p_idx, :].tolist()
-#            entry['mean_error'] = round(patient_mean_error[p_idx], 4)
-#            data.append(entry)
-#        #save the vast dictionary of data for the front-end
-#        try:
-#            def default(o):
-#                if isinstance(o, np.int32):
-#                    return int(o)
-#            with open(patient_data_file, 'w+') as f:  # generate JSON
-#                json.dump( data, f, indent=4, default = default)
-#            print('successfully save patient data to ', patient_data_file)
-#            #save a labeled matrix of similarity scores for other people
-#        except:
-#            print('error exporting patient data to json')
-#        try:
-#            raw_scores = self.gen_score_matrix(1, classes = False)
-#            score_df = pd.DataFrame(raw_scores, index = self.ids, columns = self.ids)
-#            score_df.to_csv(score_file)
-#            print('successfully saved similarity score matrix to ', score_file)
-#        except:
-#            print('error saving ssim score matrix')
-
 def export(data_set, patient_data_file = 'data\\patient_dataset.json'):
     model = TsimModel()
     estimator = KnnEstimator()
@@ -88,7 +19,6 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json'):
     predicted_doses = estimator.predict_doses(similarity, data_set.doses, data_set.classes)
     similar_patients = estimator.get_matches(similarity, data_set.doses, data_set.classes)
     error = estimator.get_error(predicted_doses, data_set.doses) #a vector of errors
-    similarity_scores = similarity + np.diag(np.ones(similarity.shape[0])) #fill diagonal with ones
     dose_pca = Rankings.pca(data_set.doses)
     distance_pca = Rankings.pca(data_set.tumor_distances)
     
@@ -98,7 +28,7 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json'):
         entry['ID'] = data_set.ids[x]
         entry['ID_internal'] = x+1
         matches = similar_patients[x].tolist()
-        local_similarity = sorted( similarity_scores[x, :], key = lambda x: -x)
+        local_similarity = sorted( similarity[x, :], key = lambda x: -x)
         entry['similarity_scores'] = local_similarity[:len(matches)]
         entry['similar_patients'] = matches
         entry['mean_error'] = round(error[x], 4)
@@ -163,7 +93,7 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json'):
 #            print('error saving ssim score matrix')
     return(export_data)
 
-db = PatientSet(root = 'data\\patients_v3*\\',
+db = PatientSet(root = 'data\\patients_v2_half\\',
                 class_name = None, 
                 use_distances = False)
 test = export(db)

@@ -112,7 +112,6 @@ var Data = function(patientData, oAtlas) {
 			}
 			var gtvRegex = RegExp('GTV*');
 			organList = organList.filter(o => !gtvRegex.test(o));
-			console.log(organList);
 			return organList;
 		},
 
@@ -190,7 +189,6 @@ var Data = function(patientData, oAtlas) {
 			let matches = patient.similar_patients;
 			let position = matches.indexOf(+id);
 			if(position != 0){
-				console.log(matches);
 				matches.splice(position, 1);
 				matches.unshift(+id);
 				let scores = patient.similarity_scores;

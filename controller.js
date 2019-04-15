@@ -24,27 +24,29 @@ var Controller = (function(){
 					model.material.opacity = 1;
 				});
 				brushedOrgans.push(organ);
-			} catch{}
+			} catch{
+				brushedOrgans.push(organ);
+			}
 		},
 		
 		unbrushOrgan: function(){
-			try{
-				brushedOrgans.forEach(function(organ){
-					var axisLine = d3.select( "#" + organ + 'axisLine' )
-					var currentWidth = axisLine.attr('stroke-width');
-					axisLine.attr('stroke', 'silver')
-						.attr('stroke-width', .05*OrganBubblePlot.binWidth);
-					scenes.forEach(function(scene){
+			brushedOrgans.forEach(function(organ){
+				var axisLine = d3.select( "#" + organ + 'axisLine' )
+				var currentWidth = axisLine.attr('stroke-width');
+				axisLine.attr('stroke', 'silver')
+					.attr('stroke-width', .05*OrganBubblePlot.binWidth);
+				scenes.forEach(function(scene){
+					try{
 						var node = scene.getObjectByName(organ);
 						var model = scene.getObjectByName(organ + '_model');
 						var organColor = doseColor(node.userData.meanDose);
 						//model.material.color.set(organColor);
 						var currentOpacity = document.getElementById("opacSlider").value/100.0;
 						model.material.opacity = currentOpacity;
-					});
+					} catch{}
 				});
-				brushedOrgans = [];
-			} catch{}
+			});
+			brushedOrgans = [];
 		},
 		
 		switchScene: function(scene, type, data){

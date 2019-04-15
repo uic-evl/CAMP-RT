@@ -54,12 +54,21 @@ class ErrorChecker():
             organ = no_volume[1][missing_organ]
             if organ not in self.eyes:
                 bad_patients.add(patient)
+                
         no_dose = np.where(db.doses <= 0.00001)
         for missing_organ in range(len(no_dose[0])):
             patient = no_dose[0][missing_organ]
             organ = no_dose[1][missing_organ]
             if organ not in self.eyes:
                 bad_patients.add(patient)
+
+        #check if position variance is too low (all in the center bascially)
+        organ_spread = np.var(db.centroids, axis = 1).mean(axis = 1)
+        bad_centroids = np.where( organ_spread < 200)[0]
+        print('bad centroids', bad_centroids)
+        for bad_patient in bad_centroids:
+            bad_patients.add(bad_patient)
+        #check if no tumor
         for patient in range(len(db.gtvs)):
             gtv_set = db.gtvs[patient]
             tumor_volume = np.sum([gtv.volume for gtv in gtv_set])
