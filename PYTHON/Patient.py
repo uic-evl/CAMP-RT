@@ -8,7 +8,7 @@ import numpy as np
 from Constants import Constants
 from collections import OrderedDict, namedtuple
 
-GTV = namedtuple('GTV', ['volume', 'position', 'doses', 'dists'])
+GTV = namedtuple('GTV', ['name', 'volume', 'position', 'doses', 'dists'])
 
 class Patient():
     ##class holds information for each patient.
@@ -146,7 +146,7 @@ class Patient():
                 position = np.array([0,0,0])
                 doses = np.array([0,0,0])
                 distances = np.zeros((Constants.num_organs,))
-            return( GTV(volume, position, doses, distances) )
+            return( GTV(name, volume, position, doses, distances) )
         self.gtvs = [getGTV('GTVp'), getGTV('GTVn')]
         gtvn_count = 2
         while(True):
@@ -233,4 +233,7 @@ class Patient():
             tumor_position /= tumor_volume
         except:
             print('error reading tumor volume for ', self.id)
+            tumor_volume = 0.0
+            tumor_distances = np.zeros((Constants.num_organs,))
+            tumor_position = np.zeros((3,))
         return(tumor_volume, tumor_distances, tumor_position)

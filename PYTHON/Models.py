@@ -34,17 +34,30 @@ class KnnEstimator():
             matched_doses = dose_matrix[args, :]
             predicted_doses[p,:] = np.mean(matched_scores*matched_doses, axis = 0)/matched_scores.mean()
         return(predicted_doses)
+    
+    def get_matches(self, similarity_matrix, dose_matrix, clusters):
+        #should return a list of matched patients
+        matches = []
+        for p in range( dose_matrix.shape[0] ):
+            num_matches = self.get_num_matches(p)
+            scores = similarity_matrix[p, :]
+            args = np.argsort(-scores)
+            args = args[0 : num_matches] + 1
+            matches.append(args)
+        return(matches)
 
     def get_num_matches(self, row):
         #for later better use probs
         return 10
     
+    def get_error(self, predicted_doses, dose_matrix):
+        differences = np.abs(predicted_doses - dose_matrix)
+        percent_error = np.sum(differences, axis = 1)/np.sum(dose_matrix, axis = 1)
+        return percent_error
+    
     def evaluate(self, similarity_matrix, dose_matrix, clusters = None):
         predicted_doses = self.predict_doses(similarity_matrix, dose_matrix, clusters)
-        differences = np.abs(predicted_doses - dose_matrix)
-#        total_mean_error = np.mean(differences)
-        percent_error = np.sum(differences, axis = 1)/np.sum(dose_matrix, axis = 1)
-#        total_rmse = np.sqrt(np.mean(differences**2))    
+        percent_error = self.get_error(predicted_doses, dose_matrix)
         return(percent_error)
         
 class TsimModel():

@@ -240,58 +240,6 @@ class PatientSet():
             organ_dist_df = pd.DataFrame(mean_dists, index = Constants.organ_list, columns = Constants.organ_list)
         organ_dist_df.to_csv(file)
         
-#    def export(self, weights = np.array([0,1]) ,
-#               rank_function = 'tumor_organ_ssim',
-#               num_matches = 9,
-#               patient_data_file = 'data\\patient_dataset.json',
-#               score_file = 'data\\all_ssim_scores.csv'):
-#        #exports the dataset into the json format peter is using for the frontend
-#        data = []
-#        scores = self.gen_score_matrix(weights)
-#        dose_estimates = self.predict_doses(weights, num_matches)
-#        patient_mean_error = np.mean(np.absolute(self.doses - dose_estimates), axis = 1)
-#        dose_pca = Rankings.pca(self.doses)
-#        distance_pca = Rankings.pca( self.gen_tumor_distance_matrix() )
-#        print(distance_pca)
-#        for p_idx in range(0, self.num_patients):
-#            patient = self.patients[p_idx]
-#            entry = patient.to_ordered_dict(dose_estimates[p_idx, :])
-#            ssim_scores = scores[p_idx,:]
-#            ssim_scores[p_idx] = 1
-#            zipped_scores = sorted(zip(ssim_scores, np.arange(1, len(ssim_scores) + 1)),
-#                                   key = lambda x: -x[0])
-#            patient_scores, internal_ids = zip(*zipped_scores)
-#            entry['ID_internal'] = p_idx + 1
-#            num_matches = self.get_num_matches(patient) + 1
-#            while patient_scores[num_matches - 1] <= 0:
-#                num_matches -= 1
-#            matches = internal_ids[:num_matches]
-#            match_scores = patient_scores[:num_matches]
-#            entry['similarity_ssim'] = matches
-#            entry['scores_ssim'] = match_scores
-#            entry['dose_pca'] = dose_pca[p_idx,:].tolist()
-#            entry['distance_pca'] = distance_pca[p_idx, :].tolist()
-#            entry['mean_error'] = round(patient_mean_error[p_idx], 4)
-#            data.append(entry)
-#        #save the vast dictionary of data for the front-end
-#        try:
-#            def default(o):
-#                if isinstance(o, np.int32):
-#                    return int(o)
-#            with open(patient_data_file, 'w+') as f:  # generate JSON
-#                json.dump( data, f, indent=4, default = default)
-#            print('successfully save patient data to ', patient_data_file)
-#            #save a labeled matrix of similarity scores for other people
-#        except:
-#            print('error exporting patient data to json')
-#        try:
-#            raw_scores = self.gen_score_matrix(1, classes = False)
-#            score_df = pd.DataFrame(raw_scores, index = self.ids, columns = self.ids)
-#            score_df.to_csv(score_file)
-#            print('successfully saved similarity score matrix to ', score_file)
-#        except:
-#            print('error saving ssim score matrix')
-
 
 
 #    def get_patients(self):

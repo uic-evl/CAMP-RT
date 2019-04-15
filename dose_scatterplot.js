@@ -283,7 +283,7 @@ DoseScatterPlot.prototype.setupCurveTooltip = function(){
 			self.tooltip.html('Cluster ' + d.cluster + '</br>'
 			+ 'Size: ' + stats.numPoints + '</br>'
 			+ 'Mean Dose: ' + stats.meanDose.toFixed(1) + 'Gy </br>'
-			+ 'Mean Prediction Error: ' + stats.meanError.toFixed(1) + 'Gy' )
+			+ 'Mean Prediction Error: ' + stats.meanError.toFixed(1) + '%' )
 				.style('left', d3.event.pageX + 8 + 'px')
 				.style('top', d3.event.pageY - 20 + 'px');
 			self.tooltip.transition().duration(50).style('visibility','visible');
@@ -381,7 +381,7 @@ DoseScatterPlot.prototype.setupTooltip = function(selectedPatient){
 	this.circles.on('mouseover', function(id){
 		tooltip.html(self.data.getPatientName(id) + '</br>' 
 			+ 'Dose: ' + self.data.getPatientMeanDose(id).toFixed(3) + ' Gy</br>'
-			+ 'Error: ' + self.data.getPatientMeanError(id).toFixed(3) + ' Gy</br>'
+			+ 'Error: ' + self.data.getPatientMeanError(id).toFixed(3) + ' %</br>'
 			+ 'Cluster: ' + self.data.getCluster(id) + '</br>'
 			+ 'x Value: ' + self.getXAxis(id).toFixed(3) + '</br>'
 			+ 'y Value: ' + self.getYAxis(id).toFixed(3))

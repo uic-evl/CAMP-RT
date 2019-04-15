@@ -69,7 +69,7 @@ var scatter;
 var bubbleChart;
 var data;
 var meshes;
-var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset_v3Cleanish.json"];
+var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset.json"];
 var promises = [];
 
 files.forEach(function (url) {
@@ -145,41 +145,27 @@ function populateDropDownMenu() {
 	//holds an array of patient internal ids
     var menu = document.getElementById("patientMenu");
     // copy of patients sorted
-    var patients_sorted = data.getSortedPatients();
-    patients_sorted.forEach(function (patient, index) {
+    var patients_sorted = data.getInternalIdList();
+    patients_sorted.forEach(function (patient) {
         var tempOption = document.createElement("option");
-        tempOption.value = patient.ID_internal;
-        tempOption.innerHTML = patient.name;
+        tempOption.value = patient;
+        tempOption.innerHTML = data.getPatientName(patient);
         menu.appendChild(tempOption);
     });
 
     // first patient 
-    var firstPatient = patients_sorted[0].ID_internal;
+    var firstPatient = patients_sorted[0];
     //THis appears to look at the url to see if a patient is selected there
 	//if so, sets "first patient" to this guy? otherwise, uses the lowest id (above)
     var patientURL = getQueryVariable("id");
 
     if (patientURL != false) {
-        var convertedPatient = getInternalID(patientURL);
-        if (convertedPatient != false) {
-            firstPatient = convertedPatient;
-            menu.value = convertedPatient;
-        }
+        newID = data.getInternalId(+patientURL);
+		if(+newID >= 0){
+			firstPatient = newID;
+		}
     }
-    patients_sorted.length = 0;
     return firstPatient;
-}
-
-function getInternalID(searchString) {
-	var patient;
-    for (var i = 1; i <= data.PatientCount; i++) {
-		patient = data.getPatient(i);
-        if (patient.ID == searchString)
-            return patient.ID_internal;
-
-    }
-
-    return false;
 }
 
 function getQueryVariable(variable) {
@@ -450,7 +436,6 @@ function init() {
         })
     ];
     
-	var patientObject = data.getPatient(selectedPatient);
 	scenes = updateScenes(selectedPatient, materialArray);//populates required views	
 	updateOrder(selectedPatient);
 }
@@ -521,22 +506,22 @@ function showPatient(materialArray, id, parentDivId){
 	//adds a patient view I think
 	var scene = new THREE.Scene();
 	var patient = data.getPatient(id);
-	var patientOrganList = patient.organData;
+	var patientOrganList = data.getPatientOrganData(id);
 
 	// make a list item
 	var element = document.createElement("div");
 	element.className = "list-item";
 	element.id = id;
-	element.innerHTML = template.replace('$', patient.name);
+	element.innerHTML = template.replace('$', data.getPatientName(id));
 	
 	var totDoseElement = element.querySelector(".totDose");
-	totDoseElement.innerHTML = "Total Dose: " + "<b>" + patient.total_Dose + "</b>" + " GY";
+	totDoseElement.innerHTML = "Total Dose: " + "<b>" + data.getTotalDose(id) + "</b>" + " GY";
 
 	var tVolumeElement = element.querySelector(".tVolume");
-	tVolumeElement.innerHTML = "GTV: " + "<b>" + patient.tumorVolume + "</b>" + " cc";
+	tVolumeElement.innerHTML = "GTV: " + "<b>" + data.getTumorVolume(id) + "</b>" + " cc";
 
 	var lateralityElement = element.querySelector(".laterality");
-	lateralityElement.innerHTML = "<b>(" + patient.laterality + ")</b> " + " " + patient.tumorSubsite;
+	lateralityElement.innerHTML = "<b>(" + data.getLaterality(id)+ ")</b> " + " " + data.getSubsite(id);
 
 	// Look up the element that represents the area
 	// we want to render the scene
@@ -722,9 +707,9 @@ function showPatient(materialArray, id, parentDivId){
 	return scene;
 }
 
-function removeOldViews(selectedPatientObject){
+function removeOldViews(patient){
 	//remove list-items not matched to the patient
-	var matches = selectedPatientObject.similarity_ssim;
+	var matches = data.getPatientMatches(patient);
 	var patientViews = document.getElementsByClassName('list-item');
 	var element;
 	for(var i = patientViews.length - 1; i >= 0; i--){
@@ -740,8 +725,7 @@ function switchPatient(updatedPatient){
 	}
 	selectedPatient = updatedPatient;
 	document.getElementById("patientMenu").value = selectedPatient
-	var patientObject = data.getPatient(updatedPatient);
-	removeOldViews(patientObject); //removes old views
+	removeOldViews(updatedPatient); //removes old views
 	//waits for new scenes to load
 	var sceneLoaded = new Promise( function(resolve, reject){
 		Controller.toggleBrush(false);
@@ -753,10 +737,10 @@ function switchPatient(updatedPatient){
 		updateOrder(updatedPatient);
 		initializeRiskPrediction(selectedPatient);
 		Controller.toggleBrush(true);
+		OrganBubblePlot.switchPatient(updatedPatient);
+		scatter.highlightSelectedPatients(updatedPatient); 
+		Controller.setup();
 	});
-	scatter.highlightSelectedPatients(updatedPatient); 
-	OrganBubblePlot.switchPatient(updatedPatient);
-	Controller.setup();
 }
 
 function formatFirstPatient(updatedPatient){

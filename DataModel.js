@@ -38,6 +38,26 @@ var Data = function(patientData, oAtlas) {
 			return [min, max];
 		},
 		
+		getTotalDose: function(id){
+			var patient = this.getPatient(+id);
+			return patient.total_dose;
+		},
+		
+		getSubsite: function(id){
+			var patient = this.getPatient(+id);
+			return patient.tumorSubsite;
+		},
+		
+		getLaterality: function(id){
+			var patient = this.getPatient(+id);
+			return patient.laterality;
+		},
+		
+		getTumorVolume: function(id){
+			var patient = this.getPatient(+id);
+			return patient.tumorVolume;
+		},
+		
 		getClusterColor: function(id){
 			var cluster = this.getCluster(id);
 			return clusterColors[cluster-1];
@@ -54,6 +74,16 @@ var Data = function(patientData, oAtlas) {
 		getPatientId: function(internalId){
 			var patient = this.getPatient(internalId);
 			return +patient.ID;
+		},
+		
+		getInternalId: function(externalId){
+			for(var i = 1; i <=this.patientCount + 1; i++){
+				id = this.getPatientId(i);
+				if(+id == +externalId){
+					return id;
+				}
+			}
+			return -1;
 		},
 		
 		getPatientName: function(internalId){
@@ -80,8 +110,9 @@ var Data = function(patientData, oAtlas) {
 					organList.splice(index, 1);
 				}
 			}
-			remove('GTVp');
-			remove('GTVn');
+			var gtvRegex = RegExp('GTV*');
+			organList = organList.filter(o => !gtvRegex.test(o));
+			console.log(organList);
 			return organList;
 		},
 
@@ -150,19 +181,19 @@ var Data = function(patientData, oAtlas) {
 		
 		getPatientMeanError: function(id){
 			var patient = this.getPatient(id);
-			return patient.mean_error;
+			return patient.mean_error*100;
 		},
 		
 		getPatientMatches: function(id){
 			var patient = this.getPatient(id);
 			//double check that the patient is it's first match
-			let matches = patient.similarity_ssim;
+			let matches = patient.similar_patients;
 			let position = matches.indexOf(+id);
 			if(position != 0){
 				console.log(matches);
 				matches.splice(position, 1);
 				matches.unshift(+id);
-				let scores = patient.scores_ssim;
+				let scores = patient.similarity_scores;
 				scores.unshift( scores.splice(position, 1) );
 			}
 			return matches;
@@ -170,7 +201,7 @@ var Data = function(patientData, oAtlas) {
 		
 		getPatientSimilarityScores: function(id){
 			var patient = this.getPatient(id);
-			return patient.scores_ssim;
+			return patient.similarity_scores;
 		},
 		
 		getSortedPatients: function(){
@@ -182,7 +213,8 @@ var Data = function(patientData, oAtlas) {
 			var index = this.getPatientMatches(+p1).indexOf(+p2);
 			var similarity = this.getPatientSimilarityScores(+p1)[index];
 			return similarity
-		}
+		},
+		
 	};
 	function getMin(pos) {
 

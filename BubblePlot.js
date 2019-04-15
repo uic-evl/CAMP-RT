@@ -244,6 +244,7 @@ var OrganBubblePlot = (function(){
 		let minDose = 0;
 		allPatients.forEach(function(d){
 			this.organList.forEach(function(organ){
+				//console.log(d + ' ' + organ);
 				var newDose = self.data.getMeanDose(d, organ);
 				maxDose = (maxDose > newDose)? maxDose: newDose;
 				minDose = (minDose < newDose)? minDose: newDose;
