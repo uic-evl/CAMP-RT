@@ -581,11 +581,15 @@ function showPatient(materialArray, id, parentDivId){
 		linewidth: 3
 	});
 	
+	var gtvRegex = RegExp('GTV*');
+	
 	for (var pOrgan in patientOrganList) {
 		//this looks like it draws the organs in each patient?
-		
+		if(data.getOrganVolume(id, pOrgan) <= 0){
+			continue;
+		}
 		var organSphere = new THREE.Mesh(geometry, material.clone());
-
+		
 		organSphere.position.x = (patientOrganList[pOrgan].x);
 		organSphere.position.y = (patientOrganList[pOrgan].y);
 		organSphere.position.z = (patientOrganList[pOrgan].z);
@@ -597,7 +601,7 @@ function showPatient(materialArray, id, parentDivId){
 		var outlineMesh = new THREE.Mesh(geometry, outlineMaterial.clone());
 
 		outlineMesh.name = pOrgan + "_outline";
-		outlineMesh.scale.multiplyScalar(1.3);
+		outlineMesh.scale.multiplyScalar( (organSphere.name == 'GTVp')? 1.5:1.3 );
 
 		// color
 		var nodeColor;
@@ -612,7 +616,7 @@ function showPatient(materialArray, id, parentDivId){
 		// do this in python script maybe
 		//grays are already in joules per kilogram?!?!? I might want to delete this because it's misleading to users
 		organSphere.userData.dosePerVolume = (data.getMeanDose(id, pOrgan) / data.getOrganVolume(id, pOrgan)).toFixed(3);
-		if(organSphere.name == 'GTVn' || organSphere.name == 'GTVp'){
+		if( gtvRegex.test(organSphere.name) ){
 			nodeColor = 'black';
 			outlineMesh.scale.multiplyScalar(1.2);
 			let tumorOutline = Controller.getDoseColor(organSphere.userData.meanDose);
