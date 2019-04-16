@@ -113,7 +113,6 @@ class TsimModel():
                 score_matrix[patient1, patient2] = np.mean(scores)
         score_matrix += np.transpose(score_matrix)
         #scale to between 0 and .99
-        print(score_matrix)
         score_matrix = .99*(score_matrix - score_matrix.min())/(score_matrix.max() - score_matrix.min())
         return score_matrix
                 

@@ -52,9 +52,41 @@ class Patient():
             Constants.no_tumor.append(self.id)
 
     def get_lymph_node_data(self, info):
+        node_binarizer = {'R RPLN': 0,
+                    'L RPLN': 1,
+                    'R1A': 2,
+                    'R1B': 3,
+                    'R2': 4,
+                    'R3': 5,
+                    'R4': 6,
+                    'R5A': 7,
+                    'R5B': 8,
+                    'L1A': 9,
+                    'L1B': 10,
+                    'L2': 11,
+                    'L3': 12,
+                    'L4': 13,
+                    'L5A': 14,
+                    'L5B': 15,
+                    'L2/3': [11,12],
+                    'L2/3 R1B': [11,12,3],
+                    'R2-R4': [4,5,6],
+                    'R2/3': [4,5],
+                    'R3/4': [5,6],
+                    'R3/R4': [5,6],
+                    'R2/3/4': [4,5,6]}
         lymph_nodes = info['Affected Lymph node cleaned']
-        nodes = [node.strip() for node in lymph_nodes.split(',')]
-        print(nodes)
+        node_vector = np.zeros((Constants.num_node_types))
+        if isinstance(lymph_nodes, str):
+            nodes = lymph_nodes.split(',')
+            for node in nodes:
+                node = node.strip()
+                if node in node_binarizer:
+                    node_vector[node_binarizer[node]] = 1
+                else:
+                    print('notation not accounted for in lymph nodes:', node)
+        print(np.where(node_vector > 0))
+        self.node_vector = node_vector
         
 
     def check_missing_organs(self, doses):

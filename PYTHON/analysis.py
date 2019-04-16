@@ -91,13 +91,27 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json'):
 #            print('successfully saved similarity score matrix to ', score_file)
 #        except:
 #            print('error saving ssim score matrix')
-    return(export_data)
+    return
 
-db = PatientSet(root = 'data\\patients_v2_half\\',
-                class_name = None, 
-                use_distances = False)
-test = export(db)
+def get_distance(x,y):
+    similarity = 0
+    for value in range(len(x)):
+        if x[value] == y[value] == 1:
+            similarity += 1
+    return similarity
 
+distances = np.zeros((db.get_num_patients(), db.get_num_patients()))
+for i1 in range(db.get_num_patients()):
+    for i2 in range(db.get_num_patients()):
+        p1 = db.lymph_nodes[i1,:]
+        p2 = db.lymph_nodes[i2, :]
+        distances[i1, i2] = get_distance(p1, p2)
+        
+
+#db = PatientSet(root = 'data\\patients_v*\\',
+#                class_name = None, 
+#                use_distances = False)
+#export(db)
 #print(db.get_num_patients())
 #model = TsimModel()
 #similarity = model.get_similarity(db)

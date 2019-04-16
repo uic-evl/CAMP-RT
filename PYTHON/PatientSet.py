@@ -62,6 +62,7 @@ class PatientSet():
         tumor_distance_matrix = np.zeros((num_patients, Constants.num_organs))
         organ_distance_matrix = np.zeros((Constants.num_organs, Constants.num_organs, num_patients))
         volume_matrix = np.zeros((num_patients,Constants.num_organs))
+        node_matrix = np.zeros((num_patients, Constants.num_node_types))
         laterality_list = []
         subsite_list = []
         gtv_list = []
@@ -104,6 +105,7 @@ class PatientSet():
             prescribed_dose_vector[patient_index] = new_patient.prescribed_dose
             volume_matrix[patient_index, :] = new_patient.volumes
             centroid_matrix[patient_index, :, :] = new_patient.centroids
+            node_matrix[patient_index, :] = new_patient.node_vector
             if use_distances:
                 organ_distance_matrix[:, :, patient_index] = np.nan_to_num(new_patient.distances)
         self.doses = np.nan_to_num(dose_matrix)
@@ -111,6 +113,7 @@ class PatientSet():
         self.min_doses = np.nan_to_num(min_dose_matrix)
         self.tumor_distances = np.nan_to_num(tumor_distance_matrix)
         self.volumes = np.nan_to_num(volume_matrix)
+        self.lymph_nodes = np.nan_to_num(node_matrix)
         self.classes = np.nan_to_num(classes)
         if use_distances:
             self.organ_distances = np.nan_to_num(organ_distance_matrix).mean(axis = 2)
@@ -137,6 +140,7 @@ class PatientSet():
         self.centroids = self.centroids[p]
         self.lateralities = self.lateralities[p]
         self.subsites = self.subsites[p]
+        self.lymph_nodes = self.lymph_nodes[p]
         self.ids = self.ids[p]
         new_gtvs = []
         for patient in p:
