@@ -134,3 +134,28 @@ class TsimModel():
         else:
             print('error, zero denomiator in ssim function')
             return 0
+        
+class NodeSimilarityModel():
+    
+    def __init__(self):
+        pass
+    
+    def get_similarity(self, db):
+        node_matrix = db.lymph_nodes
+        num_patients = node_matrix.shape[0]
+        similarity = np.zeros((num_patients, num_patients))
+        for i1 in range(num_patients):
+            for i2 in range(num_patients):
+                if i1 == i2:
+                    continue
+                p1 = node_matrix[i1, :]
+                p2 = node_matrix[i2, :]
+                similarity[i1, i2] = self.similarity(p1, p2)
+        return similarity
+    
+    def similarity(self, x, y):
+        similarity = 0
+        for value in range(len(x)):
+            if x[value] == y[value] == 1:
+                similarity += 1
+        return similarity

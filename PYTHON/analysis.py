@@ -93,7 +93,7 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json'):
 #            print('error saving ssim score matrix')
     return
 
-def get_distance(x,y):
+def get_node_similarity(x,y):
     similarity = 0
     for value in range(len(x)):
         if x[value] == y[value] == 1:
@@ -105,7 +105,7 @@ for i1 in range(db.get_num_patients()):
     for i2 in range(db.get_num_patients()):
         p1 = db.lymph_nodes[i1,:]
         p2 = db.lymph_nodes[i2, :]
-        distances[i1, i2] = get_distance(p1, p2)
+        distances[i1, i2] = get_node_similarity(p1, p2)
         
 
 #db = PatientSet(root = 'data\\patients_v*\\',
@@ -114,6 +114,7 @@ for i1 in range(db.get_num_patients()):
 #export(db)
 #print(db.get_num_patients())
 #model = TsimModel()
-#similarity = model.get_similarity(db)
-#result = KnnEstimator().evaluate(similarity, db.doses)
-#print(result.mean())
+model = NodeSimilarityModel()
+similarity = model.get_similarity(db)
+result = KnnEstimator().evaluate(similarity, db.doses)
+print(result.mean())
