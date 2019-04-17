@@ -18,11 +18,11 @@ class Rankings():
         eig = eig[:, args[0:n_components]]
         principle_components = np.dot(points, eig)
         return(principle_components)
-    
+
 class KnnEstimator():
     def __init__(self):
         return
-        
+
     def predict_doses(self, similarity_matrix, dose_matrix, clusters):
         predicted_doses = np.zeros(dose_matrix.shape)
         for p in range( dose_matrix.shape[0] ):
@@ -34,7 +34,7 @@ class KnnEstimator():
             matched_doses = dose_matrix[args, :]
             predicted_doses[p,:] = np.mean(matched_scores*matched_doses, axis = 0)/matched_scores.mean()
         return(predicted_doses)
-    
+
     def get_matches(self, similarity_matrix, dose_matrix, clusters):
         #should return a list of matched patients
         matches = []
@@ -49,24 +49,24 @@ class KnnEstimator():
     def get_num_matches(self, row):
         #for later better use probs
         return 10
-    
+
     def get_error(self, predicted_doses, dose_matrix):
         differences = np.abs(predicted_doses - dose_matrix)
         percent_error = np.sum(differences, axis = 1)/np.sum(dose_matrix, axis = 1)
         return percent_error
-    
+
     def evaluate(self, similarity_matrix, dose_matrix, clusters = None):
         predicted_doses = self.predict_doses(similarity_matrix, dose_matrix, clusters)
         percent_error = self.get_error(predicted_doses, dose_matrix)
         return(percent_error)
-        
+
 class TsimModel():
     def __init__(self, max_distance = 80, patients = None, organs = None):
         self.max_distance = max_distance
         #for subsetting the data later
         self.patients = patients
         self.organs = organs
-        
+
     def get_adjacency_lists(self, organ_distance_matrix, organs):
         #this code is much simpler than expected
         organ_distances = organ_distance_matrix[organs][:, organs]
@@ -75,12 +75,12 @@ class TsimModel():
             adjacent_args = np.argwhere(row < self.max_distance)
             adjacency_lists.append(adjacent_args.ravel())
         return adjacency_lists
-    
+
     def get_similarity(self, data):
         #data is assumed to be a patientset object for now
         if self.patients is None:
             patients = range(len(data.ids))
-        else: 
+        else:
             patients = self.patients
         if self.organs is None:
             organs = range(Constants.num_organs)
@@ -92,7 +92,7 @@ class TsimModel():
         volumes = data.volumes[index]
         scores = self.similarity(adjacency, distances, volumes)
         return scores
-    
+
     def similarity(self, adjacency, distances, volumes, similarity_function = None):
         if similarity_function is None:
             similarity_function = self.local_ssim
@@ -115,7 +115,7 @@ class TsimModel():
         #scale to between 0 and .99
         score_matrix = .99*(score_matrix - score_matrix.min())/(score_matrix.max() - score_matrix.min())
         return score_matrix
-                
+
     def local_ssim(self, x,y,v = None, w = None):
         c1 = .000001
         c2  = .000001
@@ -134,14 +134,16 @@ class TsimModel():
         else:
             print('error, zero denomiator in ssim function')
             return 0
-        
+
 class NodeSimilarityModel():
-    
+
     def __init__(self):
         pass
-    
+
     def get_similarity(self, db):
         node_matrix = db.lymph_nodes
+        subsites = db.subsites
+        lateralities = db.lateralities
         num_patients = node_matrix.shape[0]
         similarity = np.zeros((num_patients, num_patients))
         for i1 in range(num_patients):
@@ -150,12 +152,19 @@ class NodeSimilarityModel():
                     continue
                 p1 = node_matrix[i1, :]
                 p2 = node_matrix[i2, :]
-                similarity[i1, i2] = self.similarity(p1, p2)
+                subsite1 = subsites[i1]
+                subsite2 = subsites[i2]
+                laterality1 = lateralities[i1]
+                laterality2 = lateralities[i2]
+                same_laterality = 1 if (laterality1 == laterality2) else 0
+                same_subsite = 1 if subsite1 == subsite2 else 0
+                similarity[i1, i2] = self.similarity(p1, p2, same_laterality, same_subsite)
+        similarity = .99*(similarity - similarity.max() + 1)/(similarity.max() - similarity.min())
         return similarity
-    
-    def similarity(self, x, y):
-        similarity = 0
-        for value in range(len(x)):
-            if x[value] == y[value] == 1:
-                similarity += 1
-        return similarity
+
+    def similarity(self, x, y, j, k):
+        numerator = x.dot(y) + j + k
+        denominator = x.dot(x) + y.dot(y) + j + k - x.dot(y)
+        if numerator == 0 or denominator == 0:
+            return 0
+        return numerator/denominator

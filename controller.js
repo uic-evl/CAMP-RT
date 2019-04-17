@@ -3,6 +3,7 @@ var Controller = (function(){
 	var bubbleData = {};
 	var enableBrush = false;
 	var brushedOrgans = [];
+	var gtvRegex = RegExp('GTV*');
 	var doseColor = d3.scaleLinear()
 		.domain([0,70])
 		.range(['#ffffe0','#8b0000']);
@@ -13,6 +14,9 @@ var Controller = (function(){
 	return {
 		
 		brushOrgan: function(organ){
+			if(gtvRegex.test(organ)){
+				return;
+			}
 			try{
 				var axisLine = d3.select( "#" + organ + 'axisLine' );
 				axisLine.attr('stroke', 'white')

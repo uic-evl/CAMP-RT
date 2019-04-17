@@ -12,8 +12,9 @@ import numpy as np
 import json
 import matplotlib.pyplot as plt
 
-def export(data_set, patient_data_file = 'data\\patient_dataset.json'):
-    model = TsimModel()
+def export(data_set, patient_data_file = 'data\\patient_dataset.json', model = None):
+    if model is None:
+        model = TsimModel()
     estimator = KnnEstimator()
     similarity = model.get_similarity(data_set) #similarity scores
     predicted_doses = estimator.predict_doses(similarity, data_set.doses, data_set.classes)
@@ -21,7 +22,7 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json'):
     error = estimator.get_error(predicted_doses, data_set.doses) #a vector of errors
     dose_pca = Rankings.pca(data_set.doses)
     distance_pca = Rankings.pca(data_set.tumor_distances)
-    
+
     export_data = []
     for x in range(data_set.get_num_patients()):
         entry = OrderedDict()
@@ -32,14 +33,14 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json'):
         entry['similarity_scores'] = local_similarity[:len(matches)]
         entry['similar_patients'] = matches
         entry['mean_error'] = round(error[x], 4)
-        
+
         entry['cluster'] = data_set.classes[x]
         entry['laterality'] = data_set.lateralities[x]
         entry['tumorSubsite'] = data_set.subsites[x]
         entry['total_Dose'] = data_set.prescribed_doses[x]
         entry['dose_pca'] = dose_pca[x, :].tolist()
         entry['distance_pca'] = distance_pca[x, :].tolist()
-    
+
         organ_data = OrderedDict()
         organ_centroids = data_set.centroids[x, :, :]
         for idx in range(Constants.num_organs):
@@ -55,7 +56,7 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json'):
             organ_entry['maxDose'] = data_set.max_doses[x, idx]
             organ_entry['estimatedDose'] = predicted_doses[x, idx]
             organ_data[organ_name] = organ_entry
-        
+
         tumors = data_set.gtvs[x]
         entry['tumorVolume'] = max([tumor.volume for tumor in tumors])
         entry['gtvp_volume'] = tumors[0].volume
@@ -93,28 +94,24 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json'):
 #            print('error saving ssim score matrix')
     return
 
-def get_node_similarity(x,y):
-    similarity = 0
-    for value in range(len(x)):
-        if x[value] == y[value] == 1:
-            similarity += 1
-    return similarity
+#adjacency = np.zeros((Constants.num_node_types, Constants.num_node_types))
+#for key, value in Patient.node_adjacency.items():
+#    node = Patient.node_binarizer[key]
+#    edges = [Patient.node_binarizer[x] for x in value]
+#    adjacency[node, edges] = 1
+#    adjacency[node, node] = 0
+#print(adjacency.dot(adjacency))
 
-distances = np.zeros((db.get_num_patients(), db.get_num_patients()))
-for i1 in range(db.get_num_patients()):
-    for i2 in range(db.get_num_patients()):
-        p1 = db.lymph_nodes[i1,:]
-        p2 = db.lymph_nodes[i2, :]
-        distances[i1, i2] = get_node_similarity(p1, p2)
-        
 
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                class_name = None, 
-#                use_distances = False)
+
+db = PatientSet(root = 'data\\patients_v*\\',
+                class_name = None,
+                use_distances = False)
 #export(db)
 #print(db.get_num_patients())
 #model = TsimModel()
 model = NodeSimilarityModel()
+export(db, model = NodeSimilarityModel())
 similarity = model.get_similarity(db)
 result = KnnEstimator().evaluate(similarity, db.doses)
 print(result.mean())
