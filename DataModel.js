@@ -40,7 +40,7 @@ var Data = function(patientData, oAtlas) {
 		
 		getTotalDose: function(id){
 			var patient = this.getPatient(+id);
-			return patient.total_dose;
+			return patient.total_Dose;
 		},
 		
 		getSubsite: function(id){

@@ -26,29 +26,37 @@ class KnnEstimator():
     def predict_doses(self, similarity_matrix, dose_matrix, clusters):
         predicted_doses = np.zeros(dose_matrix.shape)
         for p in range( dose_matrix.shape[0] ):
-            num_matches = self.get_num_matches(p)
+            num_matches = self.get_num_matches(similarity_matrix[p])
+            if num_matches == 0:
+                print(p, 'no matches')
             scores = similarity_matrix[p, :]
             args = np.argsort(-scores)
             args = args[0 : num_matches]
             matched_scores = scores[args].reshape(len(args), 1)
             matched_doses = dose_matrix[args, :]
-            predicted_doses[p,:] = np.mean(matched_scores*matched_doses, axis = 0)/matched_scores.mean()
+            if matched_scores.mean() > 0:
+                predicted_doses[p,:] = np.mean(matched_scores*matched_doses, axis = 0)/matched_scores.mean()
+            else:
+                print(p, 'doesnt have any matches')
+                predicted_doses[p,:] = dose_matrix.mean(axis=0) #return average if bad
         return(predicted_doses)
 
     def get_matches(self, similarity_matrix, dose_matrix, clusters):
         #should return a list of matched patients
         matches = []
         for p in range( dose_matrix.shape[0] ):
-            num_matches = self.get_num_matches(p)
+            num_matches = self.get_num_matches(similarity_matrix[p])
             scores = similarity_matrix[p, :]
             args = np.argsort(-scores)
             args = args[0 : num_matches] + 1
             matches.append(args)
         return(matches)
 
-    def get_num_matches(self, row):
+    def get_num_matches(self, similarity):
         #for later better use probs
-        return 10
+        max_val = similarity.max()
+        num_matches = len( np.where(similarity == max_val)[0] )
+        return num_matches
 
     def get_error(self, predicted_doses, dose_matrix):
         differences = np.abs(predicted_doses - dose_matrix)
@@ -113,7 +121,7 @@ class TsimModel():
                 score_matrix[patient1, patient2] = np.mean(scores)
         score_matrix += np.transpose(score_matrix)
         #scale to between 0 and .99
-        score_matrix = .99*(score_matrix - score_matrix.min())/(score_matrix.max() - score_matrix.min())
+        #score_matrix = .99*(score_matrix - score_matrix.min())/(score_matrix.max() - score_matrix.min())
         return score_matrix
 
     def local_ssim(self, x,y,v = None, w = None):
@@ -159,12 +167,11 @@ class NodeSimilarityModel():
                 same_laterality = 1 if (laterality1 == laterality2) else 0
                 same_subsite = 1 if subsite1 == subsite2 else 0
                 similarity[i1, i2] = self.similarity(p1, p2, same_laterality, same_subsite)
-        similarity = .99*(similarity - similarity.max() + 1)/(similarity.max() - similarity.min())
         return similarity
 
     def similarity(self, x, y, j, k):
-        numerator = x.dot(y) + j + k
-        denominator = x.dot(x) + y.dot(y) + j + k - x.dot(y)
+        numerator = x.dot(y)
+        denominator = x.dot(x) + y.dot(y) - x.dot(y)
         if numerator == 0 or denominator == 0:
             return 0
         return numerator/denominator

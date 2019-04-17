@@ -813,6 +813,7 @@ function updateOrder(updatedPatient) {
     }
 	//update similarity for the first non-self match
 	if(scenes.length > 1){
+		first = document.getElementById(patientMatches[1]);
 		var pScoreElement = first.querySelector(".pScore");
 		pScoreElement.innerHTML = data.getPatientSimilarityScores(selectedPatient)[i+1].toFixed(5);
 		first.style.display = "none";

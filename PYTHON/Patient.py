@@ -112,7 +112,6 @@ class Patient():
                 y = Patient.node_binarizer[adjacent_node]
                 bigram_val = node_vector[x]*node_vector[y]
                 node_vector[k] = bigram_val
-        print(len(node_vector))
         self.node_vector = node_vector
 
 

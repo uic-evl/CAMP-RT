@@ -104,9 +104,9 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', model = N
 
 
 
-db = PatientSet(root = 'data\\patients_v*\\',
-                class_name = None,
-                use_distances = False)
+#db = PatientSet(root = 'data\\patients_v*\\',
+#                class_name = None,
+#                use_distances = False)
 #export(db)
 #print(db.get_num_patients())
 #model = TsimModel()
