@@ -80,7 +80,7 @@ class Constants():
     v2_bad_entries = [239, 10034, 10164, 174, 175, 205, 249, 2009, 5059]
     v2_half_dosed = [160, 5077, 178, 155, 221, 251, 2007, 212, 234,154]
     #pateints with like, really high neck radation, chosen manually
-    v2_high_throat_dose = [184, 276, 5084, 246, 289, 283, 5068, 197, 5007, 100]
+    v2_high_throat_dose = [184, 276, 5084, 246, 289, 283, 5068, 197, 5007, 100, 10054, 10, 145, 10199]
     #names to use for the dataframe when I read a centroid file.  it's cleaner
     centroid_file_names_v2 = ['ROI', 'x', 'y', 'z', 'mean_dose', 'volume', 'min_dose', 'max_dose']
     centroid_file_names_v3 = ['ROI', 'x', 'y', 'z', 'volume', 'min_dose', 'mean_dose', 'max_dose']

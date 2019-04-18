@@ -23,51 +23,164 @@ class KnnEstimator():
     def __init__(self):
         return
 
-    def predict_doses(self, similarity_matrix, dose_matrix, clusters):
+    def predict_doses(self, similarity_matrix, data):
+        dose_matrix = data.doses
+        clusters = data.classes
         predicted_doses = np.zeros(dose_matrix.shape)
         for p in range( dose_matrix.shape[0] ):
-            num_matches = self.get_num_matches(similarity_matrix[p])
+            num_matches = self.get_num_matches(p, similarity_matrix, clusters)
             if num_matches == 0:
                 print(p, 'no matches')
             scores = similarity_matrix[p, :]
             args = np.argsort(-scores)
             args = args[0 : num_matches]
-            matched_scores = scores[args].reshape(len(args), 1)
-            matched_doses = dose_matrix[args, :]
-            if matched_scores.mean() > 0:
-                predicted_doses[p,:] = np.mean(matched_scores*matched_doses, axis = 0)/matched_scores.mean()
-            else:
-                print(p, 'doesnt have any matches')
-                predicted_doses[p,:] = dose_matrix.mean(axis=0) #return average if bad
+            predicted_doses[p, :] = self.get_prediction(data, scores, args, p)
         return(predicted_doses)
+    
+    def get_prediction(self, data, scores, args, patient):
+        dose_matrix = data.doses
+        matched_scores = scores[args].reshape(len(args), 1)
+        matched_doses = dose_matrix[args, :]
+        if matched_scores.mean() > 0:
+                predicted_doses = np.mean(matched_scores*matched_doses, axis = 0)/matched_scores.mean()
+        else:
+            print(patient, 'doesnt have any matches')
+            predicted_doses = dose_matrix.mean(axis=0) #return average if bad
+        return predicted_doses
 
-    def get_matches(self, similarity_matrix, dose_matrix, clusters):
+    def get_matches(self, similarity_matrix, data):
+        dose_matrix = data.doses
+        clusters = data.classes
         #should return a list of matched patients
         matches = []
         for p in range( dose_matrix.shape[0] ):
-            num_matches = self.get_num_matches(similarity_matrix[p])
+            num_matches = self.get_num_matches(p, similarity_matrix, clusters)
             scores = similarity_matrix[p, :]
             args = np.argsort(-scores)
             args = args[0 : num_matches] + 1
             matches.append(args)
         return(matches)
 
-    def get_num_matches(self, similarity):
+    def get_num_matches(self, p, similarity, clusters):
         #for later better use probs
-        max_val = similarity.max()
-        num_matches = len( np.where(similarity == max_val)[0] )
-        return num_matches
+        num_cluster_values = len(np.where(clusters == clusters[p])[0])
+        num_matches = np.max([np.sqrt(num_cluster_values), 3])
+#        max_val = similarity[p].max()
+#        num_matches = len( np.where(similarity[p] == max_val)[0] )
+        return int(num_matches + 1)
 
     def get_error(self, predicted_doses, dose_matrix):
         differences = np.abs(predicted_doses - dose_matrix)
         percent_error = np.sum(differences, axis = 1)/np.sum(dose_matrix, axis = 1)
         return percent_error
 
-    def evaluate(self, similarity_matrix, dose_matrix, clusters = None):
-        predicted_doses = self.predict_doses(similarity_matrix, dose_matrix, clusters)
-        percent_error = self.get_error(predicted_doses, dose_matrix)
+    def evaluate(self, similarity_matrix, data):
+        predicted_doses = self.predict_doses(similarity_matrix, data)
+        percent_error = self.get_error(predicted_doses, data.doses)
         return(percent_error)
-
+    
+class KnnTreeEstimator(KnnEstimator):
+    
+    def __init__(self, num_pca_components = 10, n_estimators = 50, min_samples_split = 4, max_depth = None):
+        from sklearn.ensemble import RandomForestRegressor
+        self.model = RandomForestRegressor(n_estimators = n_estimators)
+        self.num_pca_components = num_pca_components
+        
+    
+    def get_prediction(self, data, scores, args, p):
+        dose_matrix = data.doses
+#        matched_scores = scores[args].reshape(len(args), 1
+        matched_doses = dose_matrix[args, :]
+        features = self.get_features(data)
+        self.model.fit(features[args], matched_doses)
+        return self.model.predict(features[p, :].reshape(1, features.shape[1]))
+        
+    def get_features(self, data):
+        num_patients = data.get_num_patients()
+        pca = lambda x: Rankings.pca(x, self.num_pca_components)
+        lymph_nodes = pca(data.lymph_nodes)
+        distances = pca(data.tumor_distances)
+        tumor_volumes = np.zeros((num_patients, 2))
+        for i in range(num_patients):
+            gtvs = data.gtvs[i]
+            gtvp_volume = gtvs[0].volume
+            gtvn_volume = 0
+            for gtvn in gtvs[1:]:
+                gtvn_volume += gtvn.volume
+            tumor_volumes[i, :] = (gtvp_volume, gtvn_volume)
+        laterality = data.lateralities.reshape(num_patients, 1)
+        laterality = np.vectorize(TreeEstimator.laterality_map.__getitem__)(laterality)
+        subsites = data.subsites.reshape(num_patients, 1)
+        subsites = np.vectorize(TreeEstimator.subsite_map.__getitem__)(subsites)
+        total_doses = data.prescribed_doses.reshape(num_patients, 1)
+        features = np.hstack([distances, lymph_nodes, tumor_volumes, total_doses, laterality, subsites])
+        return features
+    
+    def get_num_matches(self, p, similarity, clusters):
+        #for later better use probs
+        num_cluster_values = len(np.where(clusters == clusters[p])[0])
+        num_matches = np.max(np.sqrt([2*num_cluster_values, 3]))
+        return int(num_matches)
+        
+class TreeSimilarity():
+    
+    subsite_map = {'BOT': 0, 'GPS': 1, 'NOS': 2, 'Soft palate': 3, 'Tonsil': 4}
+    laterality_map = {'Bilateral': 0, 'L': 1, 'R': 2}
+    
+    def __init__(self, num_pca_components = 10, n_estimators =10, min_samples_split = 4, max_depth = None):
+        from sklearn.ensemble import RandomForestRegressor
+        self.model = RandomForestRegressor(min_samples_split = min_samples_split, 
+                                           n_estimators = n_estimators,
+                                           max_depth = max_depth)
+        self.num_pca_components = num_pca_components
+        
+    def get_similarity(self, data):
+        true_similarity = self.get_true_similarity(data)
+        similarity = np.zeros(true_similarity.shape)
+        x = self.get_input_features(data)
+        for p in range(data.get_num_patients()):
+            y_train = np.delete(true_similarity, p, axis = 0)
+            x_train = np.delete(x, p, axis = 0)
+            self.model.fit(x_train, y_train)
+            similarity[p, :] = self.model.predict(x[p])
+            similarity[p, p] = 0
+        return similarity
+            
+    
+    def get_true_similarity(self, data):
+        n_patients = data.get_num_patients()
+        doses = data.doses
+        error_matrix = np.zeros((n_patients, n_patients))
+        for p1 in range(n_patients):
+            for p2 in range(p1 + 1, n_patients):
+                dose_difference = doses[p1,:] - doses[p2, :]
+                error_matrix[p1, p2] = np.mean(dose_difference)
+        similarity_matrix = 1 - (error_matrix - error_matrix.max())/(error_matrix.max() - error_matrix.min())
+        similarity_matrix += similarity_matrix.transpose()
+        return similarity_matrix
+    
+    def get_input_features(self, data):
+        num_patients = data.get_num_patients()
+        pca = lambda x: Rankings.pca(x, self.num_pca_components)
+        distances = pca(data.tumor_distances)
+        lymph_nodes = pca(data.lymph_nodes)
+        tumor_volumes = np.zeros((num_patients, 2))
+        for i in range(num_patients):
+            gtvs = data.gtvs[i]
+            gtvp_volume = gtvs[0].volume
+            gtvn_volume = 0
+            for gtvn in gtvs[1:]:
+                gtvn_volume += gtvn.volume
+            tumor_volumes[i, :] = (gtvp_volume, gtvn_volume)
+        laterality = data.lateralities.reshape(num_patients, 1)
+        laterality = np.vectorize(TreeSimilarity.laterality_map.__getitem__)(laterality)
+        subsites = data.subsites.reshape(num_patients, 1)
+        subsites = np.vectorize(TreeSimilarity.subsite_map.__getitem__)(subsites)
+        total_doses = data.prescribed_doses.reshape(num_patients, 1)
+        clusters = data.classes.reshape(num_patients, 1)
+        features = np.hstack([distances, lymph_nodes, tumor_volumes, total_doses, laterality, subsites])
+        return features
+        
 class TsimModel():
     def __init__(self, max_distance = 80, patients = None, organs = None):
         self.max_distance = max_distance
@@ -98,16 +211,19 @@ class TsimModel():
         adjacency = self.get_adjacency_lists(data.organ_distances, organs)
         distances = data.tumor_distances[index]
         volumes = data.volumes[index]
-        scores = self.similarity(adjacency, distances, volumes)
+        clusters = data.classes[patients]
+        scores = self.similarity(adjacency, distances, volumes, clusters)
         return scores
 
-    def similarity(self, adjacency, distances, volumes, similarity_function = None):
+    def similarity(self, adjacency, distances, volumes, clusters, similarity_function = None):
         if similarity_function is None:
             similarity_function = self.local_ssim
         num_patients, num_organs = distances.shape
         score_matrix = np.zeros((num_patients, num_patients))
         for patient1 in range(0, num_patients - 1):
             for patient2 in range(patient1 + 1, num_patients):
+#                if clusters[patient1] != clusters[patient2]:
+#                    continue
                 scores = []
                 for organ in range(num_organs):
                     adjacent_args = adjacency[organ]
@@ -175,3 +291,63 @@ class NodeSimilarityModel():
         if numerator == 0 or denominator == 0:
             return 0
         return numerator/denominator
+    
+class TreeEstimator():
+    subsite_map = {'BOT': 0, 'GPS': 1, 'NOS': 2, 'Soft palate': 3, 'Tonsil': 4}
+    laterality_map = {'Bilateral': 0, 'L': 1, 'R': 2}
+    def __init__(self, num_pca_components = 10, n_estimators =10, min_samples_split = 4, max_depth = None):
+        from sklearn.ensemble import RandomForestRegressor
+        self.model = RandomForestRegressor(min_samples_split = min_samples_split, 
+                                           n_estimators = n_estimators,
+                                           max_depth = max_depth)
+        self.num_pca_components = num_pca_components
+
+    def evaluate(self, data):
+        x = self.get_input_features(data)
+        y = data.doses
+        i = 0
+        errors = []
+        while i < (data.get_num_patients() - 10):
+            values = np.arange(i, i+10, 1)
+            x_train = np.delete(x, values, axis = 0)
+            y_train = np.delete(y, values, axis = 0)
+            x_test = x[values, :]
+            y_test = y[values, :]
+            i += 10
+            y_predict = self.predict_doses( x_train, y_train, x_test, y_test)
+            error = self.get_error(y_predict, y_test)
+            errors.append(error)
+        return np.mean(errors, axis = 0)
+        
+    def predict_doses(self, x_train, y_train, x_test, y_test):
+        self.model.fit(x_train, y_train)
+        y_predict = self.model.predict(x_test)
+        return y_predict
+        
+    def get_error(self, predicted_doses, dose_matrix):
+        differences = np.abs(predicted_doses - dose_matrix)
+        percent_error = np.sum(differences, axis = 1)/np.sum(dose_matrix, axis = 1)
+        return percent_error
+    
+    def get_input_features(self, data):
+        num_patients = data.get_num_patients()
+        pca = lambda x: Rankings.pca(x, self.num_pca_components)
+        distances = pca(data.tumor_distances)
+        lymph_nodes = pca(data.lymph_nodes)
+        tumor_volumes = np.zeros((num_patients, 2))
+        for i in range(num_patients):
+            gtvs = data.gtvs[i]
+            gtvp_volume = gtvs[0].volume
+            gtvn_volume = 0
+            for gtvn in gtvs[1:]:
+                gtvn_volume += gtvn.volume
+            tumor_volumes[i, :] = (gtvp_volume, gtvn_volume)
+        laterality = data.lateralities.reshape(num_patients, 1)
+        laterality = np.vectorize(TreeEstimator.laterality_map.__getitem__)(laterality)
+        subsites = data.subsites.reshape(num_patients, 1)
+        subsites = np.vectorize(TreeEstimator.subsite_map.__getitem__)(subsites)
+        total_doses = data.prescribed_doses.reshape(num_patients, 1)
+        clusters = data.classes.reshape(num_patients, 1)
+        features = np.hstack([distances, lymph_nodes, tumor_volumes, total_doses, laterality, subsites])
+        return features
+            

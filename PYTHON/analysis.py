@@ -12,13 +12,14 @@ import numpy as np
 import json
 import matplotlib.pyplot as plt
 
-def export(data_set, patient_data_file = 'data\\patient_dataset.json', model = None):
+def export(data_set, patient_data_file = 'data\\patient_dataset.json', model = None, estimator = None):
     if model is None:
         model = TsimModel()
-    estimator = KnnEstimator()
+    if estimator is None:
+        estimator = KnnEstimator()
     similarity = model.get_similarity(data_set) #similarity scores
-    predicted_doses = estimator.predict_doses(similarity, data_set.doses, data_set.classes)
-    similar_patients = estimator.get_matches(similarity, data_set.doses, data_set.classes)
+    predicted_doses = estimator.predict_doses(similarity, data_set)
+    similar_patients = estimator.get_matches(similarity, data_set)
     error = estimator.get_error(predicted_doses, data_set.doses) #a vector of errors
     dose_pca = Rankings.pca(data_set.doses)
     distance_pca = Rankings.pca(data_set.tumor_distances)
@@ -94,24 +95,28 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', model = N
 #            print('error saving ssim score matrix')
     return
 
-#adjacency = np.zeros((Constants.num_node_types, Constants.num_node_types))
-#for key, value in Patient.node_adjacency.items():
-#    node = Patient.node_binarizer[key]
-#    edges = [Patient.node_binarizer[x] for x in value]
-#    adjacency[node, edges] = 1
-#    adjacency[node, node] = 0
-#print(adjacency.dot(adjacency))
-
-
 
 #db = PatientSet(root = 'data\\patients_v*\\',
 #                class_name = None,
 #                use_distances = False)
-#export(db)
-#print(db.get_num_patients())
 #model = TsimModel()
-model = NodeSimilarityModel()
-export(db, model = NodeSimilarityModel())
+#model = NodeSimilarityModel()
+model = TreeSimilarity()
+#export(db, model = model)
 similarity = model.get_similarity(db)
-result = KnnEstimator().evaluate(similarity, db.doses)
+result = KnnEstimator().evaluate(similarity, db)
 print(result.mean())
+
+#result = TreeEstimator(num_pca_components = 6, 
+#                       n_estimators = 45, 
+#                       min_samples_split = 4, 
+#                       max_depth = 45).evaluate(db)
+#print(result.mean())
+
+#gtvs = db.gtvs
+#scores = np.zeros((db.get_num_patients(), db,get_num_patients()))
+#for p1 in range(db.get_num_patients()):
+#    for p2 in range(p1 + 1, db.get_num_patients()):
+#        gtvs1 = gtvs[p1]
+#        gtvs2 = gtvs[p2]
+#        
