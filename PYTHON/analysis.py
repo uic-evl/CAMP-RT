@@ -103,18 +103,18 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', model = N
 #model = NodeSimilarityModel()
 
 from sklearn.cluster import KMeans
-from sklearn.neighbors import NeighborhoodComponentsAnalysis
+from fastNCA import NCA
 
-db = PatientSet(root = 'data\\patients_v*\\',
-                class_name = None,
-                use_distances = False)
+#db = PatientSet(root = 'data\\patients_v*\\',
+#                class_name = None,
+#                use_distances = False)
 
 clusterer = KMeans(n_clusters = 6)
 clusterer.fit(db.doses)
 clusters = clusterer.predict(db.doses)
 db.classes = clusters+1
 
-nca = NeighborhoodComponentsAnalysis()
+nca =NCA(dim=None)
 new_features = nca.fit_transform(ClassifierSimilarity().get_input_features(db), clusters)
 similarity = np.zeros((db.get_num_patients(), db.get_num_patients()))
 for p in range(db.get_num_patients()):
@@ -122,7 +122,8 @@ for p in range(db.get_num_patients()):
     for p2 in range(p+1, db.get_num_patients()):
         x2 = new_features[p2, :]
         similarity[p,p2] = np.linalg.norm(x1 - x2)
-result = KnnEstimators().evaluate(similarity, db)
+similarity = .99 - (similarity - similarity.max())/(similarity.max() - similarity.min())
+result = KnnEstimator().evaluate(similarity, db)
 print(result.mean())
 export(db, similarity)
 print(clusters)
