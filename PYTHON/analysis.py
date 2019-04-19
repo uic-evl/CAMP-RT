@@ -10,14 +10,16 @@ from Constants import Constants
 from Models import *
 import numpy as np
 import json
+from collections import OrderedDict
 import matplotlib.pyplot as plt
 
-def export(data_set, patient_data_file = 'data\\patient_dataset.json', model = None, estimator = None):
+def export(data_set, patient_data_file = 'data\\patient_dataset.json', model = None, estimator = None, similarity = None):
     if model is None:
         model = TsimModel()
     if estimator is None:
         estimator = KnnEstimator()
-    similarity = model.get_similarity(data_set) #similarity scores
+    if similarity is None:
+        similarity = model.get_similarity(data_set) #similarity scores
     predicted_doses = estimator.predict_doses(similarity, data_set)
     similar_patients = estimator.get_matches(similarity, data_set)
     error = estimator.get_error(predicted_doses, data_set.doses) #a vector of errors
@@ -96,16 +98,44 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', model = N
     return
 
 
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                class_name = None,
-#                use_distances = False)
+
 #model = TsimModel()
 #model = NodeSimilarityModel()
-model = TreeSimilarity()
-#export(db, model = model)
-similarity = model.get_similarity(db)
-result = KnnEstimator().evaluate(similarity, db)
+
+from sklearn.cluster import KMeans
+from sklearn.neighbors import NeighborhoodComponentsAnalysis
+
+db = PatientSet(root = 'data\\patients_v*\\',
+                class_name = None,
+                use_distances = False)
+
+clusterer = KMeans(n_clusters = 6)
+clusterer.fit(db.doses)
+clusters = clusterer.predict(db.doses)
+db.classes = clusters+1
+
+nca = NeighborhoodComponentsAnalysis()
+new_features = nca.fit_transform(ClassifierSimilarity().get_input_features(db), clusters)
+similarity = np.zeros((db.get_num_patients(), db.get_num_patients()))
+for p in range(db.get_num_patients()):
+    x1 = new_features[p,:]
+    for p2 in range(p+1, db.get_num_patients()):
+        x2 = new_features[p2, :]
+        similarity[p,p2] = np.linalg.norm(x1 - x2)
+result = KnnEstimators().evaluate(similarity, db)
 print(result.mean())
+export(db, similarity)
+print(clusters)
+
+#from sklearn.svm import LinearSVC
+#from sklearn.neural_network import MLPClassifier
+#from sklearn.ensemble import RandomForestClassifier
+#input_model = RandomForestClassifier(n_estimators = 10, min_samples_split = 4)
+#model = ClassifierSimilarity(input_model)
+##export(db, model = model)
+#similarity = model.get_similarity(db)
+#result = KnnEstimator().evaluate(similarity, db)
+#print(result.mean())
 
 #result = TreeEstimator(num_pca_components = 6, 
 #                       n_estimators = 45, 
