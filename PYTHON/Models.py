@@ -498,3 +498,45 @@ class MLPEstimator(TreeEstimator):
         from sklearn.neural_network import MLPRegressor
         self.model = MLPRegressor(hidden_layer_sizes=(100,100,100), solver = 'lbfgs', alpha = .01)
         self.num_pca_components = num_pca_components
+        
+        
+class SimilarityFuser():
+    
+    def __init__(self, model = None):
+        if model is None:
+            from sklearn.linear_model import LogisticRegression
+            model = LogisticRegression(class_weight = 'balanced')
+        self.model = model
+        
+    def get_similarity(self, db, similarity_matrices):
+        [x,y, positions] = self.extract_features(similarity_matrices, db.get_num_patients(), db)
+        final_similarity = np.zeros(similarity_matrices[0].shape)
+        for p in range(db.get_num_patients() - 1):
+            p1 = np.where(positions[:,0] == p)[0]
+            x_train = np.delete(x, p1, axis = 0)
+            y_train = np.delete(y, p1, axis = 0)
+            x_test = x[p1,:]
+            self.model.fit(x_train, y_train)
+            y_pred = self.model.predict_proba(x_test)[:, 1]
+            final_similarity[p, p+1:] = y_pred
+        final_similarity += final_similarity.transpose()
+        return(final_similarity)
+        
+        
+    def extract_features(self, similarities, num_patients, data):
+        true_similarity = ClassifierSimilarity().get_true_matches(data).astype('int32')
+        x = []
+        y = []
+        positions = []
+        for p1 in range(num_patients):
+            for p2 in range(p1+1, num_patients):
+                x_row = []
+                for similarity in similarities:
+                    x_row.append(similarity[p1, p2])
+                x.append(x_row)
+                y.append(true_similarity[p1, p2])
+                positions.append([p1,p2])
+        x = np.array(x)
+        y = np.array(y)
+        positions = np.array(positions)
+        return [x, y, positions]

@@ -63,6 +63,13 @@ class PatientSet():
         organ_distance_matrix = np.zeros((Constants.num_organs, Constants.num_organs, num_patients))
         volume_matrix = np.zeros((num_patients,Constants.num_organs))
         node_matrix = np.zeros((num_patients, Constants.num_node_types))
+        
+        pathological_grade_vector = np.zeros((num_patients,)).astype(str)
+        therapy_type_vector = np.zeros((num_patients,)).astype(str)
+        n_category_vector = np.zeros((num_patients,)).astype(str)
+        gender_vector = np.zeros((num_patients,)).astype(str)
+        age_vector = np.zeros((num_patients,)).astype('int32')
+        
         laterality_list = []
         subsite_list = []
         gtv_list = []
@@ -97,6 +104,7 @@ class PatientSet():
             laterality_list.append(new_patient.laterality)
             subsite_list.append(new_patient.tumor_subsite)
             gtv_list.append(new_patient.gtvs)
+            
             dose_matrix[patient_index, :] = new_patient.doses
             max_dose_matrix[patient_index, :] = new_patient.max_doses
             min_dose_matrix[patient_index, :] = new_patient.min_doses
@@ -106,6 +114,13 @@ class PatientSet():
             volume_matrix[patient_index, :] = new_patient.volumes
             centroid_matrix[patient_index, :, :] = new_patient.centroids
             node_matrix[patient_index, :] = new_patient.node_vector
+            
+            pathological_grade_vector[patient_index] = new_patient.pathological_grade
+            therapy_type_vector[patient_index] = new_patient.therapy_type
+            n_category_vector[patient_index] = new_patient.n_stage
+            gender_vector[patient_index] = new_patient.gender
+            age_vector[patient_index] = new_patient.age
+            
             if use_distances:
                 organ_distance_matrix[:, :, patient_index] = np.nan_to_num(new_patient.distances)
         self.doses = np.nan_to_num(dose_matrix)
@@ -115,6 +130,13 @@ class PatientSet():
         self.volumes = np.nan_to_num(volume_matrix)
         self.lymph_nodes = np.nan_to_num(node_matrix)
         self.classes = np.nan_to_num(classes)
+        
+        self.pathological_grades = pathological_grade_vector
+        self.therapy_type = therapy_type_vector
+        self.n_categories = n_category_vector
+        self.genders = gender_vector
+        self.ages = np.nan_to_num(age_vector)
+        
         if use_distances:
             self.organ_distances = np.nan_to_num(organ_distance_matrix).mean(axis = 2)
         else:

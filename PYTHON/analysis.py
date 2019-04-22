@@ -142,61 +142,57 @@ from fastNCA import NCA
 #                class_name = None,
 #                use_distances = False)
 #
+
 #distance_similarity = TsimModel().get_similarity(db)
-final_similarity = np.zeros(distance_similarity.shape)
-true_similarity = ClassifierSimilarity().get_true_matches(db).astype('int32')
+
 num_patients = db.get_num_patients()
-tumor_volumes = np.zeros((num_patients, 2))
-for i in range(num_patients):
-    gtvs = db.gtvs[i]
-    gtvp_volume = gtvs[0].volume
-    gtvn_volume = 0
-    for gtvn in gtvs[1:]:
-        gtvn_volume += gtvn.volume
-    tumor_volumes[i, :] = (gtvp_volume, gtvn_volume)
-    
-y = []
-x = []
-positions = []
+subsite_similarity = np.zeros((num_patients, num_patients))
+tumor_volume_similarity = np.zeros((num_patients, num_patients))
+total_dose_similarity = np.zeros((num_patients, num_patients))
+num_tumors_similarity = np.zeros((num_patients, num_patients))
+
+age_similarity = np.zeros((num_patients, num_patients))
+gender_similarity = np.zeros((num_patients, num_patients))
+n_category_similarity = np.zeros((num_patients, num_patients))
+pathological_grade_similarity = np.zeros((num_patients, num_patients))
+
 for p1 in range(num_patients):
-    for p2 in range(p1+1, num_patients):
-        sim1 = distance_similarity[p1, p2]
-        sim2 = np.linalg.norm(tumor_volumes[p1,:] - tumor_volumes[p2,:])
-        sim3 = np.abs(db.prescribed_doses[p1] - db.prescribed_doses[p2])/np.max([db.prescribed_doses[p1], db.prescribed_doses[p2]])
-        sim4 = 1 if db.subsites[p1] == db.subsites[p2] else 0
-        sim5 = Rankings.jaccard_distance(db.lymph_nodes[p1], db.lymph_nodes[p2])
-        sim6 = 1 if db.classes[p1] == db.classes[p2] else 0
-        x_row = [sim1]
-        x.append(x_row)
-        y.append(true_similarity[p1, p2])
-        positions.append([p1,p2])
-x = np.array(x)
-#x = (x - x.mean(axis = 0))/x.std(axis = 0)
-y = np.array(y)
-positions = np.array(positions)
+    for p2 in range(num_patients):
+        subsite_similarity[p1, p2] = 1 if db.subsites[p1] == db.subsites[p2] else 0
+        total_dose_similarity[p1, p2] = 1 if db.prescribed_doses[p1] == db.prescribed_doses[p2] else 0
+        age_similarity[p1, p2] = np.abs(db.ages[p1] - db.ages[p2])/db.ages.max()
+        gender_similarity[p1, p2] = 1 if db.genders[p1] == db.genders[p2] else 0
+        pathological_grade_similarity[p1,p2] = 1 if db.pathological_grades[p1] == db.pathological_grades[p2] else 0
+        n_category_similarity[p1,p2] = 1 if db.n_categories[p1] == db.n_categories[p2] else 0
+        
+        gtvs1 = db.gtvs[p1]
+        gtvs2 = db.gtvs[p2]
+        num_tumors = max([len(gtvs1), len(gtvs2)])
+        tumor_volumes_1 = np.zeros((num_tumors,))
+        tumor_volumes_2 = np.zeros((num_tumors,))
+        for tumor in range(num_tumors):
+            try:
+                tumor_volumes_1[tumor] = gtvs1[tumor].volume
+            except: 
+                pass
+            try:
+                tumor_volumes_2[tumor] = gtvs2[tumor].volume
+            except: 
+                pass
+        num_tumors_similarity[p1, p2] = min([len(gtvs1), len(gtvs2)])/num_tumors
+        tumor_volume_similarity[p1, p2] = np.sum(tumor_volumes_1.sum() - tumor_volumes_2.sum())
+estimator = SimilarityFuser()
+similarity = estimator.get_similarity(db, [distance_similarity, subsite_similarity, 
+                            tumor_volume_similarity, total_dose_similarity, 
+                            num_tumors_similarity, age_similarity])
 
-from sklearn.linear_model import LogisticRegression
-model = LogisticRegression(class_weight = 'balanced')
-#from sklearn.naive_bayes import MultinomialNB
-#model = MultinomialNB()
-
-for p in range(num_patients - 1):
-    p1 = np.where(positions[:,0] == p)[0]
-    x_train = np.delete(x, p1, axis = 0)
-    y_train = np.delete(y, p1, axis = 0)
-    x_test = x[p1,:]
-    y_test = y[p1]
-    model.fit(x_train, y_train)
-    y_pred = model.predict_proba(x_test)[:, 1]
-    print(len(y_pred))
-    final_similarity[p, p+1:] = y_pred
-final_similarity += final_similarity.transpose()
-result = KnnEstimator().evaluate(final_similarity, db)
+result = KnnEstimator().evaluate(similarity, db)
 print(result.mean())
+export(db, similarity = similarity)
+
 #clusterer = KMeans(n_clusters = 7)
 #clusterer.fit(db.doses)
 #clusters = clusterer.predict(db.doses)
-#db.classes = clusters+1
 #
 #nca =NCA(dim=None)
 #features = get_input_features(db)
