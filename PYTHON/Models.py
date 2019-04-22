@@ -18,6 +18,14 @@ class Rankings():
         eig = eig[:, args[0:n_components]]
         principle_components = np.dot(points, eig)
         return(principle_components)
+    
+    def jaccard_distance(x, y):
+        numerator = x.dot(y)
+        denominator = x.dot(x) + y.dot(y) - x.dot(y)
+        if numerator == 0 or denominator == 0:
+            return 0
+        return numerator/denominator
+        
 
 class ClassifierSimilarity():
     
@@ -193,12 +201,14 @@ class KnnEstimator():
 
     def get_num_matches(self, p, similarity, clusters):
         #for later better use probs
-#        return max([3, len(np.where(similarity[p,:] > .5))])
+        good_matches= len(np.where(similarity[p,:] > .8)[0])
+#        print(int(num_matches))
+#        return int(num_matches)
         num_cluster_values = len(np.where(clusters == clusters[p])[0])
-        num_matches = np.max([np.sqrt(num_cluster_values), 3])
+        cluster_matches = np.max([np.sqrt(num_cluster_values), 3])
 #        max_val = similarity[p].max()
 #        num_matches = len( np.where(similarity[p] == max_val)[0] )
-        return int(num_matches + 1)
+        return max([int(cluster_matches + 1), good_matches])
 
     def get_error(self, predicted_doses, dose_matrix):
         differences = np.abs(predicted_doses - dose_matrix)
