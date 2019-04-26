@@ -505,7 +505,9 @@ class SimilarityFuser():
     def __init__(self, model = None):
         if model is None:
             from sklearn.linear_model import LogisticRegression
-            model = LogisticRegression(class_weight = 'balanced')
+            model = LogisticRegression(class_weight = 'balanced',
+                                       solver = 'lbfgs',
+                                       max_iter=500)
         self.model = model
         
     def get_similarity(self, db, similarity_matrices):

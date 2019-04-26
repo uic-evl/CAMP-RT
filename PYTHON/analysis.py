@@ -97,53 +97,30 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', model = N
 #            print('error saving ssim score matrix')
     return
 
-def get_input_features(data, num_pca_components = 6):
-    num_patients = data.get_num_patients()
-    pca = lambda x: Rankings.pca(x, num_pca_components)
-    distances = pca(data.tumor_distances)
-    lymph_nodes = pca(data.lymph_nodes)
-    tumor_volumes = np.zeros((num_patients, 2))
-    for i in range(num_patients):
-        gtvs = data.gtvs[i]
-        gtvp_volume = gtvs[0].volume
-        gtvn_volume = 0
-        for gtvn in gtvs[1:]:
-            gtvn_volume += gtvn.volume
-        tumor_volumes[i, :] = (gtvp_volume, gtvn_volume)
-    laterality = data.lateralities.reshape(num_patients, 1)
-    laterality = np.vectorize(TreeSimilarity.laterality_map.__getitem__)(laterality)
-    subsites = data.subsites.reshape(num_patients, 1)
-    subsites = np.vectorize(TreeSimilarity.subsite_map.__getitem__)(subsites)
-    total_doses = data.prescribed_doses.reshape(num_patients, 1)
-    clusters = data.classes.reshape(num_patients, 1)
-    features = np.hstack([distances, lymph_nodes, tumor_volumes, total_doses, subsites])
-    return features
-
-def get_true_similarity(data):
-    n_patients = data.get_num_patients()
-    doses = data.doses
-    error_matrix = np.zeros((n_patients, n_patients))
-    for p1 in range(n_patients):
-        for p2 in range(p1 + 1, n_patients):
-            dose_difference = np.abs(doses[p1,:] - doses[p2, :])
-            error_matrix[p1, p2] = np.mean(dose_difference)
-    similarity_matrix = 1/error_matrix
-    similarity_matrix = similarity_matrix/similarity_matrix.max()
-    similarity_matrix += similarity_matrix.transpose()
-    return similarity_matrix
+def get_lymph_similarity(db, file = 'data/spatial_lymph_scores.csv'):
+    lymph_df = pd.read_csv(file, index_col = 0)
+    all_patients = set(lymph_df.index)
+    similarity = np.zeros((db.get_num_patients(), db.get_num_patients()))
+    for p1 in range( db.get_num_patients() ):
+        name1 = 'Patient ' + str(db.ids[p1])
+        if name1 not in all_patients:
+            print(name1, 'Not in Lymph Data', db.n_categories[p1], db.therapy_type[p1], db.gtvs[p1][1].volume)
+            continue
+        for p2 in range(p1 + 1, db.get_num_patients()):
+            name2 = 'Patient ' + str(db.ids[p2])
+            if name2 not in all_patients:
+                continue
+            similarity[p1, p2] = lymph_df.loc[name1, name2]
+    return similarity + similarity.transpose()
 
 #model = TsimModel()
 #model = NodeSimilarityModel()
 
-from sklearn.cluster import KMeans
-from fastNCA import NCA
+db = PatientSet(root = 'data\\patients_v*\\',
+                class_name = None,
+                use_distances = False)
 
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                class_name = None,
-#                use_distances = False)
-#
-
-#distance_similarity = TsimModel().get_similarity(db)
+distance_similarity = TsimModel().get_similarity(db)
 
 num_patients = db.get_num_patients()
 subsite_similarity = np.zeros((num_patients, num_patients))
@@ -155,16 +132,19 @@ age_similarity = np.zeros((num_patients, num_patients))
 gender_similarity = np.zeros((num_patients, num_patients))
 n_category_similarity = np.zeros((num_patients, num_patients))
 pathological_grade_similarity = np.zeros((num_patients, num_patients))
+class_similarity = np.zeros((num_patients, num_patients))
+lymph_sim_2 = np.zeros((num_patients, num_patients))
 
 for p1 in range(num_patients):
     for p2 in range(num_patients):
+        lymph_sim_2[p1,p2] = Rankings.jaccard_distance(db.lymph_nodes[p1], db.lymph_nodes[p2])
         subsite_similarity[p1, p2] = 1 if db.subsites[p1] == db.subsites[p2] else 0
         total_dose_similarity[p1, p2] = 1 if db.prescribed_doses[p1] == db.prescribed_doses[p2] else 0
         age_similarity[p1, p2] = np.abs(db.ages[p1] - db.ages[p2])/db.ages.max()
         gender_similarity[p1, p2] = 1 if db.genders[p1] == db.genders[p2] else 0
         pathological_grade_similarity[p1,p2] = 1 if db.pathological_grades[p1] == db.pathological_grades[p2] else 0
         n_category_similarity[p1,p2] = 1 if db.n_categories[p1] == db.n_categories[p2] else 0
-        
+        class_similarity[p1, p2] = 1 if db.classes[p1] == db.classes[p2] else 0
         gtvs1 = db.gtvs[p1]
         gtvs2 = db.gtvs[p2]
         num_tumors = max([len(gtvs1), len(gtvs2)])
@@ -181,14 +161,19 @@ for p1 in range(num_patients):
                 pass
         num_tumors_similarity[p1, p2] = min([len(gtvs1), len(gtvs2)])/num_tumors
         tumor_volume_similarity[p1, p2] = np.sum(tumor_volumes_1.sum() - tumor_volumes_2.sum())
+        
+lymph_similarity = get_lymph_similarity(db)
+
 estimator = SimilarityFuser()
-similarity = estimator.get_similarity(db, [distance_similarity, subsite_similarity, 
-                            tumor_volume_similarity, total_dose_similarity, 
-                            num_tumors_similarity, age_similarity])
+similarity = estimator.get_similarity(db, [distance_similarity, age_similarity, tumor_volume_similarity, subsite_similarity, num_tumors_similarity, total_dose_similarity, gender_similarity, n_category_similarity])
 
 result = KnnEstimator().evaluate(similarity, db)
+#print(result.mean())
+result = KnnEstimator().evaluate(lymph_sim_2 + lymph_sim_2.transpose(), db)
 print(result.mean())
-export(db, similarity = similarity)
+result = KnnEstimator().evaluate(lymph_similarity + lymph_similarity.transpose(), db)
+print(result.mean())
+export(db, similarity = lymph_sim_2)
 
 #clusterer = KMeans(n_clusters = 7)
 #clusterer.fit(db.doses)
