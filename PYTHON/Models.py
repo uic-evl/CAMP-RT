@@ -158,7 +158,10 @@ class DiscreteClassifierSimilarity(ClassifierSimilarity):
         return features
 
 class KnnEstimator():
-    def __init__(self):
+    def __init__(self, match_threshold = .65, match_type = 'threshold', min_matches = 8):
+        self.min_matches = min_matches
+        self.match_threshold = match_threshold
+        self.match_type = match_type
         return
 
     def predict_doses(self, similarity_matrix, data):
@@ -167,8 +170,6 @@ class KnnEstimator():
         predicted_doses = np.zeros(dose_matrix.shape)
         for p in range( dose_matrix.shape[0] ):
             num_matches = self.get_num_matches(p, similarity_matrix, clusters)
-            if num_matches == 0:
-                print(p, 'no matches')
             scores = similarity_matrix[p, :]
             args = np.argsort(-scores)
             args = args[0 : num_matches]
@@ -182,7 +183,7 @@ class KnnEstimator():
         if matched_scores.mean() > 0:
                 predicted_doses = np.mean(matched_scores*matched_doses, axis = 0)/matched_scores.mean()
         else:
-            print(patient, 'doesnt have any matches')
+#            print(patient, 'doesnt have any matches')
             predicted_doses = dose_matrix.mean(axis=0) #return average if bad
         return predicted_doses
 
@@ -201,14 +202,15 @@ class KnnEstimator():
 
     def get_num_matches(self, p, similarity, clusters):
         #for later better use probs
-        good_matches= len(np.where(similarity[p,:] > .8)[0])
-#        print(int(num_matches))
-#        return int(num_matches)
-        num_cluster_values = len(np.where(clusters == clusters[p])[0])
-        cluster_matches = np.max([np.sqrt(num_cluster_values), 3])
-#        max_val = similarity[p].max()
-#        num_matches = len( np.where(similarity[p] == max_val)[0] )
-        return max([int(cluster_matches + 1), good_matches])
+        if self.match_type == 'threshold':
+            good_matches= len(np.where(similarity[p,:] > self.match_threshold)[0])
+            matches = max([self.min_matches, good_matches])
+        elif self.match_type == 'clusters':
+            num_cluster_values = len(np.where(clusters == clusters[p])[0])
+            matches = max([int(np.sqrt(num_cluster_values) + 1), self.min_matches])
+        else:
+            matches = self.min_matches
+        return matches
 
     def get_error(self, predicted_doses, dose_matrix):
         differences = np.abs(predicted_doses - dose_matrix)
@@ -502,7 +504,9 @@ class MLPEstimator(TreeEstimator):
         
 class SimilarityFuser():
     
-    def __init__(self, model = None):
+    def __init__(self, model = None, min_matches = 8, max_error = 1):
+        self.min_matches = min_matches
+        self.max_error = max_error
         if model is None:
             from sklearn.linear_model import LogisticRegression
             model = LogisticRegression(class_weight = 'balanced',
@@ -513,25 +517,29 @@ class SimilarityFuser():
     def get_similarity(self, db, similarity_matrices):
         [x,y, positions] = self.extract_features(similarity_matrices, db.get_num_patients(), db)
         final_similarity = np.zeros(similarity_matrices[0].shape)
+        x = (x-x.min(axis=0))/(x.max(axis=0) - x.min(axis=0))
         for p in range(db.get_num_patients() - 1):
-            p1 = np.where(positions[:,0] == p)[0]
-            x_train = np.delete(x, p1, axis = 0)
-            y_train = np.delete(y, p1, axis = 0)
-            x_test = x[p1,:]
+            test_pairs = np.where(positions == p)[0]
+            x_train = np.delete(x, test_pairs, axis = 0)
+            y_train = np.delete(y, test_pairs, axis = 0)
+            predict_pairs  = np.where(positions[:,0] == p)[0]
+            x_test = x[predict_pairs,:]
             self.model.fit(x_train, y_train)
             y_pred = self.model.predict_proba(x_test)[:, 1]
-            final_similarity[p, p+1:] = y_pred
-        final_similarity += final_similarity.transpose()
+            final_similarity[p, :] = np.insert(y_pred, p, 0)
+#        final_similarity += final_similarity.transpose()
         return(final_similarity)
         
         
     def extract_features(self, similarities, num_patients, data):
-        true_similarity = ClassifierSimilarity().get_true_matches(data).astype('int32')
+        true_similarity = self.get_true_matches(data)
         x = []
         y = []
         positions = []
         for p1 in range(num_patients):
-            for p2 in range(p1+1, num_patients):
+            for p2 in range(num_patients):
+                if p1 == p2:
+                    continue
                 x_row = []
                 for similarity in similarities:
                     x_row.append(similarity[p1, p2])
@@ -542,3 +550,30 @@ class SimilarityFuser():
         y = np.array(y)
         positions = np.array(positions)
         return [x, y, positions]
+    
+    def get_true_matches(self, data):
+        max_error = self.max_error
+        min_matches = self.min_matches
+        dose_error = self.get_match_error(data)
+        match_matrix = np.zeros(dose_error.shape)
+        n_patients = data.get_num_patients()
+        for p in range(n_patients):
+            errors = dose_error[p, :]
+            matches = []
+            max_error = max_error
+            while len(matches) < min_matches:
+                matches = np.where(errors < max_error)[0]
+                max_error = max_error + .1
+            match_matrix[p, matches] = 1
+        return match_matrix.astype('int32')
+        
+    def get_match_error(self, data):
+        n_patients = data.get_num_patients()
+        doses = data.doses
+        error_matrix = np.zeros((n_patients, n_patients))
+        for p1 in range(n_patients):
+            for p2 in range(p1 + 1, n_patients):
+                dose_difference = np.abs(doses[p1,:] - doses[p2, :])
+                error_matrix[p1, p2] = np.mean(dose_difference)
+        error_matrix += error_matrix.transpose()
+        return error_matrix

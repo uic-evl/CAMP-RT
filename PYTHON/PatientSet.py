@@ -49,9 +49,9 @@ class PatientSet():
         num_patients = len(ids)
         metadata = pd.read_csv(metadata_file,
                                index_col = 0, #index is the "Dummy ID"
-                               usecols = [0,1,2,3,4,5,6,7,8,9,10,11,18,31]
+                               usecols = [0,1,2,3,4,5,6,7,8,9,10,11,13,18,31]
                                ).loc[ids]
-
+        print(metadata.columns)
         patients = OrderedDict()
         dose_matrix = np.zeros((num_patients, Constants.num_organs))
         max_dose_matrix = np.zeros((num_patients, Constants.num_organs))
@@ -67,6 +67,7 @@ class PatientSet():
         pathological_grade_vector = np.zeros((num_patients,)).astype(str)
         therapy_type_vector = np.zeros((num_patients,)).astype(str)
         n_category_vector = np.zeros((num_patients,)).astype(str)
+        t_category_vector = np.zeros((num_patients)).astype(str)
         gender_vector = np.zeros((num_patients,)).astype(str)
         age_vector = np.zeros((num_patients,)).astype('int32')
         
@@ -118,6 +119,7 @@ class PatientSet():
             pathological_grade_vector[patient_index] = new_patient.pathological_grade
             therapy_type_vector[patient_index] = new_patient.therapy_type
             n_category_vector[patient_index] = new_patient.n_stage
+            t_category_vector[patient_index] = new_patient.t_category
             gender_vector[patient_index] = new_patient.gender
             age_vector[patient_index] = new_patient.age
             
@@ -134,6 +136,7 @@ class PatientSet():
         self.pathological_grades = pathological_grade_vector
         self.therapy_type = therapy_type_vector
         self.n_categories = n_category_vector
+        self.t_categories = t_category_vector
         self.genders = gender_vector
         self.ages = np.nan_to_num(age_vector)
         

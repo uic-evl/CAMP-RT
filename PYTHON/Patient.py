@@ -73,6 +73,7 @@ class Patient():
         self.pathological_grade = info['Pathological Grade']
         self.gender = info['Gender']
         self.therapy_type = info['Therapeutic combination']
+        self.t_category = info['T-category']
         centroid_data = self.get_doses_file_info(doses, distances)
         #I make a new matrix, so the order of centroid data isn't the same as the orginal csv
         self.doses = centroid_data[:, 4]
