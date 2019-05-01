@@ -31,7 +31,7 @@ class ErrorChecker():
         return thresholds
 
     def check_high_doses(self, db):
-        outliers = {}
+        outliers = set([])
         thresholds = self.get_thresholds(db)
         for organ_index in range(0, Constants.num_organs):
             organ_name = Constants.organ_list[organ_index]

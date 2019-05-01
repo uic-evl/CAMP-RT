@@ -10,10 +10,12 @@ from Constants import Constants
 from Models import *
 import numpy as np
 import json
+import pandas as pd
 from collections import OrderedDict
 import matplotlib.pyplot as plt
 
-def export(data_set, patient_data_file = 'data\\patient_dataset.json', model = None, estimator = None, similarity = None):
+def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_file = 'scores.csv',
+           model = None, estimator = None, similarity = None):
     if model is None:
         model = TsimModel()
     if estimator is None:
@@ -88,13 +90,13 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', model = N
         #save a labeled matrix of similarity scores for other people
     except:
         print('error exporting patient data to json')
-#        try:
-#            raw_scores = self.gen_score_matrix(1, classes = False)
-#            score_df = pd.DataFrame(raw_scores, index = self.ids, columns = self.ids)
-#            score_df.to_csv(score_file)
-#            print('successfully saved similarity score matrix to ', score_file)
-#        except:
-#            print('error saving ssim score matrix')
+    try:
+        scaled_similarity = (similarity - similarity.min())/(similarity.max() - similarity.min())
+        score_df = pd.DataFrame(scaled_similarity, index = data_set.ids, columns = data_set.ids)
+        score_df.to_csv(score_file)
+        print('successfully saved similarity score matrix to ', score_file)
+    except:
+        print('error saving ssim score matrix')
     return
 
 def get_lymph_similarity(db, file = 'data/spatial_lymph_scores.csv'):
@@ -167,9 +169,69 @@ def gtv_volume_jaccard_sim(db,p1,p2):
     volume_array2 = np.zeros((vector_len,))
     volume_array1[0:len(vols1)] = vols1
     volume_array2[0:len(vols2)] = vols2
-    return Rankings.jaccard_distance(volume_array1, volume_array2)
+    return Rankings.jaccard_distance(volume_array1, volume_array2)  
+
+def get_input_features(data, num_pca_components = 10):
+    num_patients = data.get_num_patients()
+    pca = lambda x: Rankings.pca(x, num_pca_components)
+    distances = data.tumor_distances
+    lymph_nodes = pca(data.lymph_nodes)
+    ages = db.ages.reshape(-1,1)
+    n_stages = db.n_categories.astype('int32').reshape(-1,1)
+    tumor_volumes = np.zeros((num_patients, 2))
+    tumor_count = np.array([len(gtv) for gtv in data.gtvs]).reshape(-1,1)
+    for i in range(num_patients):
+        gtvs = data.gtvs[i]
+        gtvp_volume = gtvs[0].volume
+        gtvn_volume = 0
+        for gtvn in gtvs[1:]:
+            gtvn_volume += gtvn.volume
+        tumor_volumes[i, :] = (gtvp_volume, gtvn_volume)
+    laterality = data.lateralities.reshape(num_patients, 1)
+    laterality = np.vectorize(TreeEstimator.laterality_map.__getitem__)(laterality)
+    subsites = data.subsites.reshape(num_patients, 1)
+    subsites = np.vectorize(TreeEstimator.subsite_map.__getitem__)(subsites)
+    total_doses = data.prescribed_doses.reshape(num_patients, 1)
+    clusters = data.classes.reshape(num_patients, 1)
+    features = np.hstack([tumor_volumes, total_doses, subsites, laterality, tumor_count])
+    return features
     
-#model = TsimModel()
+from sklearn.cluster import KMeans, DBSCAN
+from NCA import NeighborhoodComponentsAnalysis
+from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
+
+def get_nca_features(features, doses):
+    kmeans = KMeans(n_clusters = 5)
+    dbscan = DBSCAN(eps = 80, min_samples = 2)
+    nca = NeighborhoodComponentsAnalysis(n_components = min([10, features.shape[1]]),
+                                     max_iter = 200,
+                                     init = 'pca')
+    db_clusters = dbscan.fit_predict(doses)
+    good_clusters = np.where(db_clusters >= 0)[0]
+    bad_patients = set(np.where(db_clusters == -1)[0])
+    kmeans_clusters = kmeans.fit_predict(doses)
+    
+    features = (features - features.mean(axis=0))/(features.std(axis=0))
+    sampler = SMOTE(k_neighbors  = 2)
+    resampled_features, resampled_clusters = sampler.fit_resample(
+            features[good_clusters, :], kmeans_clusters[good_clusters])
+    nca.fit(resampled_features, resampled_clusters)
+    features = nca.transform(features)
+    return features
+
+def get_nca_similarity(db):
+    doses = db.doses
+    n_patients = doses.shape[0]
+    input_features = get_input_features(db)
+    nca_features = get_nca_features(input_features, doses)
+    similarity = np.zeros((n_patients, n_patients))
+    for p1 in range(n_patients):
+        x1 = nca_features[p1, :]
+        for p2 in range(p1+1, n_patients):
+            x2 = nca_features[p2, :]
+            similarity[p1, p2] = 1/np.linalg.norm(x1 - x2)
+    similarity = (similarity - similarity.min())/(similarity.max() - similarity.min())
+    return similarity + similarity.transpose()
 
 #db = PatientSet(root = 'data\\patients_v*\\',
 #                class_name = None,
@@ -177,7 +239,7 @@ def gtv_volume_jaccard_sim(db,p1,p2):
 #
 #distance_similarity = TsimModel().get_similarity(db)
 
-#asymetric_lymph_similarity = get_lymph_similarity(db)
+asymetric_lymph_similarity = get_lymph_similarity(db)
 percent_diff = lambda x,y: 1 - np.abs(x-y)/np.max([x,y])
 symmetric_lymph_similarity = get_sim(db, lambda d,x,y: Rankings.jaccard_distance(db.lymph_nodes[x], db.lymph_nodes[y]))
 age_similarity = get_sim(db, lambda d,x,y: np.abs(d.ages[x] - d.ages[y])/d.ages.max())
@@ -195,18 +257,16 @@ t_category_similarity = get_sim(db, t_category_sim)
 
 gtv_volume_similarity = get_sim(db, gtv_volume_sim)
 gtv_count_similarity = get_sim(db, gtv_count_sim)
+
+nca_similarity = get_nca_similarity(db)
+
 best_score = 1000
 best_k = 0
 best_min_matches = 0
-from sklearn.svm import SVC
-estimator = SimilarityFuser(model = SVC(kernel = 'linear', probability = True))
+estimator = SimilarityFuser()
 similarity = estimator.get_similarity(db, [distance_similarity,
-                                           total_dose_similarity,
-                                           n_category_similarity,
-                                           t_category_similarity,
-                                           subsite_similarity,
-                                           gtv_volume_similarity,
-                                           gtv_count_similarity])
+                                           nca_similarity])
+    
 import copy
 print('similarity finished')
 for k in np.linspace(.3, 1, 20):
@@ -218,20 +278,29 @@ for k in np.linspace(.3, 1, 20):
             best_min_matches = copy.copy(min_matches)
 print(best_k, best_min_matches, best_score)
 print(KnnEstimator(match_type = 'clusters').evaluate(similarity, db).mean())
-print(KnnEstimator(match_type = 'clusters').evaluate(base_similarity, db).mean())
 print(KnnEstimator(match_type = 'clusters').evaluate(distance_similarity, db).mean())
 print(KnnEstimator(match_type = 'clusters').evaluate(distance_similarity*class_similarity, db).mean())
-
-
-
-#clusterer = KMeans(n_clusters = 7)
-#clusterer.fit(db.doses)
-#clusters = clusterer.predict(db.doses)
-#
-#nca =NCA(dim=None)
+            
+        
+#from sklearn.mixture import GaussianMixture
+#kmeans = KMeans(n_clusters = 5)
+#dbscan = DBSCAN(eps = 80, min_samples = 2)
+#gaussian_clusterer = GaussianMixture(n_components = 3, random_state = 4)
+#gaussian_clusterer.fit(db.doses)
+#clusters = dbscan.fit_predict(db.doses)
+#good_clusters = np.where(clusters >= 0)[0]
+#clusters = KMeans(n_clusters = 5).fit(db.doses).predict(db.doses)
 #features = get_input_features(db)
+#
+#nca = NeighborhoodComponentsAnalysis(n_components = min([10, features.shape[1]]),
+#                                     max_iter = 200,
+#                                     init = 'pca')
 #features = (features - features.mean(axis=0))/(features.std(axis=0))
-#features = nca.fit_transform(features, clusters)
+#
+#sampler = SMOTE()
+#clean_features, clean_clusters = sampler.fit_resample(features[good_clusters], clusters[good_clusters])
+#nca.fit(clean_features, clean_clusters)
+#features = nca.transform(features)
 #similarity = np.zeros((db.get_num_patients(), db.get_num_patients()))
 #for p in range(db.get_num_patients()):
 #    x1 = features[p,:]
@@ -241,13 +310,12 @@ print(KnnEstimator(match_type = 'clusters').evaluate(distance_similarity*class_s
 #similarity /= similarity.max()
 #similarity += similarity.transpose()
 #
-#clusterer.fit(features)
-#db.classes = clusterer.predict(features) + 1
-##similarity = .99 * (similarity - similarity.max())/(similarity.max() - similarity.min())
-#result = KnnEstimator().evaluate(similarity, db)
+#db.change_classes()
+#result = KnnEstimator(match_type = 'clusters').evaluate(similarity, db)
 #print(result.mean())
+#kmeans.fit(features[good_clusters,:])
+#db.classes = kmeans.predict(features).astype('int') + 1
 #export(db, similarity = similarity)
-#print(clusters)
 
 #from sklearn.svm import LinearSVC
 #from sklearn.neural_network import MLPClassifier

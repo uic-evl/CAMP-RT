@@ -155,6 +155,9 @@ class PatientSet():
         error_checker = ErrorChecker()
         p = error_checker.get_clean_subset(self)
         p = sorted(p)
+        self.subset(p)
+        
+    def subset(self, p):
         self.doses = self.doses[p]
         self.max_doses = self.max_doses[p]
         self.min_doses = self.min_doses[p]
@@ -171,7 +174,14 @@ class PatientSet():
         for patient in p:
             new_gtvs.append(self.gtvs[patient])
         self.gtvs = new_gtvs
-    
+        
+        self.ages = self.ages[p]
+        self.genders = self.genders[p]
+        self.t_categories = self.t_categories[p]
+        self.n_categories = self.n_categories[p]
+        self.therapy_type = self.therapy_type[p]
+        self.pathological_grades = self.pathological_grades[p]
+            
     def get_num_patients(self):
         return( self.doses.shape[0] )
     
@@ -246,7 +256,7 @@ class PatientSet():
         dataframe.replace(to_replace = r'GTV.*N', value = 'GTVn', regex = True, inplace = True)
         return dataframe
 
-    def change_classes(self, class_name):
+    def change_classes(self, class_name = None):
         if class_name is not None:
             classes = pd.read_csv('data//rt_plan_clusters.csv',
                                        index_col = 1)
@@ -254,11 +264,9 @@ class PatientSet():
             classes.columns = classes.columns.str.strip()
             self.classes = classes[class_name]
             self.num_classes = len(self.classes.unique())
-        else:
-            self.classes = None
-            self.num_classes = 0
-        for p in self.get_patients():
-            p.group = self.get_patient_class(p.id, p.doses)
+        else:   
+            for p in range(self.get_num_patients()):
+                self.classes[p] = self.get_default_class(self.ids[p], self.doses[p,:])
 
     def save_organ_distances(self, file = 'data/mean_organ_distances.csv'):
         mean_dists = self.organ_distances.mean(axis = 2)
