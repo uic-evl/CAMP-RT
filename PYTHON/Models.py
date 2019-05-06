@@ -504,7 +504,7 @@ class MLPEstimator(TreeEstimator):
         
 class SimilarityFuser():
     
-    def __init__(self, model = None, min_matches = 8, max_error = 1):
+    def __init__(self, model = None, min_matches = 8, max_error = .05):
         self.min_matches = min_matches
         self.max_error = max_error
         if model is None:
@@ -514,8 +514,8 @@ class SimilarityFuser():
                                        max_iter=500)
         self.model = model
         
-    def get_similarity(self, db, similarity_matrices):
-        [x,y, positions] = self.extract_features(similarity_matrices, db.get_num_patients(), db)
+    def get_similarity(self, db, similarity_matrices, classes = None):
+        [x,y, positions] = self.extract_features(similarity_matrices, db.get_num_patients(), db, classes)
         final_similarity = np.zeros(similarity_matrices[0].shape)
         x = (x-x.min(axis=0))/(x.max(axis=0) - x.min(axis=0))
         for p in range(db.get_num_patients() - 1):
@@ -531,8 +531,10 @@ class SimilarityFuser():
         return(final_similarity)
         
         
-    def extract_features(self, similarities, num_patients, data):
+    def extract_features(self, similarities, num_patients, data, classes):
         true_similarity = self.get_true_matches(data)
+        if classes is not None:
+            classes = (classes - np.min(classes))/(np.max(classes) - np.min(classes))
         x = []
         y = []
         positions = []
@@ -543,6 +545,9 @@ class SimilarityFuser():
                 x_row = []
                 for similarity in similarities:
                     x_row.append(similarity[p1, p2])
+                if classes is not None:
+                    target_class = classes[p2]
+                    x_row.append(target_class)
                 x.append(x_row)
                 y.append(true_similarity[p1, p2])
                 positions.append([p1,p2])
@@ -563,7 +568,7 @@ class SimilarityFuser():
             max_error = max_error
             while len(matches) < min_matches:
                 matches = np.where(errors < max_error)[0]
-                max_error = max_error + .1
+                max_error = max_error + .01
             match_matrix[p, matches] = 1
         return match_matrix.astype('int32')
         
@@ -574,6 +579,6 @@ class SimilarityFuser():
         for p1 in range(n_patients):
             for p2 in range(p1 + 1, n_patients):
                 dose_difference = np.abs(doses[p1,:] - doses[p2, :])
-                error_matrix[p1, p2] = np.mean(dose_difference)
+                error_matrix[p1, p2] = np.sum(dose_difference)/np.sum(doses[p1, :])
         error_matrix += error_matrix.transpose()
         return error_matrix

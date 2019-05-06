@@ -74,7 +74,25 @@ class ErrorChecker():
             tumor_volume = np.sum([gtv.volume for gtv in gtv_set])
             if tumor_volume <= .00001:
                 bad_patients.add(patient)
+        
+        bad_patients = bad_patients | self.get_data_outliers(db)
         return bad_patients
+    
+    def get_data_outliers(self, db, dose_match_threshold = .2, min_matches = 1):
+        outliers = set([])
+        n_patients = db.get_num_patients()
+        for p1 in range(n_patients):
+            x1 = db.doses[p1,:]
+            num_matches = 0
+            for p2 in range(p1+ 1, n_patients):
+                x2 = db.doses[p2,:]
+                dose_diff = np.sum(np.abs(x1 - x2))/np.sum(x1)
+                if dose_diff < dose_match_threshold:
+                    num_matches += 1
+            if num_matches < min_matches:
+                outliers.add(p1)
+        print('outliers', outliers)
+        return outliers
     
     def get_clean_subset(self, db):
         bad_patients = self.check_missing_organs(db)

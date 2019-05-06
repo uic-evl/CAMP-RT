@@ -60,7 +60,6 @@ class Patient():
         self.neck_boost = (info['Neck boost (Y/N)'] == 'Y')
         ##self.high_throat_dose = 1 if p_id in Constants.v2_high_throat_dose else 0
         #basically ordinality of the id, so where it will be in an index
-        self.laterality = info['Tm Laterality (R/L)']
         self.prescribed_dose = info['Total dose']
         try:
             n_stage = info['N-category']
@@ -89,6 +88,7 @@ class Patient():
             self.distances = self.gen_distance_matrix(distances)
         #store the entries without gtvp for future study
         (self.tumor_volume, self.tumor_distances, self.tumor_position) = self.get_main_tumor()
+        self.laterality = 'L' if self.tumor_position[0] > 0 else 'R'
         self.check_missing_organs(doses)
         ##self.check_if_full_dose()
         #report if there is no primary tumor
