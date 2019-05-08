@@ -8,7 +8,7 @@ import numpy as np
 from Constants import Constants
 from collections import OrderedDict, namedtuple
 
-GTV = namedtuple('GTV', ['name', 'volume', 'position', 'doses', 'dists'])
+GTV = namedtuple('GTV', ['name', 'volume', 'position', 'doses', 'dists', 'organ'])
 
 class Patient():
     ##class holds information for each patient.
@@ -149,12 +149,15 @@ class Patient():
                 position = gtv[['x','y','z']].values
                 doses = gtv[['min_dose','mean_dose','max_dose']]
                 distances = self.get_tumor_distances(name, dists)
+                min_dist = np.argmin(distances/)
+                organ = Constants.organ_list[min_dist]
             except:
                 volume = float(0)
                 position = np.array([0,0,0])
                 doses = np.array([0,0,0])
                 distances = np.zeros((Constants.num_organs,))
-            return( GTV(name, volume, position, doses, distances) )
+                organ = 'None'
+            return( GTV(name, volume, position, doses, distances, organ) )
         self.gtvs = [getGTV('GTVp'), getGTV('GTVn')]
         gtvn_count = 2
         while(True):
