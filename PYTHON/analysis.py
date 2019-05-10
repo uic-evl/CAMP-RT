@@ -288,9 +288,9 @@ def get_nca_similarity(db, feature_type = 'tumors'):
         similarity[pair[0], pair[1]] = 1
     return similarity + similarity.transpose()
 
-db = PatientSet(root = 'data\\patients_v*\\',
-                class_name = None,
-                use_distances = False)
+#db = PatientSet(root = 'data\\patients_v*\\',
+#                class_name = None,
+#                use_distances = False)
 
 
 #from sklearn.ensemble import RandomForestClassifier
@@ -328,7 +328,7 @@ db = PatientSet(root = 'data\\patients_v*\\',
 #gtv_count_similarity = get_sim(db, gtv_count_sim)
 #
 #    
-distance_similarity = TsimModel().get_similarity(db)
+#distance_similarity = TsimModel().get_similarity(db)
 
 nca_tumor_similarity = get_nca_similarity(db)
 nca_distance_similarity = get_nca_similarity(db, 'distances')
