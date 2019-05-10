@@ -519,7 +519,7 @@ class SimilarityFuser():
         final_similarity = np.zeros(similarity_matrices[0].shape)
         x = (x-x.min(axis=0))/(x.max(axis=0) - x.min(axis=0))
         for p in range(db.get_num_patients() - 1):
-            test_pairs = np.where(positions == p)[0]
+            test_pairs = np.where(positions == p)[0] 
             x_train = np.delete(x, test_pairs, axis = 0)
             y_train = np.delete(y, test_pairs, axis = 0)
             predict_pairs  = np.where(positions[:,0] == p)[0]

@@ -49,7 +49,7 @@ class PatientSet():
         num_patients = len(ids)
         metadata = pd.read_csv(metadata_file,
                                index_col = 0, #index is the "Dummy ID"
-                               usecols = [0,1,2,3,4,5,6,7,8,9,10,11,13,18,31]
+                               usecols = [0,1,2,3,4,5,6,7,8,9,10,11,13,14,15,18,31]
                                ).loc[ids]
         print(metadata.columns)
         patients = OrderedDict()
@@ -70,6 +70,7 @@ class PatientSet():
         t_category_vector = np.zeros((num_patients)).astype(str)
         gender_vector = np.zeros((num_patients,)).astype(str)
         age_vector = np.zeros((num_patients,)).astype('int32')
+        self.ajcc8 = np.zeros((num_patients,))
         
         laterality_list = []
         subsite_list = []
@@ -122,6 +123,7 @@ class PatientSet():
             t_category_vector[patient_index] = new_patient.t_category
             gender_vector[patient_index] = new_patient.gender
             age_vector[patient_index] = new_patient.age
+            self.ajcc8[patient_index] = new_patient.ajcc8
             
             if use_distances:
                 organ_distance_matrix[:, :, patient_index] = np.nan_to_num(new_patient.distances)
@@ -180,6 +182,7 @@ class PatientSet():
         self.t_categories = self.t_categories[p]
         self.n_categories = self.n_categories[p]
         self.therapy_type = self.therapy_type[p]
+        self.ajcc8 = self.ajcc8[p]
         self.pathological_grades = self.pathological_grades[p]
             
     def get_num_patients(self):

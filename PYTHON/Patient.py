@@ -52,6 +52,12 @@ class Patient():
       'L4': ['L4', 'L5B'],
       'L5A': ['L5B']
       }
+    
+    ajcc8_map = {'I': 1,
+                 'II': 2,
+                 'III': 3,
+                 'IV': 4,
+                 'V': 5}
 
     def __init__(self, distances, doses, p_id, group, info, use_distances = False):
         #patient ID number
@@ -71,6 +77,7 @@ class Patient():
         self.age = info['Age at Diagnosis (Calculated)']
         self.pathological_grade = info['Pathological Grade']
         self.gender = info['Gender']
+        self.ajcc8 = Patient.ajcc8_map.get(info['AJCC 8th edition'], 0)
         self.therapy_type = info['Therapeutic combination']
         self.t_category = info['T-category']
         centroid_data = self.get_doses_file_info(doses, distances)
@@ -149,7 +156,7 @@ class Patient():
                 position = gtv[['x','y','z']].values
                 doses = gtv[['min_dose','mean_dose','max_dose']]
                 distances = self.get_tumor_distances(name, dists)
-                min_dist = np.argmin(distances/)
+                min_dist = np.argmin(distances)
                 organ = Constants.organ_list[min_dist]
             except:
                 volume = float(0)
@@ -168,6 +175,8 @@ class Patient():
                 gtvn_count += 1
             else:
                 break
+        #merge overlapping secondary tumors
+        self.merge_gtvns(self.gtvs, dists)
         #get the info the centers, volumes, nad doses for all the things
         centroid_matrix = np.zeros((Constants.num_organs,7)) #row = x,y,z,volume,dose
         for idx in range(0, Constants.num_organs):
@@ -183,6 +192,66 @@ class Patient():
                 pass
                 #print('patient ', self.id, ' is missing organ ', organ, ' centroid data')
         return(centroid_matrix)
+        
+    def merge_gtvns(self, gtvs, dists):
+        if len(gtvs) <= 2:
+            return gtvs
+        dists = dists.set_index(['Reference ROI', 'Target ROI']).sort_index()
+        new_gtvs = []
+        for i in range(0,len(gtvs)):
+            gtv1 = gtvs[i]
+            new_gtvs.append(set([i,i]))
+            for ii in range(i+1, len(gtvs)): # I think I need to include itself?
+                gtv2 = gtvs[ii]
+                if self.gtv_overlap(gtv1.name, gtv2.name, dists):
+                    new_gtvs.append(set([i,ii]))
+        if len(new_gtvs) > 1:
+            for idx in np.arange(len(new_gtvs) - 1, 0, -1):
+                if not new_gtvs[idx - 1].isdisjoint(new_gtvs[idx]):
+                    new_gtvs[idx - 1] = new_gtvs[idx - 1].union(new_gtvs[idx])
+                    del new_gtvs[idx]
+        temp_gtvs = []
+        for gtvset in new_gtvs:
+            temp_gtvs.append(self.combine_gtvs(gtvs, gtvset))
+        if len(gtvs) > len(temp_gtvs):
+            print(self.id, new_gtvs)
+        self.gtvs = temp_gtvs
+    
+    def combine_gtvs(self, gtvs, gtvset):
+        gtvset = sorted(gtvset, key = lambda x: gtvs[x].name)
+        if len(gtvset) < 2:
+            return gtvs[gtvset[0]]
+        volumes = np.array([gtvs[i].volume for i in gtvset])
+        total_volume = volumes.sum()
+        weights = volumes/total_volume #so now these are weightedd
+        if 0 in gtvset:
+            name = gtvs[0].name
+            organ = gtvs[0].organ
+        else:
+            name = gtvs[gtvset[0]].name
+            organ = gtvs[gtvset[0]].organ
+        
+        doses = weights[0]*gtvs[gtvset[0]].doses
+        distances = weights[0]*gtvs[gtvset[0]].dists
+        position = weights[0]*gtvs[gtvset[0]].position
+        for k in range(1, len(gtvset)):
+            this_gtv = gtvs[gtvset[k]]
+            w = weights[k]
+            doses = doses + w*this_gtv.doses
+            distances = distances + w*this_gtv.dists
+            position = position + w*this_gtv.position
+        combined_gtv = GTV(name, total_volume, position, doses, distances, organ)
+        return combined_gtv
+            
+    def gtv_overlap(self, name1, name2, dists):
+        try:
+            distance = (dists.loc[name1, name2])['Eucledian Distance (mm)']
+        except:
+            try:
+                distance = (dists.loc[name2, name1])['Eucledian Distance (mm)']
+            except:
+                return False
+        return (distance <= 0)
 
     def center_centroids(self, centroids):
         #subtract off the mean so the pointcloud is centered at 0

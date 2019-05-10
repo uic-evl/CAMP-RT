@@ -993,16 +993,16 @@ function populateAndPlaceDetails(state) {
         lineSeparator.style["borderColor"] = "#" + nodeHover.material.color.getHexString();
 
         // Volume
-        volumeVal.innerHTML = nodeHover.userData.volume + "";
+        volumeVal.innerHTML = nodeHover.userData.volume.toFixed(1) + "";
 
         // Mean Dose
-        meanDoseVal.innerHTML = nodeHover.userData.meanDose + "  GY";
+        meanDoseVal.innerHTML = nodeHover.userData.meanDose.toFixed(1) + "  GY";
 
         // Min Dose
-        minDoseVal.innerHTML = nodeHover.userData.minDose + "";
+        minDoseVal.innerHTML = nodeHover.userData.minDose.toFixed(1) + "";
 
         // Max Dose
-        maxDoseVal.innerHTML = nodeHover.userData.maxDose + "";
+        maxDoseVal.innerHTML = nodeHover.userData.maxDose.toFixed(1) + "";
 
     } else if (state == "HIDE") {
         nodeDetails.style.display = "none";

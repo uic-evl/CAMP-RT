@@ -83,6 +83,7 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
         export_data.append(entry)
         #save the vast dictionary of data for the front-end
     try:
+        json.encoder.FLOAT_REPR = lambda o: format(o, '.2f')
         def default(o):
             if isinstance(o, np.int32):
                 return int(o)
@@ -94,6 +95,8 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
         print('error exporting patient data to json')
     try:
         scaled_similarity = (similarity - similarity.min())/(similarity.max() - similarity.min())
+        for i in range(scaled_similarity.shape[0]):
+            scaled_similarity[i,i] = 1
         score_df = pd.DataFrame(scaled_similarity, index = data_set.ids, columns = data_set.ids)
         score_df.to_csv(score_file)
         print('successfully saved similarity score matrix to ', score_file)
@@ -214,7 +217,8 @@ def get_input_tumor_features(data, num_pca_components = 10):
     subsites = np.vectorize(TreeEstimator.subsite_map.__getitem__)(subsites)
     total_doses = data.prescribed_doses.reshape(num_patients, 1)
     features = np.hstack([tumor_volumes, total_doses, subsites,
-                          laterality, tumor_count])
+                          laterality, tumor_count, 
+                          data.ajcc8.reshape(-1,1)])
     return copy.copy(features)
 
 def get_input_organ_features(data):
@@ -240,7 +244,7 @@ def get_dose_clusters(doses):
     return kmeans_clusters, good_clusters
 
 def get_nca_features(features, doses):
-    nca = NeighborhoodComponentsAnalysis(n_components = min([10, features.shape[1]]),
+    nca = NeighborhoodComponentsAnalysis(n_components = min([4, features.shape[1]]),
                                      max_iter = 200,
                                      init = 'pca')
     kmeans_clusters, good_clusters = get_dose_clusters(doses)
@@ -289,41 +293,42 @@ db = PatientSet(root = 'data\\patients_v*\\',
                 use_distances = False)
 
 
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import cross_validate, cross_val_predict
-x = get_all_features(db)
-db.change_classes()
-dose_clusters = get_dose_clusters(db.doses)[0]
-rf = RandomForestClassifier(n_estimators = 20,
-                             max_depth = 2)
-lg = LogisticRegression(solver = 'lbfgs', multi_class = 'auto', class_weight = 'balanced')
-rf_score = cross_validate(rf, x, dose_clusters, cv = 5)
-lg_score = cross_validate(lg, x, dose_clusters, cv = 5)
-
-print('random_forest', np.mean(rf_score['test_score']), rf_score['test_score'])
-print('logistic_regression', np.mean(lg_score['test_score']), lg_score['test_score'])
-
-#distance_similarity = TsimModel().get_similarity(db)
-
-#asymetric_lymph_similarity = get_lymph_similarity(db)
-percent_diff = lambda x,y: 1 - np.abs(x-y)/np.max([x,y])
-symmetric_lymph_similarity = get_sim(db, lambda d,x,y: Rankings.jaccard_distance(db.lymph_nodes[x], db.lymph_nodes[y]))
-age_similarity = get_sim(db, lambda d,x,y: np.abs(d.ages[x] - d.ages[y])/d.ages.max())
-
-subsite_similarity = get_sim(db, lambda d,x,y: 1 if d.subsites[x] == d.subsites[y] else 0)
-
-total_dose_similarity = get_sim(db, lambda d,x,y: percent_diff(d.prescribed_doses[x], d.prescribed_doses[y]))
-
-class_similarity = get_sim(db, lambda d,x,y: 1 if db.classes[x] == db.classes[y] else 0)
-
-gender_similarity = get_sim(db, lambda d,x,y: 1 if d.genders[x] == d.genders[y] else 0)
-
-n_category_similarity = get_sim(db, n_category_sim)
-t_category_similarity = get_sim(db, t_category_sim)
-
-gtv_volume_similarity = get_sim(db, gtv_volume_sim)
-gtv_count_similarity = get_sim(db, gtv_count_sim)
+#from sklearn.ensemble import RandomForestClassifier
+#from sklearn.linear_model import LogisticRegression
+#from sklearn.model_selection import cross_validate, cross_val_predict
+#x = get_all_features(db)
+#db.change_classes()
+#dose_clusters = get_dose_clusters(db.doses)[0]
+#rf = RandomForestClassifier(n_estimators = 20,
+#                             max_depth = 2)
+#lg = LogisticRegression(solver = 'lbfgs', multi_class = 'auto', class_weight = 'balanced')
+#rf_score = cross_validate(rf, x, dose_clusters, cv = 5)
+#lg_score = cross_validate(lg, x, dose_clusters, cv = 5)
+#
+#print('random_forest', np.mean(rf_score['test_score']), rf_score['test_score'])
+#print('logistic_regression', np.mean(lg_score['test_score']), lg_score['test_score'])
+#
+##asymetric_lymph_similarity = get_lymph_similarity(db)
+#percent_diff = lambda x,y: 1 - np.abs(x-y)/np.max([x,y])
+#symmetric_lymph_similarity = get_sim(db, lambda d,x,y: Rankings.jaccard_distance(db.lymph_nodes[x], db.lymph_nodes[y]))
+#age_similarity = get_sim(db, lambda d,x,y: np.abs(d.ages[x] - d.ages[y])/d.ages.max())
+#
+#subsite_similarity = get_sim(db, lambda d,x,y: 1 if d.subsites[x] == d.subsites[y] else 0)
+#
+#total_dose_similarity = get_sim(db, lambda d,x,y: percent_diff(d.prescribed_doses[x], d.prescribed_doses[y]))
+#
+#class_similarity = get_sim(db, lambda d,x,y: 1 if db.classes[x] == db.classes[y] else 0)
+#
+#gender_similarity = get_sim(db, lambda d,x,y: 1 if d.genders[x] == d.genders[y] else 0)
+#
+#n_category_similarity = get_sim(db, n_category_sim)
+#t_category_similarity = get_sim(db, t_category_sim)
+#
+#gtv_volume_similarity = get_sim(db, gtv_volume_sim)
+#gtv_count_similarity = get_sim(db, gtv_count_sim)
+#
+#    
+distance_similarity = TsimModel().get_similarity(db)
 
 nca_tumor_similarity = get_nca_similarity(db)
 nca_distance_similarity = get_nca_similarity(db, 'distances')
@@ -342,7 +347,6 @@ for k in np.linspace(.5, 1, 20):
             best_score = copy.copy(result.mean())
             best_k = copy.copy(k)
             best_min_matches = copy.copy(min_matches)
-db.classes = cross_val_predict(lg,x,dose_clusters, cv = 5)
 export(db, similarity = similarity, estimator = KnnEstimator(match_threshold = best_k, min_matches = best_min_matches))
 print(best_k, best_min_matches, best_score)
 print(KnnEstimator(match_type = 'clusters').evaluate(similarity, db).mean())
