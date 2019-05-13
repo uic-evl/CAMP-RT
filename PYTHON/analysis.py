@@ -217,7 +217,7 @@ def get_input_tumor_features(data, num_pca_components = 10):
     subsites = np.vectorize(TreeEstimator.subsite_map.__getitem__)(subsites)
     total_doses = data.prescribed_doses.reshape(num_patients, 1)
     features = np.hstack([tumor_volumes, total_doses, subsites,
-                          laterality, tumor_count, 
+                          tumor_count, laterality,
                           data.ajcc8.reshape(-1,1)])
     return copy.copy(features)
 
@@ -225,7 +225,26 @@ def get_input_organ_features(data):
     return copy.copy(data.volumes)
 
 def get_input_distance_features(data, num_pca_components = 10):
-    return copy.copy(data.tumor_distances)
+    num_patients = data.get_num_patients()
+    tumor_volumes = np.zeros((num_patients, 2))
+    tumor_count = np.array([len(gtv) for gtv in data.gtvs]).reshape(-1,1)
+    for i in range(num_patients):
+        gtvs = data.gtvs[i]
+        gtvp_volume = gtvs[0].volume
+        gtvn_volume = 0
+        for gtvn in gtvs[1:]:
+            gtvn_volume += gtvn.volume
+        tumor_volumes[i, :] = (gtvp_volume, gtvn_volume)
+    laterality = data.lateralities.reshape(num_patients, 1)
+    laterality = np.vectorize(TreeEstimator.laterality_map.__getitem__)(laterality)
+    subsites = data.subsites.reshape(num_patients, 1)
+    subsites = np.vectorize(TreeEstimator.subsite_map.__getitem__)(subsites)
+    total_doses = data.prescribed_doses.reshape(num_patients, 1)
+    features = np.hstack([tumor_volumes, total_doses, subsites,
+                          laterality, tumor_count, 
+                          data.ajcc8.reshape(-1,1),
+                          data.tumor_distances])
+    return copy.copy(features)
 
 def get_input_lymph_features(data, num_pca_components = 10):
     return copy.copy(data.lymph_nodes)
@@ -235,7 +254,7 @@ from NCA import NeighborhoodComponentsAnalysis
 from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
 
 def get_dose_clusters(doses):
-    kmeans = KMeans(n_clusters = 5)
+    kmeans = KMeans(n_clusters = 5, random_state = 0)
     dbscan = DBSCAN(eps = 80, min_samples = 2)
     db_clusters = dbscan.fit_predict(doses)
     good_clusters = np.where(db_clusters >= 0)[0]
@@ -244,9 +263,10 @@ def get_dose_clusters(doses):
     return kmeans_clusters, good_clusters
 
 def get_nca_features(features, doses):
-    nca = NeighborhoodComponentsAnalysis(n_components = min([4, features.shape[1]]),
-                                     max_iter = 200,
-                                     init = 'pca')
+    nca = NeighborhoodComponentsAnalysis(n_components = min([10, features.shape[1]]),
+                                     max_iter = 300,
+                                     init = 'pca',
+                                     random_state = 0)
     kmeans_clusters, good_clusters = get_dose_clusters(doses)
     for col in range(features.shape[1]):
         feature = features[:, col]
@@ -283,14 +303,48 @@ def get_nca_similarity(db, feature_type = 'tumors'):
                 max_similarities.add((p1,p2))
                 continue
             similarity[p1, p2] = 1/np.linalg.norm(x1 - x2)
+    similarity += similarity.transpose()
     similarity = .99*(similarity - similarity.min())/(similarity.max() - similarity.min())
     for pair in max_similarities:
         similarity[pair[0], pair[1]] = 1
-    return similarity + similarity.transpose()
+    for i in range(n_patients):
+        similarity[i,i] = 0 
+    return similarity
 
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                class_name = None,
-#                use_distances = False)
+def get_max_tumor_ssim(patient1, patient2):
+    options = set()
+    scores = -np.ones((len(patient1),))
+    similarities = []
+    for p1 in range(len(patient1)):
+        t1 = patient1[p1]
+        for p2 in range(len(patient2)):
+            t2 = patient2[p2]
+            options.add(p2)
+            similarity = Rankings.local_ssim(t1.dists, t2.dists, t1.volume, t2.volume)
+            similarities.append((similarity, p1, p2))
+    similarities = sorted(similarities, key = lambda x: -x[0])
+    for (s, p1, p2) in similarities:
+        if scores[p1] == -1 and p2 in options:
+            scores[p1] = s
+            options.remove(p2)
+    t_volumes = np.array([t.volume for t in patient1])
+    max_similarity = np.mean((scores*t_volumes)/t_volumes.sum())
+    return max_similarity
+
+def get_test_tumor_similarity(db):
+    n_patients = db.get_num_patients()
+    new_distance_similarity = np.zeros((n_patients, n_patients))
+    for i in range(n_patients):
+        gtvs1 = db.gtvs[i]
+        for ii in range(n_patients):
+            gtvs2 = db.gtvs[ii]
+            new_distance_similarity[i,ii] = get_max_tumor_ssim(gtvs1, gtvs2)
+    new_distance_similarity += new_distance_similarity.transpose()
+    return new_distance_similarity
+
+db = PatientSet(root = 'data\\patients_v*\\',
+                class_name = None,
+                use_distances = False)
 
 
 #from sklearn.ensemble import RandomForestClassifier
@@ -317,7 +371,7 @@ def get_nca_similarity(db, feature_type = 'tumors'):
 #
 #total_dose_similarity = get_sim(db, lambda d,x,y: percent_diff(d.prescribed_doses[x], d.prescribed_doses[y]))
 #
-#class_similarity = get_sim(db, lambda d,x,y: 1 if db.classes[x] == db.classes[y] else 0)
+class_similarity = get_sim(db, lambda d,x,y: 1 if db.classes[x] == db.classes[y] else 0)
 #
 #gender_similarity = get_sim(db, lambda d,x,y: 1 if d.genders[x] == d.genders[y] else 0)
 #
@@ -328,17 +382,19 @@ def get_nca_similarity(db, feature_type = 'tumors'):
 #gtv_count_similarity = get_sim(db, gtv_count_sim)
 #
 #    
-#distance_similarity = TsimModel().get_similarity(db)
+
+distance_similarity = TsimModel().get_similarity(db)
 
 nca_tumor_similarity = get_nca_similarity(db)
 nca_distance_similarity = get_nca_similarity(db, 'distances')
-nca_lymph_similarity = get_nca_similarity(db, 'lymph')
-nca_organ_similarity = get_nca_similarity(db, 'organs')
+#nca_lymph_similarity = get_nca_similarity(db, 'lymph')
+#nca_organ_similarity = get_nca_similarity(db, 'organs')
 best_score = 1000
 best_k = 0
 best_min_matches = 0
 estimator = SimilarityFuser()
 similarity = estimator.get_similarity(db, [nca_tumor_similarity, distance_similarity])
+print(similarity)
 print('similarity finished')
 for k in np.linspace(.5, 1, 20):
     for min_matches in range(1, 30):
@@ -347,11 +403,12 @@ for k in np.linspace(.5, 1, 20):
             best_score = copy.copy(result.mean())
             best_k = copy.copy(k)
             best_min_matches = copy.copy(min_matches)
+db.change_classes()
 export(db, similarity = similarity, estimator = KnnEstimator(match_threshold = best_k, min_matches = best_min_matches))
 print(best_k, best_min_matches, best_score)
 print(KnnEstimator(match_type = 'clusters').evaluate(similarity, db).mean())
-print(KnnEstimator(match_type = 'clusters').evaluate(distance_similarity, db).mean())
-print(KnnEstimator(match_type = 'clusters').evaluate(distance_similarity*class_similarity, db).mean())
+print(KnnEstimator(match_type = 'clusters').evaluate(nca_tumor_similarity, db).mean())
+print(KnnEstimator(match_type = 'clusters').evaluate(nca_distance_similarity, db).mean())
 
 
 #from sklearn.mixture import GaussianMixture

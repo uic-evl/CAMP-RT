@@ -58,6 +58,9 @@ class Patient():
                  'III': 3,
                  'IV': 4,
                  'V': 5}
+    hpv_map = {'Positive': 1,
+               'Negative': -1,
+               'Unknown': 0}
 
     def __init__(self, distances, doses, p_id, group, info, use_distances = False):
         #patient ID number
@@ -80,6 +83,7 @@ class Patient():
         self.ajcc8 = Patient.ajcc8_map.get(info['AJCC 8th edition'], 0)
         self.therapy_type = info['Therapeutic combination']
         self.t_category = info['T-category']
+        self.hpv = Patient.hpv_map.get(info['HPV/P16 status'], 0)
         centroid_data = self.get_doses_file_info(doses, distances)
         #I make a new matrix, so the order of centroid data isn't the same as the orginal csv
         self.doses = centroid_data[:, 4]
@@ -95,12 +99,28 @@ class Patient():
             self.distances = self.gen_distance_matrix(distances)
         #store the entries without gtvp for future study
         (self.tumor_volume, self.tumor_distances, self.tumor_position) = self.get_main_tumor()
-        self.laterality = 'L' if self.tumor_position[0] > 0 else 'R'
+        self.laterality = self.get_laterality(self.gtvs)
         self.check_missing_organs(doses)
         ##self.check_if_full_dose()
         #report if there is no primary tumor
         if self.tumor_volume == 0 or np.sum(self.tumor_distances) == 0:
             Constants.no_tumor.append(self.id)
+            
+    def get_laterality(self, gtvs):
+        sides = set([])
+        for gtv in gtvs:
+            if gtv.position[0] > 0:
+                sides.add('L')
+            elif gtv.position[0] < 0:
+                sides.add('R')
+        if 'L' in sides:
+            if 'R' in sides:
+                return 'B'
+            else:
+                return 'L'
+        elif 'R' in sides:
+            return 'R'
+        return 'NA'
 
     def get_lymph_node_data(self, info):
 
@@ -226,10 +246,8 @@ class Patient():
         weights = volumes/total_volume #so now these are weightedd
         if 0 in gtvset:
             name = gtvs[0].name
-            organ = gtvs[0].organ
         else:
             name = gtvs[gtvset[0]].name
-            organ = gtvs[gtvset[0]].organ
         
         doses = weights[0]*gtvs[gtvset[0]].doses
         distances = weights[0]*gtvs[gtvset[0]].dists
@@ -240,6 +258,7 @@ class Patient():
             doses = doses + w*this_gtv.doses
             distances = np.minimum(this_gtv.dists, distances)
             position = position + w*this_gtv.position
+        organ = Constants.organ_list[np.argmin(distances)]
         combined_gtv = GTV(name, total_volume, position, doses, distances, organ)
         return combined_gtv
             
@@ -301,13 +320,16 @@ class Patient():
     def get_main_tumor(self):
         #basically gives a proxy so we use only the most important tumor
         tumor_volume = 0.0
-        tumor_distances = self.gtvs[0].dists
+#        tumor_distances = np.zeros((Constants.num_organs,))
+        tumor_distances = self.gtvs[0].dists[:]
         tumor_position = np.zeros((3,))
         try:
             for gtv in self.gtvs:
                 tumor_volume += gtv.volume
+#                tumor_distances += gtv.volume*gtv.dists
                 tumor_distances = np.minimum(gtv.dists, tumor_distances)
                 tumor_position += gtv.volume*gtv.position
+            tumor_distances /= tumor_volume
             tumor_position /= tumor_volume
         except:
             print('error reading tumor volume for ', self.id)

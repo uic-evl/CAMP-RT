@@ -49,7 +49,7 @@ class PatientSet():
         num_patients = len(ids)
         metadata = pd.read_csv(metadata_file,
                                index_col = 0, #index is the "Dummy ID"
-                               usecols = [0,1,2,3,4,5,6,7,8,9,10,11,13,14,15,18,31]
+                               usecols = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,18,31]
                                ).loc[ids]
         print(metadata.columns)
         patients = OrderedDict()
@@ -71,6 +71,7 @@ class PatientSet():
         gender_vector = np.zeros((num_patients,)).astype(str)
         age_vector = np.zeros((num_patients,)).astype('int32')
         self.ajcc8 = np.zeros((num_patients,))
+        self.hpv = np.zeros((num_patients,))
         
         laterality_list = []
         subsite_list = []
@@ -124,6 +125,7 @@ class PatientSet():
             gender_vector[patient_index] = new_patient.gender
             age_vector[patient_index] = new_patient.age
             self.ajcc8[patient_index] = new_patient.ajcc8
+            self.hpv[patient_index] = new_patient.hpv
             
             if use_distances:
                 organ_distance_matrix[:, :, patient_index] = np.nan_to_num(new_patient.distances)
@@ -141,6 +143,7 @@ class PatientSet():
         self.t_categories = t_category_vector
         self.genders = gender_vector
         self.ages = np.nan_to_num(age_vector)
+
         
         if use_distances:
             self.organ_distances = np.nan_to_num(organ_distance_matrix).mean(axis = 2)
@@ -184,6 +187,7 @@ class PatientSet():
         self.therapy_type = self.therapy_type[p]
         self.ajcc8 = self.ajcc8[p]
         self.pathological_grades = self.pathological_grades[p]
+        self.hpv = self.hpv[p]
             
     def get_num_patients(self):
         return( self.doses.shape[0] )
