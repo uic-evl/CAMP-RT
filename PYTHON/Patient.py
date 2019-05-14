@@ -329,7 +329,7 @@ class Patient():
 #                tumor_distances += gtv.volume*gtv.dists
                 tumor_distances = np.minimum(gtv.dists, tumor_distances)
                 tumor_position += gtv.volume*gtv.position
-            tumor_distances /= tumor_volume
+#            tumor_distances /= tumor_volume
             tumor_position /= tumor_volume
         except:
             print('error reading tumor volume for ', self.id)

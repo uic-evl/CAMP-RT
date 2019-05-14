@@ -5,6 +5,11 @@ d3.selection.prototype.moveToFront = function() {
 	this.parentNode.appendChild(this);
   });
 };
+d3.selection.prototype.moveToBack = function() {  
+  return this.each(function(){
+	this.parentNode.insertBefore(this, this.parentNode.firstChild);
+  });
+};
 
 function DoseScatterPlot(data){
 	this.data = data;
@@ -20,7 +25,7 @@ DoseScatterPlot.prototype.draw = function(target, selectedPerson = null){
 	this.xMargin = .04*this.width;
 	this.yMargin = .03*this.width;
 	this.axisLabelSize = 16;//pix
-	this.clusterMargin = 10;
+	this.clusterMargin = 20;
 	d3.select("#"+target).selectAll('.scatterSvg').remove();
 	this.svg = d3.select("#"+target).insert('svg',':first-child')
 					.attr('class', 'scatterSvg')
@@ -30,8 +35,7 @@ DoseScatterPlot.prototype.draw = function(target, selectedPerson = null){
 	this.tooltip = d3.select("div.tooltip")
 			.attr('class','tooltip')
 			.style('visibility','hidden');
-	this.getXAxis = function(d){ return self.data.getDistancePCA(d, 1); };
-	this.getYAxis = function(d){ return self.data.getDistancePCA(d, 2); };
+	this.switchAxisFunction('distance');
 	this.drawCircles(selectedPerson);
 	if (selectedPatient != null){
 		this.highlightSelectedPatients(selectedPerson);
@@ -39,7 +43,7 @@ DoseScatterPlot.prototype.draw = function(target, selectedPerson = null){
 	this.drawClusterCircles(this.clusterMargin);
 	this.setupTooltip(selectedPerson);
 	this.setupSwitchButtons();
-	this.drawAxisLabels('Dose PCA 1', 'Distance PCA 2');
+	this.drawAxisLabels('Distance PCA 1', 'Distance PCA 2');
 }
 
 DoseScatterPlot.prototype.setupSwitchButtons = function(){
@@ -247,10 +251,11 @@ DoseScatterPlot.prototype.drawClusterCircles = function(margin){
 		.attr('class','clusterCurves')
 		.attr('fill', 'none')
 		.attr('stroke', function(d) {return d.color;})
-		.attr('stroke-width', margin/1.5)
+		.attr('stroke-width', margin/3)
 		.attr('opacity',.3)
 		.merge(arc).transition().duration(800)
 		.attr('d', function(d){return arcPath(d);})
+	d3.selectAll('.clusterCurves').moveToBack();
 	this.setupCurveTooltip();
 }
 
@@ -313,12 +318,14 @@ DoseScatterPlot.prototype.animateAxisChange = function(){
 			return 'translate(' + xScale(self.getXAxis(d)) + ',' + yScale(self.getYAxis(d)) + ')';
 		});
 }
-
-DoseScatterPlot.prototype.switchAxisVariable = function(type){
+DoseScatterPlot.prototype.switchAxisFunction = function(type){
 	if(type == 'distance'){
-		this.getXAxis = function(d){ return self.data.getDistancePCA(d, 1); };
-		this.getYAxis = function(d){ return self.data.getDistancePCA(d, 2); };
-		this.renameAxis('Tumor-Organ Distance PC 1', 'Tumor-Organ Distance PC 2');
+		this.getXAxis = function(d){ 
+			var pca1 = self.data.getDistancePCA(d, 1);
+			return  Math.sign(pca1)*Math.pow(Math.abs(pca1),.4); };
+		this.getYAxis = function(d){ 
+			var pca2 = self.data.getDistancePCA(d, 2);
+			return Math.sign(pca2)*Math.pow(Math.abs(pca2),.2); };
 	} else if(type == 'staging'){
 		this.getXAxis = function(d){ 
 			var volume = self.data.gtvpVol(d);
@@ -326,11 +333,20 @@ DoseScatterPlot.prototype.switchAxisVariable = function(type){
 		this.getYAxis = function(d){ 
 			var volume = self.data.gtvnVol(d);
 			return (volume > Math.E)? Math.log(volume): volume; };
-		this.renameAxis('GTVp Volume', 'GTVn Volume');
 	}
 	else{
 		this.getXAxis = function(d){ return self.data.getDosePCA(d, 1); };
 		this.getYAxis = function(d){ return self.data.getDosePCA(d, 2); };
+	}
+}
+
+DoseScatterPlot.prototype.switchAxisVariable = function(type){
+	this.switchAxisFunction(type);
+	if(type == 'distance'){
+		this.renameAxis('Tumor-Organ Distance PC 1', 'Tumor-Organ Distance PC 2');
+	} else if(type == 'staging'){
+		this.renameAxis('GTVp Volume', 'GTVn Volume');
+	} else{
 		this.renameAxis('Dose PC 1', 'Dose PC 2');
 	}
 	this.animateAxisChange();

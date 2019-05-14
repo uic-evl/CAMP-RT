@@ -15,18 +15,10 @@ from ErrorChecker import ErrorChecker
 
 class PatientSet():
 
-    def __init__(self, outliers = [], root = 'data\\patients_v2*\\', class_name = None, 
+    def __init__(self, outliers = [], root = 'data\\patients_v2*\\', 
                  use_distances = False, use_clean_subset = True):
-        if class_name is not None: #default signifies you want to overwrite it
-            classes = pd.read_csv('data//rt_plan_clusters.csv',
-                                   index_col = 1)
-            classes = classes.drop(labels = ['Unnamed: 0'], axis = 1)
-            classes.columns = classes.columns.str.strip()
-            self.classes = classes[class_name]
-            self.num_classes = len(self.classes.unique())
-        else:
-            self.classes = None
-            self.num_classes = 0
+        self.classes = None
+        self.num_classes = 0
         self.read_patient_data(root, outliers, use_distances)
         if use_clean_subset:
             self.clean_values()
@@ -263,14 +255,14 @@ class PatientSet():
         dataframe.replace(to_replace = r'GTV.*N', value = 'GTVn', regex = True, inplace = True)
         return dataframe
 
-    def change_classes(self, class_name = None):
+    def change_classes(self, class_name = None, class_file = 'data//clusters2.csv'):
         if class_name is not None:
-            classes = pd.read_csv('data//rt_plan_clusters.csv',
+            classes = pd.read_csv(class_file,
                                        index_col = 1)
             classes = classes.drop(labels = ['Unnamed: 0'], axis = 1)
             classes.columns = classes.columns.str.strip()
-            self.classes = classes[class_name]
-            self.num_classes = len(self.classes.unique())
+            self.classes = classes[class_name].values.astype('int32')
+            self.num_classes = len(self.classes)
         else:   
             for p in range(self.get_num_patients()):
                 self.classes[p] = self.get_default_class(self.ids[p], self.doses[p,:])
