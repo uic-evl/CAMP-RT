@@ -214,6 +214,8 @@ class Patient():
         return(centroid_matrix)
         
     def merge_gtvns(self, gtvs, dists):
+        #merges gtvs where there is overlap between them into a single gtv
+        #calculates which gtvs overlap, and uses combine gtvs to get a single gtv
         if len(gtvs) <= 2:
             return gtvs
         dists = dists.set_index(['Reference ROI', 'Target ROI']).sort_index()
@@ -238,6 +240,7 @@ class Patient():
         self.gtvs = temp_gtvs
     
     def combine_gtvs(self, gtvs, gtvset):
+        #takes the set of gtvs from the data and indexes, merges the gtvs in gtvset
         gtvset = sorted(gtvset, key = lambda x: gtvs[x].name)
         if len(gtvset) < 2:
             return gtvs[gtvset[0]]

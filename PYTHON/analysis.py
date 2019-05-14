@@ -163,7 +163,7 @@ def gtv_organ_sim(db,p1,p2):
         return v
     v1 = vectorify(p1)
     v2 = vectorify(p2)
-    return Rankings.jaccard_distance(v1,v2)
+    return 1 if np.linalg.norm(v1 - v2) == 0 else 0 #Rankings.jaccard_distance(v1,v2)
 
 def gtv_count_sim(db,p1,p2):
     gtvs1 = db.gtvs[p1]
@@ -393,6 +393,19 @@ def get_test_tumor_similarity(db):
 #
 #    
 db.change_classes()
+for p in range(db.get_num_patients()):
+    p_centroids = db.centroids[p,:,:]
+    gtv = db.gtvs[p]
+    for t_ind in range(len(gtv)):
+        t = gtv[t_ind]
+        organ = Constants.organ_list[0]
+        min_dist = np.linalg.norm(t.position - p_centroids[0])
+        for o in range(1, Constants.num_organs):
+            dist = np.linalg.norm(t.position - p_centroids[o])
+            if dist < min_dist:
+                min_dist = dist
+                organ = Constants.organ_list[o]
+        gtv[t_ind] = GTV(t.name, t.volume, t.position, t.doses, t.dists, organ)
 organ_similarity = get_sim(db, gtv_organ_sim)
 print(KnnEstimator(match_type='clusters').evaluate(organ_similarity, db).mean())
 
