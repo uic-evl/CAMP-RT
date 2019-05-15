@@ -163,7 +163,7 @@ def gtv_organ_sim(db,p1,p2):
         return v
     v1 = vectorify(p1)
     v2 = vectorify(p2)
-    return 1 if np.linalg.norm(v1 - v2) == 0 else 0 #Rankings.jaccard_distance(v1,v2)
+    return Rankings.jaccard_distance(v1,v2) #1 if np.linalg.norm(v1 - v2) == 0 else 0 
 
 def gtv_count_sim(db,p1,p2):
     gtvs1 = db.gtvs[p1]
@@ -355,9 +355,61 @@ def get_test_tumor_similarity(db):
     new_distance_similarity += new_distance_similarity.transpose()
     return new_distance_similarity
 
+def centroid_based_tumor_organ_pairs(db):
+    for p in range(db.get_num_patients()):
+        p_centroids = db.centroids[p,:,:]
+        gtv = db.gtvs[p]
+        for t_ind in range(len(gtv)):
+            t = gtv[t_ind]
+            organ = Constants.organ_list[0]
+            min_dist = np.linalg.norm(t.position - p_centroids[0])
+            for o in range(1, Constants.num_organs):
+                dist = np.linalg.norm(t.position - p_centroids[o])
+                if dist < min_dist:
+                    min_dist = dist
+                    organ = Constants.organ_list[o]
+            gtv[t_ind] = GTV(t.name, t.volume, t.position, t.doses, t.dists, organ)
+
+def threshold_grid_search(db, similarity, start_k = .5, max_matches = 20, print_out = True):
+    best_score = 100 #this is percent error at time of writing this
+    best_threshold = 0
+    best_min_matches = 0
+    for k in np.linspace(start_k, 1, 20):
+        for m in range(1, max_matches):
+            result = KnnEstimator(match_threshold = k, min_matches = m).evaluate(similarity, db)
+            if result.mean() < best_score:
+                best_score = result.mean()
+                best_threshold = copy.copy(k)
+                best_min_matches = copy.copy(m)
+    if print_out:
+        print('Score-', best_score, ': Threshold-', best_threshold, ': Min matches-', best_min_matches)
+    return((best_score, best_threshold, best_min_matches))
+    
 #db = PatientSet(root = 'data\\patients_v*\\',
 #                use_distances = False)
-#db.change_classes(class_name = 'rtward4', class_file = 'data\\clusters2.csv')
+
+vectors = np.zeros((db.get_num_patients(), 6))
+ll = Constants.organ_list.index('Lower_Lip')
+for p in range(db.get_num_patients()):
+    gtvs = db.gtvs[p]
+    center = np.mean([x.position*x.volume for x in gtvs], axis = 0)/np.sum([x.volume for x in gtvs], axis = 0)
+    secondary_points = np.zeros((3,))
+    secondary_tumor_volume = np.sum([tumor.volume for tumor in gtvs])
+    if secondary_tumor_volume > 0:
+        for t in range(len(gtvs)):
+            weight = gtvs[t].volume/secondary_tumor_volume
+            secondary_points = secondary_points + weight*(gtvs[t].position - center)
+        slope = secondary_points/np.linalg.norm(secondary_points)
+    else:
+        slope = np.zeros((3,))
+    vectors[p] = np.hstack([center, slope])
+def get_vector_sim(db, p1, p2):
+    return np.dot(vectors[p1, 3:], vectors[p2, 3:])
+    
+vector_sim = get_sim(db, get_vector_sim)
+threshold_grid_search(db, similarity = vector_sim)
+    
+    
 
 #from sklearn.ensemble import RandomForestClassifier
 #from sklearn.linear_model import LogisticRegression
@@ -392,22 +444,7 @@ def get_test_tumor_similarity(db):
 #gtv_count_similarity = get_sim(db, gtv_count_sim)
 #
 #    
-db.change_classes()
-for p in range(db.get_num_patients()):
-    p_centroids = db.centroids[p,:,:]
-    gtv = db.gtvs[p]
-    for t_ind in range(len(gtv)):
-        t = gtv[t_ind]
-        organ = Constants.organ_list[0]
-        min_dist = np.linalg.norm(t.position - p_centroids[0])
-        for o in range(1, Constants.num_organs):
-            dist = np.linalg.norm(t.position - p_centroids[o])
-            if dist < min_dist:
-                min_dist = dist
-                organ = Constants.organ_list[o]
-        gtv[t_ind] = GTV(t.name, t.volume, t.position, t.doses, t.dists, organ)
-organ_similarity = get_sim(db, gtv_organ_sim)
-print(KnnEstimator(match_type='clusters').evaluate(organ_similarity, db).mean())
+#organ_similarity = get_sim(db, gtv_organ_sim)
 
 #class_similarity = get_sim(db, lambda d,x,y: 1 if db.classes[x] == db.classes[y] else 0)
 #distance_similarity = TsimModel().get_similarity(db)

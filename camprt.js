@@ -639,13 +639,12 @@ function showPatient(materialArray, id, parentDivId){
 
 	var tmp_geo = new THREE.Geometry();
 
-	var source = scene.getObjectByName("GTVp");
-	var target = scene.getObjectByName("GTVn");
+	var [source_position, target_position] = getTargetVertices(scene);
 
-	if (source != null && target != null) {
+	if (source_position != null && target_position != null) {
 		//draws a line between the gtvp and gtvn is they are there
-		tmp_geo.vertices.push(source.position);
-		tmp_geo.vertices.push(target.position);
+		tmp_geo.vertices.push(source_position);
+		tmp_geo.vertices.push(target_position);
 
 		var line = new THREE.LineSegments(tmp_geo, linkMaterial);
 		line.scale.x = line.scale.y = line.scale.z = 1;
@@ -709,6 +708,45 @@ function showPatient(materialArray, id, parentDivId){
 
 	scene.add(light);
 	return scene;
+}
+
+function getTargetVertices(scene){
+	var gtvp = (scene.getObjectByName('GTVp') != null)? scene.getObjectByName('GTVp').clone(): null;
+	var gtvn = (scene.getObjectByName('GTVn') != null)? scene.getObjectByName('GTVn').clone(): null;
+	var gtvn_suffix = 2;
+	var target_position = null;
+	var target_volume = 0;
+	if(gtvp != null){
+		var source_position = gtvp.position.clone();
+		if(gtvn == null){
+			return [source_position, null];
+		}
+		if(gtvn != null){
+			target_position = gtvn.position.multiplyScalar(gtvn.userData.volume);
+		}
+		target_volume = gtvn.userData.volume
+	} else if(gtvn != null){
+		var source_postion = gtvn.position;
+		if(scene.getObjectByName('GTVn2') != null){
+			target_position = scene.getObjectByName('GTVn2').position;
+			gtvn_suffix = 3;
+		}
+	} else{
+		console.log('Error, user doesnt seem to have a gtv');
+		return [null, null]
+	}
+	while(scene.getObjectByName('GTVn' + gtvn_suffix) != null){
+		print(scene.userData);
+		let gtv = scene.getObjectByName('GTVn' + gtvn_suffix).clone();
+		let new_position = gtv.position.multiplyScalar(gtv.userData.volume);
+		target_position = target_position.add(new_position);
+		target_volume = target_volume + gtv.userData.volume;
+		gtvn_suffix += 1;
+	}
+	if(target_position != null){
+		target_position = target_position.divideScalar(target_volume);
+	}
+	return [source_position, target_position]
 }
 
 function removeOldViews(patient){
@@ -1012,18 +1050,14 @@ function populateAndPlaceDetails(state) {
 }
 
 function onMouseDown(event) {
-
     if (event.target) {
-
         detailsOnRotate = false;
         handleInputRotate(event);
     }
 }
 
 function onTouchStart(event) {
-
     if (event.target) {
-
         detailsOnRotate = false;
         handleInputRotate(event);
     }
@@ -1106,9 +1140,7 @@ document.getElementById("opacSlider").oninput = function () {
     scenes.forEach(function (scene, index) {
 
         for (var pOrgan in oAtlas) {
-
             var tempObject = scene.getObjectByName(pOrgan + "_model");
-
             if (tempObject)
                 tempObject.material.opacity = opac;
         }

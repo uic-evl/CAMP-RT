@@ -312,11 +312,11 @@ DoseScatterPlot.prototype.setAxisVariable = function(axisFunction, axis){
 
 DoseScatterPlot.prototype.animateAxisChange = function(){
 	var [xScale, yScale] = this.getAxisScales();
-	this.drawClusterCircles(this.clusterMargin);
 	this.circles.transition().duration(800)
 		.attr('transform', function(d){
 			return 'translate(' + xScale(self.getXAxis(d)) + ',' + yScale(self.getYAxis(d)) + ')';
 		});
+	this.drawClusterCircles(this.clusterMargin);
 }
 DoseScatterPlot.prototype.switchAxisFunction = function(type){
 	if(type == 'distance'){
