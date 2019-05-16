@@ -14,6 +14,7 @@ import pandas as pd
 from collections import OrderedDict
 import matplotlib.pyplot as plt
 import copy
+import metric_learn
 
 
 def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_file = 'scores.csv',
@@ -266,7 +267,7 @@ from NCA import NeighborhoodComponentsAnalysis
 from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
 
 def get_dose_clusters(doses):
-    kmeans = KMeans(n_clusters = 5, random_state = 0)
+    kmeans = KMeans(n_clusters = 4, random_state = 0)
     dbscan = DBSCAN(eps = 80, min_samples = 2)
     db_clusters = dbscan.fit_predict(doses)
     good_clusters = np.where(db_clusters >= 0)[0]
@@ -274,11 +275,15 @@ def get_dose_clusters(doses):
     kmeans_clusters = kmeans.fit_predict(doses)
     return kmeans_clusters, good_clusters
 
-def get_nca_features(features, doses, min_nca_components = 5):
-    nca = NeighborhoodComponentsAnalysis(n_components = min([min_nca_components, features.shape[1]]),
-                                     max_iter = 300,
-                                     init = 'pca',
-                                     random_state = 0)
+def get_nca_features(features, doses, min_nca_components = 5, lmnn = False, k = 4, reg = .25):
+    if lmnn:
+        nca = metric_learn.lmnn.python_LMNN(k = k, use_pca = False,
+                                            regularization = reg)
+    else:
+        nca = NeighborhoodComponentsAnalysis(n_components = min([min_nca_components, features.shape[1]]),
+                                         max_iter = 300,
+                                         init = 'pca',
+                                         random_state = 0)
     kmeans_clusters, good_clusters = get_dose_clusters(doses)
     for col in range(features.shape[1]):
         feature = features[:, col]
@@ -293,7 +298,7 @@ def get_nca_features(features, doses, min_nca_components = 5):
     features = nca.transform(features)
     return features
 
-def get_nca_similarity(db, feature_type = 'tumors', min_nca_components = 4):
+def get_nca_similarity(db, feature_type = 'tumors', min_nca_components = 4, lmnn = False, k = 4, reg = .25):
     doses = db.doses
     n_patients = doses.shape[0]
     if feature_type == 'tumors':
@@ -305,7 +310,8 @@ def get_nca_similarity(db, feature_type = 'tumors', min_nca_components = 4):
     elif feature_type in ['organ', 'organs']:
         input_features = get_input_organ_features(db)
     nca_features = get_nca_features(input_features, doses, 
-                                    min_nca_components = min_nca_components)
+                                    min_nca_components = min_nca_components,
+                                    lmnn = lmnn, k = k, reg = reg)
     similarity = np.zeros((n_patients, n_patients))
     max_similarities = set([])
     for p1 in range(n_patients):
@@ -369,6 +375,27 @@ def centroid_based_tumor_organ_pairs(db):
                     min_dist = dist
                     organ = Constants.organ_list[o]
             gtv[t_ind] = GTV(t.name, t.volume, t.position, t.doses, t.dists, organ)
+            
+def get_gtv_vectors(db):
+    vectors = np.zeros((db.get_num_patients(), 6))
+    for p in range(db.get_num_patients()):
+        gtvs = db.gtvs[p]
+        center = np.mean([x.position*x.volume for x in gtvs], axis = 0)/np.sum([x.volume for x in gtvs], axis = 0)
+        secondary_points = np.zeros((3,))
+        secondary_tumor_volume = np.sum([tumor.volume for tumor in gtvs])
+        if secondary_tumor_volume > 0:
+            for t in range(len(gtvs)):
+                weight = gtvs[t].volume/secondary_tumor_volume
+                secondary_points = secondary_points + weight*(gtvs[t].position - center)
+            slope = secondary_points/np.linalg.norm(secondary_points)
+        else:
+            slope = np.zeros((3,))
+        vectors[p] = np.hstack([center, slope])
+    return vectors
+
+def get_vector_sim(db, p1, p2):
+    vectors = get_gtv_vectors(db)
+    return np.dot(vectors[p1, 3:], vectors[p2, 3:])
 
 def threshold_grid_search(db, similarity, start_k = .5, max_matches = 20, print_out = True):
     best_score = 100 #this is percent error at time of writing this
@@ -385,31 +412,8 @@ def threshold_grid_search(db, similarity, start_k = .5, max_matches = 20, print_
         print('Score-', best_score, ': Threshold-', best_threshold, ': Min matches-', best_min_matches)
     return((best_score, best_threshold, best_min_matches))
     
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                use_distances = False)
-
-vectors = np.zeros((db.get_num_patients(), 6))
-ll = Constants.organ_list.index('Lower_Lip')
-for p in range(db.get_num_patients()):
-    gtvs = db.gtvs[p]
-    center = np.mean([x.position*x.volume for x in gtvs], axis = 0)/np.sum([x.volume for x in gtvs], axis = 0)
-    secondary_points = np.zeros((3,))
-    secondary_tumor_volume = np.sum([tumor.volume for tumor in gtvs])
-    if secondary_tumor_volume > 0:
-        for t in range(len(gtvs)):
-            weight = gtvs[t].volume/secondary_tumor_volume
-            secondary_points = secondary_points + weight*(gtvs[t].position - center)
-        slope = secondary_points/np.linalg.norm(secondary_points)
-    else:
-        slope = np.zeros((3,))
-    vectors[p] = np.hstack([center, slope])
-def get_vector_sim(db, p1, p2):
-    return np.dot(vectors[p1, 3:], vectors[p2, 3:])
-    
-vector_sim = get_sim(db, get_vector_sim)
-threshold_grid_search(db, similarity = vector_sim)
-    
-    
+db = PatientSet(root = 'data\\patients_v*\\',
+                use_distances = False)
 
 #from sklearn.ensemble import RandomForestClassifier
 #from sklearn.linear_model import LogisticRegression
@@ -444,32 +448,28 @@ threshold_grid_search(db, similarity = vector_sim)
 #gtv_count_similarity = get_sim(db, gtv_count_sim)
 #
 #    
+    
+    
+#vector_similarity = get_sim(db, get_vector_sim)
 #organ_similarity = get_sim(db, gtv_organ_sim)
-
+#
 #class_similarity = get_sim(db, lambda d,x,y: 1 if db.classes[x] == db.classes[y] else 0)
 #distance_similarity = TsimModel().get_similarity(db)
-#
-#nca_tumor_similarity = get_nca_similarity(db, min_nca_components = 15)
-#nca_distance_similarity = get_nca_similarity(db, 'distances', min_nca_components = 15)
-##nca_lymph_similarity = get_nca_similarity(db, 'lymph')
-##nca_organ_similarity = get_nca_similarity(db, 'organs')
-#best_score = 1000
-#best_k = 0
-#best_min_matches = 0
+    
+#nca_tumor_similarity = get_nca_similarity(db, min_nca_components = 15, lmnn = True)
+nca_distance_similarity = get_nca_similarity(db, 'distances', min_nca_components = 15, lmnn=True)
+#nca_lymph_similarity = get_nca_similarity(db, 'lymph')
+#nca_organ_similarity = get_nca_similarity(db, 'organs')
+
 #estimator = SimilarityFuser()
-#similarity = estimator.get_similarity(db, [nca_tumor_similarity, distance_similarity])
-##similarity = nca_distance_similarity*class_similarity
-#print(similarity)
-#print('similarity finished')
-#for k in np.linspace(.5, 1, 20):
-#    for min_matches in range(1, 30):
-#        result = KnnEstimator(match_threshold = k, min_matches = min_matches).evaluate(similarity, db)
-#        if result.mean() < best_score:
-#            best_score = copy.copy(result.mean())
-#            best_k = copy.copy(k)
-#            best_min_matches = copy.copy(min_matches)
-#            
-#export(db, similarity = similarity, estimator = KnnEstimator(match_threshold = best_k, min_matches = best_min_matches))
+#similarity = estimator.get_similarity(db, [nca_distance_similarity])
+
+similarity = nca_distance_similarity
+print('similarity finished')
+
+best_score, best_k, best_min_matches = threshold_grid_search(db, similarity)
+            
+export(db, similarity = similarity, estimator = KnnEstimator(match_threshold = best_k, min_matches = best_min_matches))
 #print(best_k, best_min_matches, best_score)
 #print(KnnEstimator(match_type = 'clusters').evaluate(similarity, db).mean())
 #print(KnnEstimator(match_type = 'clusters').evaluate(nca_tumor_similarity, db).mean())

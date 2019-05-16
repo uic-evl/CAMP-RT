@@ -233,13 +233,21 @@ class Patient():
                     new_gtvs[idx - 1] = new_gtvs[idx - 1].union(new_gtvs[idx])
                     del new_gtvs[idx]
         temp_gtvs = []
+        tumor_number = 1
         for gtvset in new_gtvs:
-            temp_gtvs.append(self.combine_gtvs(gtvs, gtvset))
+            if 0 in gtvset:
+                name = 'GTVp'
+            else:
+                name = 'GTVn' if tumor_number == 1 else 'GTVn' + str(tumor_number)
+                tumor_number += 1
+            print(name)
+            new_tumor = self.combine_gtvs(gtvs, gtvset, name = name)
+            temp_gtvs.append(new_tumor)
         if len(gtvs) > len(temp_gtvs):
             print(self.id, new_gtvs)
-        self.gtvs = temp_gtvs
+            self.gtvs = temp_gtvs
     
-    def combine_gtvs(self, gtvs, gtvset):
+    def combine_gtvs(self, gtvs, gtvset, name = None):
         #takes the set of gtvs from the data and indexes, merges the gtvs in gtvset
         gtvset = sorted(gtvset, key = lambda x: gtvs[x].name)
         if len(gtvset) < 2:
@@ -247,10 +255,11 @@ class Patient():
         volumes = np.array([gtvs[i].volume for i in gtvset])
         total_volume = volumes.sum()
         weights = volumes/total_volume #so now these are weightedd
-        if 0 in gtvset:
-            name = gtvs[0].name
-        else:
-            name = gtvs[gtvset[0]].name
+        if name is None:
+            if 0 in gtvset:
+                name = gtvs[0].name
+            else:
+                name = gtvs[gtvset[0]].name
         
         doses = weights[0]*gtvs[gtvset[0]].doses
         distances = weights[0]*gtvs[gtvset[0]].dists

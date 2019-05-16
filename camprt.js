@@ -474,7 +474,6 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
 
 		mesh.rotation.x = -Math.PI / 2.0;
 		mesh.rotation.z = -Math.PI / 2;
-
 		// oral cavity
 		if (pOrgan == "Tongue")
 			mesh.renderOrder = -10;
@@ -561,7 +560,10 @@ function showPatient(materialArray, id, parentDivId){
 
 	scene.userData.controls = controls;
 
-	var geometry = new THREE.SphereGeometry(4, 16, 16);
+	var outlineSize = 5.5;
+	var nodeSize = 4;
+	var geometry = new THREE.SphereGeometry(nodeSize, 16);
+	var outlineGeometry = new THREE.SphereGeometry(outlineSize, 16);
 
 	var material = new THREE.MeshStandardMaterial({
 		color: new THREE.Color().setHex(0xa0a0a0),
@@ -574,15 +576,9 @@ function showPatient(materialArray, id, parentDivId){
 		color: 0x3d3d3d,
 		side: THREE.BackSide
 	});
-
-	var linkMaterial = new THREE.LineBasicMaterial({
-		color: 0x3d3d3d,
-		opacity: 1,
-		linewidth: 3
-	});
 	
 	var gtvRegex = RegExp('GTV*');
-	
+	var gtvs = [];
 	for (var pOrgan in patientOrganList) {
 		//this looks like it draws the organs in each patient?
 		if(data.getOrganVolume(id, pOrgan) <= 0){
@@ -596,12 +592,11 @@ function showPatient(materialArray, id, parentDivId){
 
 		organSphere.name = pOrgan;
 		organSphere.userData.type = "node";
-
-		// outline
-		var outlineMesh = new THREE.Mesh(geometry, outlineMaterial.clone());
+		
+		//Small outline for the circle at the centeroid of the organs
+		var outlineMesh = new THREE.Mesh(outlineGeometry, outlineMaterial.clone());
 
 		outlineMesh.name = pOrgan + "_outline";
-		outlineMesh.scale.multiplyScalar( (organSphere.name == 'GTVp')? 1.5:1.3 );
 
 		// color
 		var nodeColor;
@@ -610,17 +605,22 @@ function showPatient(materialArray, id, parentDivId){
 		organSphere.userData.minDose = data.getMinDose(id, pOrgan);
 		organSphere.userData.meanDose = data.getMeanDose(id, pOrgan);
 		organSphere.userData.maxDose = data.getMaxDose(id, pOrgan);
-		
 		organSphere.userData.estimatedDose = data.getEstimatedDose(id, pOrgan);
-
 		// do this in python script maybe
 		//grays are already in joules per kilogram?!?!? I might want to delete this because it's misleading to users
 		organSphere.userData.dosePerVolume = (data.getMeanDose(id, pOrgan) / data.getOrganVolume(id, pOrgan)).toFixed(3);
+		
+		//format the tumors in the data differently
 		if( gtvRegex.test(organSphere.name) ){
+			gtvs.push(organSphere);
 			nodeColor = 'black';
-			outlineMesh.scale.multiplyScalar(1.2);
+			//using real scaling doesn't seem to really work so it's just porportional now
+			outlineMesh.scale.multiplyScalar( Math.pow(organSphere.userData.volume, .333));
 			let tumorOutline = Controller.getDoseColor(organSphere.userData.meanDose);
 			outlineMesh.material.color.set( tumorOutline );
+			outlineMesh.material.transparent = true;
+			outlineMesh.material.opacity = .5;
+			outlineMesh.renderOrder = -11;
 		} else if (organSphere.userData.meanDose >= 0.0){ //null == -1 in json, pearson problems
 			nodeColor = Controller.getDoseColor(organSphere.userData.meanDose);
 		}else {
@@ -636,10 +636,16 @@ function showPatient(materialArray, id, parentDivId){
 
 		placeOrganModels(pOrgan, patientOrganList[pOrgan], scene, nodeColor);
 	}
+	
+	var linkMaterial = new THREE.LineBasicMaterial({
+		color: 0x3d3d3d,
+		opacity: 1,
+		linewidth: 10
+	});
 
 	var tmp_geo = new THREE.Geometry();
 
-	var [source_position, target_position] = getTargetVertices(scene);
+	var [source_position, target_position] = getTargetVertices(gtvs);
 
 	if (source_position != null && target_position != null) {
 		//draws a line between the gtvp and gtvn is they are there
@@ -647,9 +653,6 @@ function showPatient(materialArray, id, parentDivId){
 		tmp_geo.vertices.push(target_position);
 
 		var line = new THREE.LineSegments(tmp_geo, linkMaterial);
-		line.scale.x = line.scale.y = line.scale.z = 1;
-		line.originalScale = 1;
-
 		scene.add(line);
 	}
 
@@ -710,40 +713,24 @@ function showPatient(materialArray, id, parentDivId){
 	return scene;
 }
 
-function getTargetVertices(scene){
-	var gtvp = (scene.getObjectByName('GTVp') != null)? scene.getObjectByName('GTVp').clone(): null;
-	var gtvn = (scene.getObjectByName('GTVn') != null)? scene.getObjectByName('GTVn').clone(): null;
-	var gtvn_suffix = 2;
+function getTargetVertices(gtvs){
+	//gets the location between the larget node, and the COM of all secondary node
+	//passed to that other big function so it can draw a line between them
+	var source_position = gtvs[0].clone().position;
 	var target_position = null;
-	var target_volume = 0;
-	if(gtvp != null){
-		var source_position = gtvp.position.clone();
-		if(gtvn == null){
-			return [source_position, null];
+	if( gtvs.length > 1 ){
+		var gtvn = gtvs[1].clone();
+		var target_volume = gtvn.userData.volume;
+		target_position = gtvn.position.multiplyScalar(target_volume);
+		let gtvn_suffix = 2;
+		while( gtvn_suffix < gtvs.length){
+			let gtv = gtvs[gtvn_suffix].clone();
+			console.log(gtv.userData.volume);
+			target_volume = gtv.userData.volume + target_volume;
+			let new_position = gtv.position.multiplyScalar(gtv.userData.volume);
+			target_position.add(new_position);
+			gtvn_suffix += 1;
 		}
-		if(gtvn != null){
-			target_position = gtvn.position.multiplyScalar(gtvn.userData.volume);
-		}
-		target_volume = gtvn.userData.volume
-	} else if(gtvn != null){
-		var source_postion = gtvn.position;
-		if(scene.getObjectByName('GTVn2') != null){
-			target_position = scene.getObjectByName('GTVn2').position;
-			gtvn_suffix = 3;
-		}
-	} else{
-		console.log('Error, user doesnt seem to have a gtv');
-		return [null, null]
-	}
-	while(scene.getObjectByName('GTVn' + gtvn_suffix) != null){
-		print(scene.userData);
-		let gtv = scene.getObjectByName('GTVn' + gtvn_suffix).clone();
-		let new_position = gtv.position.multiplyScalar(gtv.userData.volume);
-		target_position = target_position.add(new_position);
-		target_volume = target_volume + gtv.userData.volume;
-		gtvn_suffix += 1;
-	}
-	if(target_position != null){
 		target_position = target_position.divideScalar(target_volume);
 	}
 	return [source_position, target_position]
@@ -932,7 +919,9 @@ function updateMainView(rotMatrix) {
 		raycaster.setFromCamera(mouseNorm, currScene.userData.camera);
 
 		var intersects = raycaster.intersectObjects(currScene.children);
-		
+		//this uses raycasting to find hover events for the organ centroids
+		//I've adapted the orignal code so it passes normal organs to a controller brush function
+		//I've changed outlines from turning blue to being opaque so it works on tumors since those are just spheres with outlines
 		if (intersects.length >= 1 && detailsOnRotate) {
 			for (var i = intersects.length - 1; i >= 0; i--) {
 
@@ -946,14 +935,14 @@ function updateMainView(rotMatrix) {
 					if (INTERSECTED != tempObject) {
 
 						if (INTERSECTED) {
-							INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+							INTERSECTED.material.opacity = INTERSECTED.currentOpacity;
 						}
 
 						INTERSECTED = tempObject;
 
 						if (INTERSECTED) {
-							INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
-							INTERSECTED.material.color.setHex(0x00e4ff);
+							INTERSECTED.currentOpacity = INTERSECTED.material.opacity;
+							INTERSECTED.material.opacity = 1;
 						}
 
 						// details
@@ -977,7 +966,7 @@ function updateMainView(rotMatrix) {
 			
 			if (INTERSECTED) {
 				Controller.unbrushOrgan(INTERSECTED.parent.name);
-				INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+				INTERSECTED.material.opacity = INTERSECTED.currentOpacity;
 				// details
 				populateAndPlaceDetails("HIDE");
 
@@ -1136,7 +1125,6 @@ document.getElementById("opacSlider").oninput = function () {
 	//changes the opacity of the organs when the slider in the top is moved;
     var opac = (this.value / 100.0);
 	ColorScale.setOpacity(opac);
-	console
     scenes.forEach(function (scene, index) {
 
         for (var pOrgan in oAtlas) {

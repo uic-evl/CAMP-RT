@@ -61,18 +61,24 @@ DoseScatterPlot.prototype.setupSwitchButtons = function(){
 	setUnselected(stagingButton);
 	var self = this;
 	doseButton.addEventListener('click', function(){
+		if(doseButton.style.opacity == 1)
+			return
 		self.switchAxisVariable('dose');
 		setSelected(doseButton);
 		setUnselected(distanceButton);
 		setUnselected(stagingButton);
 	});
 	distanceButton.addEventListener('click', function(){
+		if(distanceButton.style.opacity == 1)
+			return
 		self.switchAxisVariable('distance');
 		setSelected(distanceButton);
 		setUnselected(doseButton);
 		setUnselected(stagingButton);
 	});
 	stagingButton.addEventListener('click', function(){
+		if(stagingButton.style.opacity == 1)
+			return
 		self.switchAxisVariable('staging');
 		setSelected(stagingButton);
 		setUnselected(doseButton);
@@ -250,11 +256,11 @@ DoseScatterPlot.prototype.drawClusterCircles = function(margin){
 		.append('path')
 		.attr('class','clusterCurves')
 		.attr('fill', 'none')
-		.attr('stroke', function(d) {return d.color;})
 		.attr('stroke-width', margin/3)
 		.attr('opacity',.3)
 		.merge(arc).transition().duration(800)
 		.attr('d', function(d){return arcPath(d);})
+		.attr('stroke', function(d) {return d.color;});
 	d3.selectAll('.clusterCurves').moveToBack();
 	this.setupCurveTooltip();
 }
@@ -299,7 +305,7 @@ DoseScatterPlot.prototype.setupCurveTooltip = function(){
 }
 
 DoseScatterPlot.prototype.setAxisVariable = function(axisFunction, axis){
-	axis = +axis
+	axis = +axis;
 	if(axis != 1 || axis != 0){
 		console.log('invalid axis to scatterplot setAxisVariable.  Value mut be 1 or 0');
 	}

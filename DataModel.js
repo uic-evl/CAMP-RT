@@ -255,26 +255,39 @@ var Data = function(patientData, oAtlas) {
 	}
 	function flipGraph() {
 		//coordinate rotation and scaling for organ positions
+		var flip = function(point){
+			let x = -1*point.x;
+			let y = -1*point.y;
+			let z = -1*point.z;
+			
+			point.x = 1.3*y;
+			point.y = 2.5*z;
+			point.z = 1.1*x;
+			return point;
+		};
+		
 		for (var i = 0; i < patientCount; i++) {
 			var patientOrganList = functions.getPatientOrganData(i+1);
 			for (var pOrgan in patientOrganList) {
-				var tOrganX = (patientOrganList[pOrgan].x * -1);
-				var tOrganY = (patientOrganList[pOrgan].y * -1);
-				var tOrganZ = (patientOrganList[pOrgan].z * -1);
+				patientOrganList[pOrgan] = flip(patientOrganList[pOrgan]);
+				// var tOrganX = (patientOrganList[pOrgan].x * -1);
+				// var tOrganY = (patientOrganList[pOrgan].y * -1);
+				// var tOrganZ = (patientOrganList[pOrgan].z * -1);
 
-				patientOrganList[pOrgan].x = tOrganY * 1.3;
-				patientOrganList[pOrgan].y = tOrganZ * 2.5;
-				patientOrganList[pOrgan].z = tOrganX * 1.1;
+				// patientOrganList[pOrgan].x = tOrganY * 1.3;
+				// patientOrganList[pOrgan].y = tOrganZ * 2.5;
+				// patientOrganList[pOrgan].z = tOrganX * 1.1;
 			}
 		}
 		for (var pOrgan in oAtlas) {
-			var tOrganX = (oAtlas[pOrgan].x * -1);
-			var tOrganY = (oAtlas[pOrgan].y * -1);
-			var tOrganZ = (oAtlas[pOrgan].z * -1);
+			oAtlas[pOrgan] = flip(oAtlas[pOrgan]);
+			// var tOrganX = (oAtlas[pOrgan].x * -1);
+			// var tOrganY = (oAtlas[pOrgan].y * -1);
+			// var tOrganZ = (oAtlas[pOrgan].z * -1);
 
-			oAtlas[pOrgan].x = tOrganY * 1.3;
-			oAtlas[pOrgan].y = tOrganZ * 2.5;
-			oAtlas[pOrgan].z = tOrganX * 1.1;
+			// oAtlas[pOrgan].x = tOrganY * 1.3;
+			// oAtlas[pOrgan].y = tOrganZ * 2.5;
+			// oAtlas[pOrgan].z = tOrganX * 1.1;
 		}
 	}
 
