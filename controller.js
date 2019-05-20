@@ -10,6 +10,7 @@ var Controller = (function(){
 	var doseErrorColor = d3.scaleLinear()
 		.domain([0, 20])
 		.range(['#999999','#3d32ff']);
+	var currentCamera = null;
 
 	return {
 		
@@ -162,6 +163,25 @@ var Controller = (function(){
 				switchPatient(id);
 			});
 			
+		},
+		
+		setCamera: function(camera){
+			currentCamera = camera;
+		},
+		
+		syncAllCameras: function(scenes){
+			if(currentCamera == null){
+				return;
+			}
+			for( var i = 0; i < scenes.length; i++) {
+				var scene = scenes[i];
+				var camera = scene.userData.camera;
+				var controls = scene.userData.controls;
+
+				camera.position.subVectors(currentCamera.position, controls.target);
+				//camera.position.setLength(cameraDistZ);
+				camera.lookAt(scene.position);
+			};
 		}
 	}
 })();

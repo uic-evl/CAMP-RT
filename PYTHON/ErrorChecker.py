@@ -75,17 +75,17 @@ class ErrorChecker():
             if tumor_volume <= .00001:
                 bad_patients.add(patient)
         
-        bad_patients = bad_patients | self.get_data_outliers(db)
+        bad_patients = bad_patients | self.get_data_outliers(db.doses)
         return bad_patients
     
-    def get_data_outliers(self, db, dose_match_threshold = .2, min_matches = 1):
+    def get_data_outliers(self, doses, dose_match_threshold = .2, min_matches = 1):
         outliers = set([])
-        n_patients = db.get_num_patients()
+        n_patients = doses.shape[0]
         for p1 in range(n_patients):
-            x1 = db.doses[p1,:]
+            x1 = doses[p1,:]
             num_matches = 0
             for p2 in range(p1+ 1, n_patients):
-                x2 = db.doses[p2,:]
+                x2 = doses[p2,:]
                 dose_diff = np.sum(np.abs(x1 - x2))/np.sum(x1)
                 if dose_diff < dose_match_threshold:
                     num_matches += 1

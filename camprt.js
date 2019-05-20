@@ -60,7 +60,7 @@ var canvas = document.getElementById("c");
 var template = document.getElementById("template").text;
 
 var manager = new THREE.LoadingManager();
-
+var currentCamera = null;
 manager.onStart = function(url, itemsLoaded, itemsTotal){
 	document.getElementById("loadScreen").style.display = "block";
 }
@@ -83,7 +83,6 @@ Promise.all(promises).then(function (values) {
 });
 
 manager.onLoad = function () {
-	//this may break this because I moved it to the front
 	start();
 };
 
@@ -455,9 +454,10 @@ function updateScenes(selectedPatient, material){
 function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
     if (!(pOrgan == "GTVn" || pOrgan == "GTVp")) {
 		var geometry = meshes[String(pOrgan)];
+		let currentOpacity = document.getElementById('opacSlider').value / 100.0;
 		let material = new THREE.MeshBasicMaterial({
 				color: nodeColor,
-                opacity: 0.2,
+                opacity: currentOpacity,
                 transparent: true,
                 depthTest: true,
                 depthWrite: true,
@@ -501,7 +501,7 @@ function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
     }
 }
 
-function showPatient(materialArray, id, parentDivId){
+function showPatient(materialArray, id, parentDivId, camera = null){
 	//adds a patient view I think
 	var scene = new THREE.Scene();
 	var patient = data.getPatient(id);
@@ -514,13 +514,15 @@ function showPatient(materialArray, id, parentDivId){
 	element.innerHTML = template.replace('$', data.getPatientName(id));
 	
 	var totDoseElement = element.querySelector(".totDose");
-	totDoseElement.innerHTML = "Total Dose: " + "<b>" + data.getTotalDose(id) + "</b>" + " GY";
+	let totalDose = (+data.getTotalDose(id)).toFixed(0);
+	totDoseElement.innerHTML = "Dose:" + "<b>" + totalDose + "</b>" + "GY";
 
 	var tVolumeElement = element.querySelector(".tVolume");
-	tVolumeElement.innerHTML = "GTV: " + "<b>" + data.getTumorVolume(id) + "</b>" + " cc";
+	let tVolume = (+data.getTumorVolume(id)).toFixed(1);
+	tVolumeElement.innerHTML = "GTV:" + "<b>" + tVolume+ "</b>" + "cc";
 
 	var lateralityElement = element.querySelector(".laterality");
-	lateralityElement.innerHTML = "<b>(" + data.getLaterality(id)+ ")</b> " + " " + data.getSubsite(id);
+	lateralityElement.innerHTML = "<b>(" + data.getLaterality(id)+ ")</b> " + data.getSubsite(id);
 
 	// Look up the element that represents the area
 	// we want to render the scene
@@ -531,7 +533,7 @@ function showPatient(materialArray, id, parentDivId){
 	}
 
 	var scalarVal = 2.4; //4.1
-
+	
 	var camera = new THREE.OrthographicCamera(scene.userData.element.offsetWidth / -scalarVal, 
 		scene.userData.element.offsetWidth / scalarVal, 
 		scene.userData.element.offsetHeight / scalarVal, 
@@ -539,7 +541,7 @@ function showPatient(materialArray, id, parentDivId){
 		1, 100000);
 		
 	camera.position.z = cameraDistZ;
-
+	
 	camera.updateProjectionMatrix();
 	scene.userData.camera = camera;
 
@@ -769,6 +771,7 @@ function switchPatient(updatedPatient){
 		scatter.highlightSelectedPatients(updatedPatient); 
 		Controller.setup();
 		Controller.toggleBrush(true);
+		Controller.syncAllCameras(scenes);
 	});
 }
 
@@ -1072,25 +1075,12 @@ function handleInputRotate(event) {
 		else{
 			cameraToCopy = scenes[scenes.length - 1].userData.camera;
 		}
-
+		Controller.setCamera(cameraToCopy);
         // 20 milliseconds interval => 50 FPS
-        syncCamerasInterval = setInterval(syncAllCameras, 20, cameraToCopy);
+        syncCamerasInterval = setInterval(Controller.syncAllCameras, 20, scenes);
     }
 }
 
-function syncAllCameras(cameraToCopy) {
-
-    for( var i = 0; i < scenes.length; i++) {
-
-        var scene = scenes[i];
-        var camera = scene.userData.camera;
-        var controls = scene.userData.controls;
-
-        camera.position.subVectors(cameraToCopy.position, controls.target);
-        camera.position.setLength(cameraDistZ);
-        camera.lookAt(scene.position);
-    };
-}
 
 function onMouseUp(event) {
     detailsOnRotate = true;

@@ -535,6 +535,7 @@ option:hover {
 	overflow: hidden;
 	height: 1.3em;
 	display: grid;
+	white-space: nowrap;
 	grid-template-columns: 1fr 1fr 1fr;
 }
 

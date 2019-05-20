@@ -58,8 +58,12 @@ var Data = function(patientData, oAtlas) {
 			return patient.tumorVolume;
 		},
 		
-		getClusterColor: function(id){
-			var cluster = this.getCluster(id);
+		getClusterColor: function(id, patient = true){
+			if(patient){
+				var cluster = this.getCluster(id);
+			} else{
+				var cluster = id;
+			}
 			return clusterColors[cluster-1];
 		},
 		
@@ -88,7 +92,7 @@ var Data = function(patientData, oAtlas) {
 		
 		getPatientName: function(internalId){
 			var id = this.getPatientId(internalId);
-			return "Patient " + id;
+			return "ID: " + id;
 		},
 		
 		getPatient: function(patientInternalId){

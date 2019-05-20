@@ -298,9 +298,15 @@ DoseScatterPlot.prototype.setupCurveTooltip = function(){
 				.style('left', d3.event.pageX + 8 + 'px')
 				.style('top', d3.event.pageY - 20 + 'px');
 			self.tooltip.transition().duration(50).style('visibility','visible');
+			let color = data.getClusterColor(d.cluster, patient = false);
+			d3.selectAll('.point[fill=' + color + "][opacity='0.5']")
+				.attr('opacity', .9);
 		}).on('mouseout', function(d){
 			d3.select(this).attr('opacity', .3);
 			self.tooltip.transition().duration(50).style('visibility', 'hidden');
+			let color = data.getClusterColor(d.cluster, patient=false);
+			d3.selectAll('.point[fill=' + color + "][opacity='0.9']")
+				.attr('opacity', .5);
 		});
 }
 
@@ -328,17 +334,21 @@ DoseScatterPlot.prototype.switchAxisFunction = function(type){
 	if(type == 'distance'){
 		this.getXAxis = function(d){ 
 			var pca1 = self.data.getDistancePCA(d, 1);
-			return  Math.sign(pca1)*Math.pow(Math.abs(pca1),.4); };
+			return  pca1;//Math.sign(pca1)*Math.pow(Math.abs(pca1),.4); 
+		};
 		this.getYAxis = function(d){ 
 			var pca2 = self.data.getDistancePCA(d, 2);
-			return Math.sign(pca2)*Math.pow(Math.abs(pca2),.2); };
+			return pca2;//Math.sign(pca2)*Math.pow(Math.abs(pca2),.2); 
+		};
 	} else if(type == 'staging'){
 		this.getXAxis = function(d){ 
 			var volume = self.data.gtvpVol(d);
-			return (volume > Math.E)? Math.log(volume): volume; };
+			return (volume > Math.E)? Math.log(volume): volume; 
+		};
 		this.getYAxis = function(d){ 
 			var volume = self.data.gtvnVol(d);
-			return (volume > Math.E)? Math.log(volume): volume; };
+			return (volume > Math.E)? Math.log(volume): volume; 
+		};
 	}
 	else{
 		this.getXAxis = function(d){ return self.data.getDosePCA(d, 1); };

@@ -240,7 +240,6 @@ class Patient():
             else:
                 name = 'GTVn' if tumor_number == 1 else 'GTVn' + str(tumor_number)
                 tumor_number += 1
-            print(name)
             new_tumor = self.combine_gtvs(gtvs, gtvset, name = name)
             temp_gtvs.append(new_tumor)
         if len(gtvs) > len(temp_gtvs):
