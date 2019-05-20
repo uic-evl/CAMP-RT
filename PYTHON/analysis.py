@@ -426,25 +426,26 @@ from keras.layers import Dense, Activation, Input
 from keras import losses, optimizers,regularizers
 from sklearn.model_selection import LeaveOneOut
  
-input_x = Input(shape=(features.shape[1],))
-encoder = Sequential([
-        Dense(45, input_dim=features.shape[1], activation = 'relu'),
-        Dense(100, activation = 'relu',
-              kernel_regularizer = regularizers.l2(.01)),
-        Dense(100, activation = 'relu',
-              kernel_regularizer = regularizers.l2(.01)),
-        Dense(4, activation = 'relu',
-              kernel_regularizer = regularizers.l2(.01)),
-        ])(input_x)
-    
-decoder = Sequential([
-        Dense(100,input_dim = 4, activation = 'relu',
-              kernel_regularizer = regularizers.l2(.01)),
-        Dense(45, activation = 'relu'),
-        ])(encoder)
-model = Model(input_x, decoder)
-encoder_model= Model(input_x, encoder)
-optimizer = optimizers.SGD(lr = .01, decay = 1e-6, momentum = .1)
+def get_model():
+    input_x = Input(shape=(features.shape[1],))
+    encoder = Sequential([
+            Dense(45, input_dim=features.shape[1], activation = 'relu'),
+            Dense(100, activation = 'relu'),
+            Dense(100, activation = 'relu'),
+            Dense(4, activation = 'relu'),
+            ])(input_x)
+        
+    decoder = Sequential([
+            Dense(100,input_dim = 4, activation = 'relu',
+                  activity_regularizer = regularizers.l2(.01)),
+            Dense(45, activation = 'relu'),
+            ])(encoder)
+    model = Model(input_x, decoder)
+    encoder_model= Model(input_x, encoder)
+    optimizer = optimizers.SGD(lr = .01, decay = 1e-12, momentum = .1)
+    model.compile(loss = losses.mean_absolute_error, 
+                  optimizer = optimizer)
+    return(model, encoder_model)
 
 loo = LeaveOneOut()
 loo.get_n_splits(features)
@@ -452,13 +453,12 @@ regression_errors = []
 nn_sim = np.zeros((db.get_num_patients(),db.get_num_patients()))
 p1 = 0
 for train,test in loo.split(features, doses):
-    model.compile(loss = losses.mean_absolute_error, 
-              optimizer = optimizer)
+    model, encoder_model = get_model()
     x_train = features[train]
     y_train = doses[train]
     x_test = features[test]
     y_test = doses[test]
-    model.fit(x_train, y_train, epochs = 5, batch_size = 4, shuffle = True, verbose = 0)
+    model.fit(x_train, y_train, epochs = 3000, batch_size = 4, shuffle = True, verbose = 0)
     regression_error = model.evaluate(x_test, y_test)
     regression_errors.append(regression_error)
     print(regression_error)
