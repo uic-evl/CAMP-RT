@@ -253,8 +253,10 @@ def get_input_distance_features(data, num_pca_components = 10):
     subsites = data.subsites.reshape(num_patients, 1)
     subsites = np.vectorize(TreeEstimator.subsite_map.__getitem__)(subsites)
     total_doses = data.prescribed_doses.reshape(num_patients, 1)
-    features = np.hstack([tumor_volumes, total_doses, 
-                          subsites, tumor_count, 
+    features = np.hstack([tumor_volumes, 
+                          total_doses, 
+                          tumor_count, 
+                          laterality,
                           data.ajcc8.reshape(-1,1),
                           data.tumor_distances])
     return copy.copy(features)
@@ -412,27 +414,14 @@ def threshold_grid_search(db, similarity, start_k = .1, max_matches = 20, print_
     if print_out:
         print('Score-', round(100*best_score,2) , ': Threshold-', round(best_threshold,2) , ': Min matches-', best_min_matches)
     return((best_score, best_threshold, best_min_matches))
-    
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                use_distances = False)
 
-features = get_input_distance_features(db)
-features = (features - features.mean(axis = 0))/features.std(axis = 0)
-clusters = db.classes.astype('int32')
-doses = db.doses
-
-from keras.models import Sequential, Model
-from keras.layers import Dense, Activation, Input
-from keras import losses, optimizers,regularizers
-from sklearn.model_selection import LeaveOneOut
- 
-def get_model():
+def get_autoencoderish_model(features):
     input_x = Input(shape=(features.shape[1],))
     encoder = Sequential([
             Dense(45, input_dim=features.shape[1], activation = 'relu'),
             Dense(100, activation = 'relu'),
             Dense(100, activation = 'relu'),
-            Dense(4, activation = 'relu'),
+            Dense(100, activation = 'relu'),
             ])(input_x)
         
     decoder = Sequential([
@@ -442,38 +431,184 @@ def get_model():
             ])(encoder)
     model = Model(input_x, decoder)
     encoder_model= Model(input_x, encoder)
-    optimizer = optimizers.SGD(lr = .01, decay = 1e-12, momentum = .1)
+#    optimizer = optimizers.SGD(lr = .01, decay = 1e-12, momentum = .1)
+    optimizer = optimizers.Adam()
     model.compile(loss = losses.mean_absolute_error, 
                   optimizer = optimizer)
     return(model, encoder_model)
-
-loo = LeaveOneOut()
-loo.get_n_splits(features)
-regression_errors = []
-nn_sim = np.zeros((db.get_num_patients(),db.get_num_patients()))
-p1 = 0
-for train,test in loo.split(features, doses):
-    model, encoder_model = get_model()
-    x_train = features[train]
-    y_train = doses[train]
-    x_test = features[test]
-    y_test = doses[test]
-    model.fit(x_train, y_train, epochs = 3000, batch_size = 4, shuffle = True, verbose = 0)
-    regression_error = model.evaluate(x_test, y_test)
-    regression_errors.append(regression_error)
-    print(regression_error)
     
-    x_embedding = encoder_model.predict(features)
-    for p2 in range(db.get_num_patients()):
-        if p1 == p2:
-            continue
-        nn_sim[p1, p2] = 1/np.linalg.norm(x_embedding[p1] - x_embedding[p2])
-print(np.mean(regression_errors))
-nn_sim = (nn_sim - nn_sim.min(axis = 0))/(nn_sim.max(axis = 0) - nn_sim.min(axis = 0))
+def get_regression_model(features, activation = 'relu', lr = .01):
+    model = Sequential([
+            Dense(45, input_dim=features.shape[1], activation = activation),
+            Dense(100, activation = activation),
+            Dense(200, activation = activation),
+            Dense(45, activation = activation)
+            ])
+    optimizer = optimizers.SGD(lr = lr, decay = 1e-4, momentum = 0.05)
+    model.compile(loss = losses.mean_absolute_error, 
+                  optimizer = optimizer)
+    return(model)
 
+def run_autoencoder(db):
+    from keras.models import Sequential, Model
+    from keras.layers import Dense, Activation, Input
+    from keras import losses, optimizers,regularizers
+    from sklearn.model_selection import LeaveOneOut
+    features = get_input_distance_features(db)
+    features = (features - features.mean(axis = 0))/features.std(axis = 0)
+    clusters = db.classes.astype('int32')
+    doses = db.doses
+    
+    loo = LeaveOneOut()
+    loo.get_n_splits(features)
+    regression_errors = []
+    nn_sim = np.zeros((db.get_num_patients(),db.get_num_patients()))
+    p1 = 0
+    for train,test in loo.split(features, doses):
+        model, encoder_model = get_autoencoderis_model(features)
+        x_train = features[train]
+        y_train = doses[train]
+        x_test = features[test]
+        y_test = doses[test]
+        model.fit(x_train, y_train, epochs = 3, batch_size = 4, shuffle = True, verbose = 0)
+        regression_error = model.evaluate(x_test, y_test)
+        regression_errors.append(regression_error)
+        print(regression_error)
+        
+        x_embedding = encoder_model.predict(features)
+        for p2 in range(db.get_num_patients()):
+            if p1 == p2:
+                continue
+            nn_sim[p1, p2] = 1/np.linalg.norm(x_embedding[p1] - x_embedding[p2])
+        p1 += 1
+    print(np.mean(regression_errors))
+    nn_sim = (nn_sim - nn_sim.min(axis = 0))/(nn_sim.max(axis = 0) - nn_sim.min(axis = 0))
+    
+    threshold_grid_search(db, nn_sim)
+
+class Normalizer():
+    
+    def __init__(self):
+        self.std = 1
+        self.mean = 0
+        
+    def fit(self, x):
+        self.std = x.std(axis = 0)
+        self.mean = x.std(axis = 0)
+    
+    def transform(self, x):
+        return (x - self.mean)/self.std
+    
+    def fit_transform(self, x):
+        self.fit(x)
+        return self.transform(x)
+    
+def get_features(db, holdout = set([]) ):
+    n_patients = db.get_num_patients()
+    x = get_input_distance_features(db)
+    normalizer = Normalizer()
+    normalizer.fit( x[[ i for i in np.arange(n_patients) if i not in holdout] ] )
+    x = normalizer.transform(x)
+    a = []
+    b = []
+    y = []
+    a_validate = []
+    b_validate = []
+    y_validate = []
+    val_pairs = []
+    true_error = SimilarityFuser().get_match_error(db)
+    for p1 in range(n_patients):
+        for p2 in range(p1 + 1, n_patients):
+            if p1 in holdout or p2 in holdout:
+                a_validate.append(x[p1])
+                b_validate.append(x[p2])
+                y_validate.append( 1 - true_error[p1, p2])
+                val_pairs.append((p1,p2))
+            else:
+                a.append(x[p1])
+                b.append(x[p2])
+                y.append( 1 - true_error[p1, p2] )
+    a = np.array(a)
+    b = np.array(b)
+    y = np.array(y).ravel()
+    a_validate = np.array(a_validate)
+    b_validate = np.array(b_validate)
+    y_validate = np.array(y_validate)
+    
+    args = np.arange(len(y))
+    np.random.shuffle(args)
+    
+    return (a[args], b[args], y[args], a_validate, b_validate, y_validate, val_pairs)
+
+#db = PatientSet(root = 'data\\patients_v*\\',
+#                use_distances = False)
+
+from keras.models import Sequential, Model
+from keras.layers import Dense, Activation
+from keras import losses, optimizers,regularizers, layers
+from sklearn.model_selection import LeaveOneOut
+from keras import backend as K
+
+def get_similarity_model(n_features, encoding_size = 25, reg = .000001):
+    patient_a = layers.Input(shape = (n_features,))
+    patient_b = layers.Input(shape = (n_features,))
+    activation = 'selu'
+    encoder = Sequential([
+                Dense(50, input_dim = n_features, activation = activation,
+                      activity_regularizer = regularizers.l2( reg )),
+                Dense(50, activation = activation,
+                      activity_regularizer = regularizers.l2( reg )),
+                layers.Dropout(.5, seed = 0),
+                Dense(encoding_size, activation = 'relu'),
+                ])
+    encoded_a = encoder(patient_a)
+    encoded_b = encoder(patient_b)
+    distance_layer = layers.dot([encoded_a, encoded_b], axes = 1, normalize = True)
+    model = Model(inputs=[patient_a, patient_b], outputs = distance_layer)
+#    optimizer = optimizers.SGD(lr = .001, decay = 1e-8, momentum = .01)
+    optimizer = optimizers.Adam()
+    model.compile(optimizer = optimizer, loss = losses.mean_squared_error, metrics = ['mean_absolute_error'])
+    return(model)
+    
+#features = get_input_distance_features(db)
+#features = (features - features.mean(axis = 0))/features.std(axis = 0)
+#clusters = db.classes.astype('int32')
+#doses = db.doses
+#
+#loo = LeaveOneOut()
+#loo.get_n_splits(features)
+#regression_errors = []
+#for train,test in loo.split(features, doses):
+#    model = get_regression_model(features)
+#    x_train = features[train]
+#    y_train = doses[train]
+#    x_test = features[test]
+#    y_test = doses[test]
+#    model.fit(x_train, y_train, epochs = 2000, batch_size = 36, shuffle = True, validation_data = (x_test, y_test))
+#    regression_errors.append(model.evaluate(x_test, y_test))
+    
+p = np.array([0,1,2])
+nn_sim = np.zeros((db.get_num_patients(), db.get_num_patients()))
+while p.min() < db.get_num_patients():
+    while p.max() >= db.get_num_patients():
+        p = p[:-1]
+    (x1, x2, y, x1_val, x2_val, y_val, val_ids) = get_features(db, holdout = set(p))
+    p = p + len(p)
+    model = get_similarity_model(x1.shape[1])
+    model.fit([x1, x2], y, 
+              epochs = 20, 
+              batch_size = 90*6, 
+              shuffle = True, 
+              verbose = 1,
+              validation_data = ([x1_val, x2_val], y_val))
+    y_pred = model.predict([x1_val, x2_val])
+    print(model.evaluate([x1_val, x2_val], y_val))
+    for idx in range(len(y_pred)):
+        score = y_pred[idx]
+        (p1, p2) = val_ids[idx]
+        nn_sim[p1, p2] = score
+nn_sim += nn_sim.transpose()
 threshold_grid_search(db, nn_sim)
-
-
 
 ##asymetric_lymph_similarity = get_lymph_similarity(db)
 #percent_diff = lambda x,y: 1 - np.abs(x-y)/np.max([x,y])
