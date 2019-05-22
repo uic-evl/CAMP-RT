@@ -556,7 +556,7 @@ def get_similarity_model(n_features, encoding_size = 25, reg = .000001):
     encoder = Sequential([
                 Dense(50, input_dim = n_features, activation = activation,
                       activity_regularizer = regularizers.l2( reg )),
-                Dense(50, activation = activation,
+                Dense(100, activation = activation,
                       activity_regularizer = regularizers.l2( reg )),
                 layers.Dropout(.5, seed = 0),
                 Dense(encoding_size, activation = 'relu'),
@@ -596,13 +596,13 @@ while p.min() < db.get_num_patients():
     p = p + len(p)
     model = get_similarity_model(x1.shape[1])
     model.fit([x1, x2], y, 
-              epochs = 20, 
+              epochs = 100, 
               batch_size = 90*6, 
               shuffle = True, 
               verbose = 1,
               validation_data = ([x1_val, x2_val], y_val))
     y_pred = model.predict([x1_val, x2_val])
-    print(model.evaluate([x1_val, x2_val], y_val))
+    print(p.max(), model.evaluate([x1_val, x2_val], y_val))
     for idx in range(len(y_pred)):
         score = y_pred[idx]
         (p1, p2) = val_ids[idx]
