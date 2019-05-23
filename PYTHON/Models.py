@@ -620,12 +620,12 @@ class SimilarityFuser():
         return [x, y, positions]
     
     def get_true_matches(self, data, negative_class = 0):
-        max_error = self.max_error
         min_matches = self.min_matches
         dose_error = self.get_match_error(data)
         match_matrix = np.zeros(dose_error.shape) + negative_class
         n_patients = data.get_num_patients()
         for p in range(n_patients):
+            max_error = self.max_error
             errors = dose_error[p, :]
             matches = []
             max_error = max_error
