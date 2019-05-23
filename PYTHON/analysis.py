@@ -547,7 +547,7 @@ def get_features(db, holdout = set([]) ):
 from keras.models import Sequential, Model
 from keras.layers import Dense, Activation
 from keras import losses, optimizers,regularizers, layers
-from sklearn.model_selection import LeaveOneOut
+from sklearn.model_selection import LeaveOneOut, train_test_split
 from keras import backend as K
 
 def get_similarity_model(n_features, encoding_size = 25, reg = .000001):
@@ -565,7 +565,7 @@ def get_similarity_model(n_features, encoding_size = 25, reg = .000001):
     encoded_a = encoder(patient_a)
     encoded_b = encoder(patient_b)
     distance_layer = layers.dot([encoded_a, encoded_b], axes = 1, normalize = True)
-    model = Model(inputs=[patient_a, patient_b], outputs = distance_layer)
+    model = Model([patient_a, patient_b], distance_layer)
 #    optimizer = optimizers.SGD(lr = .001, decay = 1e-8, momentum = .01)
     optimizer = optimizers.Adam()
     model.compile(optimizer = optimizer, loss = losses.mean_absolute_error)
@@ -589,14 +589,13 @@ def get_distance_model(n_features, encoding_size = 25, reg = .01):
     encoded_b = encoder(patient_b)
     distance_layer = layers.Lambda(lambda x: K.expand_dims(K.mean(K.square(x[0] - x[1]),axis=-1),1),
                                    output_shape=(1,))([encoded_a, encoded_b])
-    distance_activation = Activation('sigmoid')(distance_layer)
+    distance_activation = Activation('tanh')(distance_layer)
     model = Model(inputs=[patient_a, patient_b], outputs = distance_activation)
     distance_model = Model(inputs=[patient_a, patient_b], outputs = distance_layer)
 #    optimizer = optimizers.SGD(lr = .01, decay = 1e-8, momentum = .01, nesterov = True)
     optimizer = optimizers.Adam()
     model.compile(optimizer = optimizer, 
-                  loss = losses.mean_squared_error, 
-                  metrics = ['binary_accuracy'])
+                  loss = losses.mean_squared_error)
     return(model, distance_model)
     
 #features = get_input_distance_features(db)
@@ -625,20 +624,21 @@ while p.min() < db.get_num_patients():
     p = p + len(p)
     model, distance_model = get_distance_model(x1.shape[1])
     model.fit([x1, x2], y, 
-              epochs = 100, 
-              batch_size = 90*6, 
+              epochs = 200, 
+              batch_size = 90*8, 
               shuffle = True, 
               verbose = 1,
               validation_data = ([x1_val, x2_val], y_val))
     y_pred = distance_model.predict([x1_val, x2_val])
     print(p.max(), model.evaluate([x1_val, x2_val], y_val))
+    print((y_pred[0:10]).ravel(), y_pred.mean())
     for idx in range(len(y_pred)):
-        score = 1/y_pred[idx]
+        score = y_pred[idx]
         (p1, p2) = val_ids[idx]
         nn_sim[p1, p2] = score
 nn_sim += nn_sim.transpose()
-nn_sim = (nn_sim - nn_sim.min())/(nn_sim.max() - nn_sim.min())
-threshold_grid_search(db, nn_sim)
+#nn_sim = (nn_sim - nn_sim.min())/(nn_sim.max() - nn_sim.min())
+#threshold_grid_search(db, nn_sim)
 
 ##asymetric_lymph_similarity = get_lymph_similarity(db)
 #percent_diff = lambda x,y: 1 - np.abs(x-y)/np.max([x,y])
