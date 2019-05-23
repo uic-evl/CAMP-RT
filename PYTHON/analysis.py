@@ -516,18 +516,19 @@ def get_features(db, holdout = set([]) ):
     b_validate = []
     y_validate = []
     val_pairs = []
-    true_error = SimilarityFuser().get_match_error(db)
+    true_error = SimilarityFuser(min_matches = 7, max_error = .1).get_true_matches(db)
     for p1 in range(n_patients):
         for p2 in range(p1 + 1, n_patients):
+            loss = 1 if true_error[p1,p2] > 0 else -1
             if p1 in holdout or p2 in holdout:
                 a_validate.append(x[p1])
                 b_validate.append(x[p2])
-                y_validate.append( 1 - true_error[p1, p2])
+                y_validate.append( loss )
                 val_pairs.append((p1,p2))
             else:
                 a.append(x[p1])
                 b.append(x[p2])
-                y.append( 1 - true_error[p1, p2] )
+                y.append( loss )
     a = np.array(a)
     b = np.array(b)
     y = np.array(y).ravel()
@@ -567,8 +568,36 @@ def get_similarity_model(n_features, encoding_size = 25, reg = .000001):
     model = Model(inputs=[patient_a, patient_b], outputs = distance_layer)
 #    optimizer = optimizers.SGD(lr = .001, decay = 1e-8, momentum = .01)
     optimizer = optimizers.Adam()
-    model.compile(optimizer = optimizer, loss = losses.mean_squared_error, metrics = ['mean_absolute_error'])
+    model.compile(optimizer = optimizer, loss = losses.mean_absolute_error)
     return(model)
+    
+def get_distance_model(n_features, encoding_size = 25, reg = .01):
+    patient_a = layers.Input(shape = (n_features,))
+    patient_b = layers.Input(shape = (n_features,))
+    activation = 'relu'
+    encoder = Sequential([
+                Dense(50, input_dim = n_features, activation = activation,
+                      activity_regularizer = regularizers.l2( reg )),
+                Dense(100, activation = activation,
+                      activity_regularizer = regularizers.l2( reg )),
+                Dense(200, activation = activation,
+                      activity_regularizer = regularizers.l2( reg )),
+                layers.Dropout(.5, seed = 0),
+                Dense(encoding_size, activation = 'relu'),
+                ])
+    encoded_a = encoder(patient_a)
+    encoded_b = encoder(patient_b)
+    distance_layer = layers.Lambda(lambda x: K.expand_dims(K.mean(K.square(x[0] - x[1]),axis=-1),1),
+                                   output_shape=(1,))([encoded_a, encoded_b])
+    distance_activation = Activation('sigmoid')(distance_layer)
+    model = Model(inputs=[patient_a, patient_b], outputs = distance_activation)
+    distance_model = Model(inputs=[patient_a, patient_b], outputs = distance_layer)
+#    optimizer = optimizers.SGD(lr = .01, decay = 1e-8, momentum = .01, nesterov = True)
+    optimizer = optimizers.Adam()
+    model.compile(optimizer = optimizer, 
+                  loss = losses.mean_squared_error, 
+                  metrics = ['binary_accuracy'])
+    return(model, distance_model)
     
 #features = get_input_distance_features(db)
 #features = (features - features.mean(axis = 0))/features.std(axis = 0)
@@ -594,20 +623,21 @@ while p.min() < db.get_num_patients():
         p = p[:-1]
     (x1, x2, y, x1_val, x2_val, y_val, val_ids) = get_features(db, holdout = set(p))
     p = p + len(p)
-    model = get_similarity_model(x1.shape[1])
+    model, distance_model = get_distance_model(x1.shape[1])
     model.fit([x1, x2], y, 
               epochs = 100, 
               batch_size = 90*6, 
               shuffle = True, 
               verbose = 1,
               validation_data = ([x1_val, x2_val], y_val))
-    y_pred = model.predict([x1_val, x2_val])
+    y_pred = distance_model.predict([x1_val, x2_val])
     print(p.max(), model.evaluate([x1_val, x2_val], y_val))
     for idx in range(len(y_pred)):
-        score = y_pred[idx]
+        score = 1/y_pred[idx]
         (p1, p2) = val_ids[idx]
         nn_sim[p1, p2] = score
 nn_sim += nn_sim.transpose()
+nn_sim = (nn_sim - nn_sim.min())/(nn_sim.max() - nn_sim.min())
 threshold_grid_search(db, nn_sim)
 
 ##asymetric_lymph_similarity = get_lymph_similarity(db)
