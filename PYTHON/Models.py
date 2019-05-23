@@ -410,7 +410,7 @@ class TsimModel():
         covariance = np.cov(x,y)
         numerator = (2*mean_x*mean_y + c1) * (covariance[0,1] + covariance[1,0] + c2)
         denominator = (mean_x**2 + mean_y**2 + c1)*(np.var(x) + np.var(y) + c2)
-        if v is not None and 2 is not None:
+        if v is not None and w is not None:
             mean_v = np.mean(v)
             mean_w = np.mean(w)
             numerator *= (2*mean_v*mean_w + c1)
@@ -420,6 +420,49 @@ class TsimModel():
         else:
             print('error, zero denomiator in ssim function')
             return 0
+
+class OsimModel(TsimModel):
+    
+    def get_similarity(self, data):
+        #data is assumed to be a patientset object for now
+        if self.patients is None:
+            patients = range(len(data.ids))
+        else:
+            patients = self.patients
+        if self.organs is None:
+            organs = range(Constants.num_organs)
+        else:
+            organs = self.organs
+        adjacency = self.get_adjacency_lists(data.organ_distances, organs)
+        distances = data.all_organ_distances
+        volumes = data.volumes
+        clusters = data.classes
+        scores = self.similarity(adjacency, distances, volumes, clusters)
+        return scores
+    
+    def similarity(self, adjacency, distances, volumes, clusters, similarity_function = None):
+        if similarity_function is None:
+            similarity_function = self.local_ssim
+        num_patients, num_organs = (distances.shape[2], distances.shape[0])
+        score_matrix = np.zeros((num_patients, num_patients))
+        for patient1 in range(0, num_patients - 1):
+            for patient2 in range(patient1 + 1, num_patients):
+#                if clusters[patient1] != clusters[patient2]:
+#                    continue
+                scores = []
+                for organ in range(num_organs):
+                    adjacent_args = adjacency[organ]
+                    if len(adjacent_args) < 1:
+                        continue
+                    d1 = distances[adjacent_args, :, patient1][:, adjacent_args]
+                    d2 = distances[adjacent_args, :, patient2][:, adjacent_args]
+                    similarity_score = similarity_function(d1,d2)
+                    scores.append( similarity_score )
+                score_matrix[patient1, patient2] = np.mean(scores)
+        score_matrix += np.transpose(score_matrix)
+        #scale to between 0 and .99
+        score_matrix = .99*(score_matrix - score_matrix.min())/(score_matrix.max() - score_matrix.min())
+        return score_matrix
 
 class NodeSimilarityModel():
 

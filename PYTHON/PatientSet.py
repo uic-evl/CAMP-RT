@@ -138,9 +138,11 @@ class PatientSet():
 
         
         if use_distances:
-            self.organ_distances = np.nan_to_num(organ_distance_matrix).mean(axis = 2)
+            self.all_organ_distances = np.nan_to_num(organ_distance_matrix)
+            self.organ_distances = self.all_organ_distances.mean(axis = 2)
         else:
             self.organ_distances = self.load_saved_distances()
+            self.all_organ_distances = None
         self.prescribed_doses = np.nan_to_num(prescribed_dose_vector)
         self.centroids = np.nan_to_num(centroid_matrix)
         self.lateralities = np.array(laterality_list)
@@ -180,6 +182,8 @@ class PatientSet():
         self.ajcc8 = self.ajcc8[p]
         self.pathological_grades = self.pathological_grades[p]
         self.hpv = self.hpv[p]
+        if self.all_organ_distances is not None:
+            self.all_organ_distances = self.all_organ_distances[:,:,p]
             
     def get_num_patients(self):
         return( self.doses.shape[0] )
