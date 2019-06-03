@@ -275,12 +275,33 @@ def get_dose_clusters(doses):
     kmeans_clusters = kmeans.fit_predict(doses[good_patients])
     return kmeans_clusters, good_patients
 
-def get_nca_features(features, doses, min_nca_components = 5, lmnn = False, k = 4, reg = .25):
+def get_nca_features(features, doses, min_components = 5, lmnn = False, k = 4, reg = .25):
+    n_patients = doses.shape[0]
+    if lmnn is False:
+        n_components = min([min_components, features.shape[1]])
+    else:
+        n_components = features.shape[1]
+    output = np.zeros((n_patients,n_components))
+    for p in range(n_patients):
+        feature_subset = np.delete(features, p, axis = 0)
+        dose_subset = np.delete(doses, p , axis = 0)
+        nca = get_fitted_nca(feature_subset, dose_subset,
+                                          n_components = n_components,
+                                          lmnn = lmnn, k = k,
+                                          reg = reg)
+        tf = nca.transform(features[p,:].reshape(1,-1))
+#        output[p,:] = (tf - tf.min())/(tf.max() - tf.min())
+        output[p,:] = tf/np.linalg.norm(tf)
+        print(output[p,:])
+    return output
+        
+
+def get_fitted_nca(features, doses, n_components = 5, lmnn = False, k = 4, reg = .25):
     if lmnn:
         nca = metric_learn.lmnn.python_LMNN(k = k, use_pca = False,
                                             regularization = reg)
     else:
-        nca = NeighborhoodComponentsAnalysis(n_components = min([min_nca_components, features.shape[1]]),
+        nca = NeighborhoodComponentsAnalysis(n_components = n_components,
                                          max_iter = 300,
                                          init = 'pca',
                                          random_state = 0)
@@ -295,8 +316,8 @@ def get_nca_features(features, doses, min_nca_components = 5, lmnn = False, k = 
     resampled_features, resampled_clusters = sampler.fit_resample(
             features[good_clusters, :], kmeans_clusters)
     nca.fit(resampled_features, resampled_clusters)
-    features = nca.transform(features)
-    return features
+#    features = nca.transform(features)
+    return nca
 
 def get_nca_similarity(db, feature_type = 'tumors', min_nca_components = 4, lmnn = False, k = 4, reg = .25):
     doses = db.doses
@@ -310,7 +331,7 @@ def get_nca_similarity(db, feature_type = 'tumors', min_nca_components = 4, lmnn
     elif feature_type in ['organ', 'organs']:
         input_features = get_input_organ_features(db)
     nca_features = get_nca_features(input_features, doses, 
-                                    min_nca_components = min_nca_components,
+                                    min_components = min_nca_components,
                                     lmnn = lmnn, k = k, reg = reg)
     similarity = np.zeros((n_patients, n_patients))
     max_similarities = set([])
@@ -465,7 +486,7 @@ def run_autoencoder(db):
     nn_sim = np.zeros((db.get_num_patients(),db.get_num_patients()))
     p1 = 0
     for train,test in loo.split(features, doses):
-        model, encoder_model = get_autoencoderis_model(features)
+        model, encoder_model = get_autoencoderish_model(features)
         x_train = features[train]
         y_train = doses[train]
         x_test = features[test]
@@ -516,7 +537,7 @@ def get_features(db, holdout = set([]) ):
     b_validate = []
     y_validate = []
     val_pairs = []
-    true_error = SimilarityFuser(min_matches = 7, max_error = .15).get_true_matches(db)
+    true_error = SimilarityFuser(min_matches = 7, max_error = .20).get_true_matches(db)
     for p1 in range(n_patients):
         for p2 in range(p1 + 1, n_patients):
             loss = 0 if true_error[p1,p2] > 0 else 1
@@ -541,15 +562,6 @@ def get_features(db, holdout = set([]) ):
     
     return (a[args], b[args], y[args], a_validate, b_validate, y_validate, val_pairs)
 
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                use_distances = False)
-
-from keras.models import Sequential, Model
-from keras.layers import Dense, Activation
-from keras import losses, optimizers,regularizers, layers
-from sklearn.model_selection import LeaveOneOut, train_test_split
-from keras import backend as K
-
 def get_similarity_model(n_features, encoding_size = 25, reg = .000001):
     patient_a = layers.Input(shape = (n_features,))
     patient_b = layers.Input(shape = (n_features,))
@@ -571,19 +583,16 @@ def get_similarity_model(n_features, encoding_size = 25, reg = .000001):
     model.compile(optimizer = optimizer, loss = losses.mean_absolute_error)
     return(model)
     
-def get_distance_model(n_features, encoding_size = 25, reg = 0.00001):
+def get_distance_model(n_features, encoding_size = 25, reg = 0.000001):
     patient_a = layers.Input(shape = (n_features,))
     patient_b = layers.Input(shape = (n_features,))
     activation = 'relu'
     encoder = Sequential([
-                Dense(50, input_dim = n_features, activation = activation,
+                Dense(500, input_dim = n_features, activation = activation,
                       activity_regularizer = regularizers.l2( reg )),
-                Dense(50, activation = activation,
-                      activity_regularizer = regularizers.l2( reg )),
-                Dense(200, activation = activation,
-                      activity_regularizer = regularizers.l2( reg )),
-                layers.Dropout(.25, seed = 0),
+                layers.Dropout(.1, seed = 0),
                 Dense(encoding_size, activation = 'relu'),
+                layers.BatchNormalization(),
                 ])
     encoded_a = encoder(patient_a)
     encoded_b = encoder(patient_b)
@@ -594,54 +603,82 @@ def get_distance_model(n_features, encoding_size = 25, reg = 0.00001):
     distance_model = Model(inputs=[patient_a, patient_b], outputs = distance_layer)
 #    optimizer = optimizers.SGD(lr = .01, decay = 1e-8, momentum = .01, nesterov = True)
     optimizer = optimizers.Adam(lr = .001, decay = 1e-8)
+#    optimizer = optimizers.Adadelta()
+#    optimizer = optimizers.RMSprop()
     model.compile(optimizer = optimizer, 
                   loss = losses.mean_squared_error)
     return(model, distance_model)
     
+from keras.models import Sequential, Model
+from keras.layers import Dense, Activation
+from keras import losses, optimizers,regularizers, layers
+from keras import backend as K
+    
+#db = PatientSet(root = 'data\\patients_v*\\',
+#                use_distances = False)
+
+
+def organ_selection(organ_list):
+    distance_similarity = TsimModel(organs = [Constants.organ_list.index(o) for o in organ_list]).get_similarity(db)
+    baseline = threshold_grid_search(db, distance_similarity)[0]
+    optimal = (organ_list, baseline)
+    bad_organs = []
+    best_score = 100
+    for organ in organ_list:
+        organ_subset = copy.copy(organ_list)
+        organ_subset.remove(organ)
+        distance_subset_sim = TsimModel(organs = [Constants.organ_list.index(o) for o in organ_subset]).get_similarity(db)
+        best_score, best_threshold, best_min_matches = threshold_grid_search(db, distance_subset_sim, print_out = False)
+        if best_score < baseline:
+            bad_organs.append((organ, best_score, best_threshold, best_min_matches))
+            if best_score < optimal[1]:
+                optimal = (organ_subset, best_score)
+                print(set(Constants.organ_list) - set(optimal[0]), best_score)
+    print(bad_organs)
+    return optimal
+
+optimal_organs = []
+organ_set = Constants.organ_list
+best_score = None
+while True:
+    optimal_organs, best = organ_selection(organ_set)
+    if len(optimal_organs) == len(organ_set):
+        break
+    organ_set = optimal_organs
+    best_score = best
+
 #features = get_input_distance_features(db)
 #features = (features - features.mean(axis = 0))/features.std(axis = 0)
 #clusters = db.classes.astype('int32')
 #doses = db.doses
-#
-#loo = LeaveOneOut()
-#loo.get_n_splits(features)
-#regression_errors = []
-#for train,test in loo.split(features, doses):
-#    model = get_regression_model(features)
-#    x_train = features[train]
-#    y_train = doses[train]
-#    x_test = features[test]
-#    y_test = doses[test]
-#    model.fit(x_train, y_train, epochs = 2000, batch_size = 36, shuffle = True, validation_data = (x_test, y_test))
-#    regression_errors.append(model.evaluate(x_test, y_test))
-    
-p = np.array([0,1,2])
-nn_sim = np.zeros((db.get_num_patients(), db.get_num_patients()))
-nn_sim2 = np.zeros(nn_sim.shape)
-while p.min() < db.get_num_patients():
-    while p.max() >= db.get_num_patients():
-        p = p[:-1]
-    (x1, x2, y, x1_val, x2_val, y_val, val_ids) = get_features(db, holdout = set(p))
-    p = p + len(p)
-    model, distance_model = get_distance_model(x1.shape[1])
-    model.fit([x1, x2], y, 
-              epochs = 150, 
-              batch_size = 90*6, 
-              shuffle = True, 
-              verbose = 1,
-              validation_data = ([x1_val, x2_val], y_val))
-    y_pred = distance_model.predict([x1_val, x2_val])
-    output = model.predict([x1_val, x2_val])
-    print(p.max(), model.evaluate([x1_val, x2_val], y_val))
-    print((y_pred[0:5]).ravel(), y_pred.mean())
-    print(output[0:5].ravel(), output.mean()) 
-    for idx in range(len(y_pred)):
-        score = y_pred[idx]
-        (p1, p2) = val_ids[idx]
-        nn_sim[p1, p2] = score
-        nn_sim2[p1, p2] = output[idx]
-nn_sim += nn_sim.transpose()
-nn_sim2 += nn_sim2.transpose()
+
+#p = np.array([0,1,2])
+#nn_sim = np.zeros((db.get_num_patients(), db.get_num_patients()))
+#nn_sim2 = np.zeros(nn_sim.shape)
+#while p.min() < db.get_num_patients():
+#    while p.max() >= db.get_num_patients():
+#        p = p[:-1]
+#    (x1, x2, y, x1_val, x2_val, y_val, val_ids) = get_features(db, holdout = set(p))
+#    p = p + len(p)
+#    model, distance_model = get_distance_model(x1.shape[1])
+#    model.fit([x1, x2], y, 
+#              epochs = 100, 
+#              batch_size = 90*4, 
+#              shuffle = True, 
+#              verbose = 0,
+#              validation_data = ([x1_val, x2_val], y_val))
+#    y_pred = distance_model.predict([x1_val, x2_val])
+#    output = model.predict([x1_val, x2_val])
+#    print(p.max(), model.evaluate([x1_val, x2_val], y_val))
+#    print((y_pred[0:5]).ravel(), y_pred.mean())
+#    print(output[0:5].ravel(), output.mean()) 
+#    for idx in range(len(y_pred)):
+#        score = y_pred[idx]
+#        (p1, p2) = val_ids[idx]
+#        nn_sim[p1, p2] = score
+#        nn_sim2[p1, p2] = output[idx]
+#nn_sim += nn_sim.transpose()
+#nn_sim2 += nn_sim2.transpose()
 #nn_sim = (nn_sim - nn_sim.min())/(nn_sim.max() - nn_sim.min())
 #threshold_grid_search(db, nn_sim)
 
@@ -667,7 +704,7 @@ nn_sim2 += nn_sim2.transpose()
 #
 #class_similarity = get_sim(db, lambda d,x,y: 1 if db.classes[x] == db.classes[y] else 0)
 #distance_similarity = TsimModel().get_similarity(db)
-    
+#    
 #nca_tumor_similarity = get_nca_similarity(db, min_nca_components = 15, lmnn = True)
 #nca_distance_similarity = get_nca_similarity(db, 'distances', min_nca_components = 15)
 #lmnn_distance_similarity = get_nca_similarity(db, 'distances', min_nca_components = 15, lmnn=True)
@@ -675,10 +712,9 @@ nn_sim2 += nn_sim2.transpose()
 #nca_organ_similarity = get_nca_similarity(db, 'organs')
 
 #estimator = SimilarityFuser()
-#similarity = estimator.get_similarity(db, [nca_distance_similarity])
+#similarity = estimator.get_similarity(db, [nca_tumor_similarity, distance_similarity])
 
-#similarity = nca_distance_similarity
-print('similarity finished')
+#print('similarity finished')
 #best_score, best_k, best_min_matches = threshold_grid_search(db, nca_distance_similarity)
 #best_score, best_k, best_min_matches = threshold_grid_search(db, lmnn_distance_similarity)
 #best_score, best_k, best_min_matches = threshold_grid_search(db, similarity)

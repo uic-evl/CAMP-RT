@@ -91,7 +91,7 @@ class ErrorChecker():
                     num_matches += 1
             if num_matches < min_matches:
                 outliers.add(p1)
-        print('outliers', outliers)
+#        print('outliers', outliers)
         return outliers
     
     def get_clean_subset(self, db):
