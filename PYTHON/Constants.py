@@ -53,6 +53,42 @@ class Constants():
          'Rt_Anterior_Seg_Eyeball',
          'Lower_Lip',
          'Upper_Lip']
+    
+    optimal_organs = ['Esophagus',
+ 'Spinal_Cord',
+ 'Rt_Brachial_Plexus',
+ 'Cricopharyngeal_Muscle',
+ 'Cricoid_cartilage',
+ 'MPC',
+ 'Brainstem',
+ 'Larynx',
+ 'Thyroid_cartilage',
+ 'Rt_Mastoid',
+ 'Rt_Lateral_Pterygoid_M',
+ 'Rt_Masseter_M',
+ 'Lt_Sternocleidomastoid_M',
+ 'Lt_Mastoid',
+ 'Lt_Submandibular_Gland',
+ 'Lt_Medial_Pterygoid_M',
+ 'Lt_Lateral_Pterygoid_M',
+ 'Supraglottic_Larynx',
+ 'SPC',
+ 'Rt_Submandibular_Gland',
+ 'Hyoid_bone',
+ 'Soft_Palate',
+ 'Genioglossus_M',
+ 'Tongue',
+ 'Rt_Ant_Digastric_M',
+ 'Lt_Ant_Digastric_M',
+ 'Mylogeniohyoid_M',
+ 'Extended_Oral_Cavity',
+ 'Mandible',
+ 'Hard_Palate',
+ 'Rt_Posterior_Seg_Eyeball',
+ 'Lt_Anterior_Seg_Eyeball',
+ 'Rt_Anterior_Seg_Eyeball',
+ 'Upper_Lip']
+
 
     num_organs = len(organ_list)
     #GTVn analgoues: 'GTV node', 'GTV-N', 'GTV_n', 'GTVn2', 'GTVn1'

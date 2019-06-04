@@ -515,7 +515,7 @@ class Normalizer():
         
     def fit(self, x):
         self.std = x.std(axis = 0)
-        self.mean = x.std(axis = 0)
+        self.mean = x.mean(axis = 0)
     
     def transform(self, x):
         return (x - self.mean)/self.std
@@ -523,6 +523,9 @@ class Normalizer():
     def fit_transform(self, x):
         self.fit(x)
         return self.transform(x)
+    
+    def unnormalize(self, x):
+        return x*self.std + self.mean
     
 def get_features(db, holdout = set([]) ):
     n_patients = db.get_num_patients()
@@ -608,17 +611,8 @@ def get_distance_model(n_features, encoding_size = 25, reg = 0.000001):
     model.compile(optimizer = optimizer, 
                   loss = losses.mean_squared_error)
     return(model, distance_model)
-    
-from keras.models import Sequential, Model
-from keras.layers import Dense, Activation
-from keras import losses, optimizers,regularizers, layers
-from keras import backend as K
-    
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                use_distances = False)
 
-
-def organ_selection(organ_list):
+def organ_selection(organ_list, db):
     distance_similarity = TsimModel(organs = [Constants.organ_list.index(o) for o in organ_list]).get_similarity(db)
     baseline = threshold_grid_search(db, distance_similarity)[0]
     optimal = (organ_list, baseline)
@@ -634,19 +628,66 @@ def organ_selection(organ_list):
             if best_score < optimal[1]:
                 optimal = (organ_subset, best_score)
                 print(set(Constants.organ_list) - set(optimal[0]), best_score)
-    print(bad_organs)
     return optimal
 
-optimal_organs = []
-organ_set = Constants.organ_list
-best_score = None
-while True:
-    optimal_organs, best = organ_selection(organ_set)
-    if len(optimal_organs) == len(organ_set):
-        break
-    organ_set = optimal_organs
-    best_score = best
+def optimal_organ_search(db):
+    optimal_organs = []
+    organ_set = Constants.organ_list
+    best_score = None
+    while True:
+        optimal_organs, best = organ_selection(organ_set, db)
+        if len(optimal_organs) == len(organ_set):
+            break
+        organ_set = optimal_organs
+        best_score = best
+    return optimal_organs, best_score
 
+from keras.models import Sequential, Model
+from keras.layers import Dense, Activation
+from keras import losses, optimizers,regularizers, layers 
+from keras import backend as K
+    
+db = PatientSet(root = 'data\\patients_v*\\',
+                use_distances = False)
+
+def denoise(features, noise = .1, dropout = .05, normalize = True, lr = .001):
+    n_features = features.shape[1]
+    normalizer = Normalizer()
+    if normalize:
+        x = normalizer.fit_transform(features)
+    else:
+        x = features
+    input_x = layers.Input(shape=(n_features,))
+    encoder = Sequential([
+            layers.GaussianDropout(dropout),
+            Dense(2*n_features, activation = 'linear'),
+            layers.GaussianNoise(noise),
+            Dense(n_features, activation = 'linear'),
+            ])(input_x)
+    model = Model(input_x, encoder)
+    optimizer = optimizers.Adam(lr=lr)
+    model.compile(loss = losses.mean_squared_error, 
+                  optimizer = optimizer)
+    model.fit(x,x,
+              epochs = 800,
+              batch_size = 5,
+              shuffle = True)
+    output = model.predict(x)
+    if normalize:
+        output = normalizer.unnormalize(output)
+    return output
+
+dummy_db = copy.copy(db)
+dummy_db.tumor_distances = denoise(dummy_db.tumor_distances, normalize = False, noise = .5, lr = .0001)
+#dummy_db.volumes = denoise(dummy_db.volumes, noise = .01, lr = .0001)
+test_distance_similarity = TsimModel(
+        organs = [Constants.organ_list.index(o) for o in Constants.optimal_organs]).get_similarity(dummy_db)
+threshold_grid_search(db, test_distance_similarity, start_k = .9)
+
+total_dose_similarity = get_sim(db, lambda d,x,y: percent_diff(d.prescribed_doses[x], d.prescribed_doses[y]))
+class_similarity = get_sim(db, lambda d,x,y: 1 if db.classes[x] == db.classes[y] else 0)
+threshold_grid_search(db, test_distance_similarity*total_dose_similarity, start_k = .92)
+threshold_grid_search(db, test_distance_similarity*class_similarity, start_k = .92)
 #features = get_input_distance_features(db)
 #features = (features - features.mean(axis = 0))/features.std(axis = 0)
 #clusters = db.classes.astype('int32')
@@ -682,7 +723,7 @@ while True:
 #nn_sim = (nn_sim - nn_sim.min())/(nn_sim.max() - nn_sim.min())
 #threshold_grid_search(db, nn_sim)
 
-##asymetric_lymph_similarity = get_lymph_similarity(db)
+#asymetric_lymph_similarity = get_lymph_similarity(db)
 #percent_diff = lambda x,y: 1 - np.abs(x-y)/np.max([x,y])
 #symmetric_lymph_similarity = get_sim(db, lambda d,x,y: Rankings.jaccard_distance(db.lymph_nodes[x], db.lymph_nodes[y]))
 #age_similarity = get_sim(db, lambda d,x,y: np.abs(d.ages[x] - d.ages[y])/d.ages.max())
@@ -701,10 +742,16 @@ while True:
 #
 #vector_similarity = get_sim(db, get_vector_sim)
 #organ_similarity = get_sim(db, gtv_organ_sim)
-#
+
+#ajcc_similarity = get_sim(db, 
+#                          lambda d,x,y: percent_diff(d.ajcc8[x] + 1, d.ajcc8[y] + 1))
+
 #class_similarity = get_sim(db, lambda d,x,y: 1 if db.classes[x] == db.classes[y] else 0)
-#distance_similarity = TsimModel().get_similarity(db)
-#    
+#distance_similarity = TsimModel(
+#        organs = [Constants.organ_list.index(o) for o in Constants.optimal_organs]).get_similarity(db)
+#best_score, best_k, best_min_matches = threshold_grid_search(db, distance_similarity)
+#best_score, best_k, best_min_matches = threshold_grid_search(db, distance_similarity*class_similarity)
+
 #nca_tumor_similarity = get_nca_similarity(db, min_nca_components = 15, lmnn = True)
 #nca_distance_similarity = get_nca_similarity(db, 'distances', min_nca_components = 15)
 #lmnn_distance_similarity = get_nca_similarity(db, 'distances', min_nca_components = 15, lmnn=True)
@@ -712,13 +759,14 @@ while True:
 #nca_organ_similarity = get_nca_similarity(db, 'organs')
 
 #estimator = SimilarityFuser()
-#similarity = estimator.get_similarity(db, [nca_tumor_similarity, distance_similarity])
+#similarity = estimator.get_similarity(db, [distance_similarity*total_dose_similarity])
 
 #print('similarity finished')
+
+#best_score, best_k, best_min_matches = threshold_grid_search(db, similarity)
 #best_score, best_k, best_min_matches = threshold_grid_search(db, nca_distance_similarity)
 #best_score, best_k, best_min_matches = threshold_grid_search(db, lmnn_distance_similarity)
-#best_score, best_k, best_min_matches = threshold_grid_search(db, similarity)
-            
+           
 #export(db, similarity = similarity, estimator = KnnEstimator(match_threshold = best_k, min_matches = best_min_matches))
 #print(best_k, best_min_matches, best_score)
 #print(KnnEstimator(match_type = 'clusters').evaluate(similarity, db).mean())

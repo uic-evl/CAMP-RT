@@ -75,7 +75,7 @@ class ErrorChecker():
             if tumor_volume <= .00001:
                 bad_patients.add(patient)
         
-        bad_patients = bad_patients | self.get_data_outliers(db.doses)
+#        bad_patients = bad_patients | self.get_data_outliers(db.doses)
         return bad_patients
     
     def get_data_outliers(self, doses, dose_match_threshold = .2, min_matches = 1):

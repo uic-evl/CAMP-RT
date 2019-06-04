@@ -6,6 +6,7 @@ Created on Fri Apr 12 10:15:21 2019
 """
 import numpy as np
 from Constants import Constants
+from ErrorChecker import ErrorChecker
 
 class Rankings():
     #ranking functions that generate a score, takes in pateint objects
@@ -187,11 +188,15 @@ class KnnEstimator():
         dose_matrix = data.doses
         clusters = data.classes
         predicted_doses = np.zeros(dose_matrix.shape)
+        outliers = ErrorChecker().get_data_outliers(data.doses)
         for p in range( dose_matrix.shape[0] ):
             num_matches = self.get_num_matches(p, similarity_matrix, clusters)
             scores = similarity_matrix[p, :]
+            if p not in outliers:
+                scores[list(outliers)] = 0
             args = np.argsort(-scores)
             args = args[0 : num_matches]
+            
             predicted_doses[p, :] = self.get_prediction(data, scores, args, p)
         return(predicted_doses)
     
@@ -211,10 +216,14 @@ class KnnEstimator():
         clusters = data.classes
         #should return a list of matched patients
         matches = []
+        outliers = ErrorChecker().get_data_outliers(data.doses)
         for p in range( dose_matrix.shape[0] ):
             num_matches = self.get_num_matches(p, similarity_matrix, clusters)
+            if p not in outliers:
+                scores[list(outliers)] = 0
             scores = similarity_matrix[p, :]
             args = np.argsort(-scores)
+            
             args = args[0 : num_matches] + 1
             matches.append(args)
         return(matches)
@@ -359,7 +368,7 @@ class TsimModel():
             adjacency_lists.append(adjacent_args.ravel())
         return adjacency_lists
 
-    def get_similarity(self, data):
+    def get_similarity(self, data, denoise = True):
         #data is assumed to be a patientset object for now
         if self.patients is None:
             patients = range(len(data.ids))
@@ -398,8 +407,11 @@ class TsimModel():
                     scores.append( similarity_function(d1,d2,v1,v2) )
                 score_matrix[patient1, patient2] = np.mean(scores)
         score_matrix += np.transpose(score_matrix)
-        #scale to between 0 and .99
-        #score_matrix = .99*(score_matrix - score_matrix.min())/(score_matrix.max() - score_matrix.min())
+#        scale to between 0 and .99
+        score_matrix = (score_matrix - score_matrix.min())
+        score_matrix = .99*score_matrix/score_matrix.max()
+        for p in range(0, num_patients):
+            score_matrix[p,p] = 0
         return score_matrix
 
     def local_ssim(self, x,y,v = None, w = None):
@@ -566,7 +578,7 @@ class MLPEstimator(TreeEstimator):
         
 class SimilarityFuser():
     
-    def __init__(self, model = None, min_matches = 8, max_error = .05):
+    def __init__(self, model = None, min_matches = 4, max_error = .1):
         self.min_matches = min_matches
         self.max_error = max_error
         if model is None:
