@@ -647,10 +647,10 @@ from keras.layers import Dense, Activation
 from keras import losses, optimizers,regularizers, layers 
 from keras import backend as K
     
-db = PatientSet(root = 'data\\patients_v*\\',
-                use_distances = False)
+#db = PatientSet(root = 'data\\patients_v*\\',
+#                use_distances = False)
 
-def denoise(features, noise = .1, dropout = .05, normalize = True, lr = .001):
+def denoise(features, noise = .1, dropout = .1, normalize = True, lr = .001):
     n_features = features.shape[1]
     normalizer = Normalizer()
     if normalize:
@@ -670,16 +670,51 @@ def denoise(features, noise = .1, dropout = .05, normalize = True, lr = .001):
                   optimizer = optimizer)
     model.fit(x,x,
               epochs = 800,
-              batch_size = 5,
+              batch_size = 4,
               shuffle = True)
     output = model.predict(x)
     if normalize:
         output = normalizer.unnormalize(output)
     return output
 
+distances = []
+for gtvset in db.gtvs:
+    for gtv in gtvset:
+        distances.append(gtv.dists)
+distances = np.array(distances)
+distances = denoise(distances, normalize = False, noise = .5, lr = .0001)
+i = 0
+#p = 0
+new_tumor_distances = np.zeros(db.tumor_distances.shape)
+for p in range(db.get_num_patients()):
+    count = len(db.gtvs[p])
+    new_dists = 1000*np.ones((db.tumor_distances.shape[1]))
+    for c in range(count):
+        new_dists = np.minimum(new_dists, distances[i])
+        i += 1
+    new_tumor_distances[p,:] = new_dists
+    
+total_dose_similarity = get_sim(db, lambda d,x,y: percent_diff(d.prescribed_doses[x], d.prescribed_doses[y]))
+class_similarity = get_sim(db, lambda d,x,y: 1 if db.classes[x] == db.classes[y] else 0) 
+    
+distance_similarity = TsimModel(
+        organs = [Constants.organ_list.index(o) for o in Constants.optimal_organs]).get_similarity(db)
+    
 dummy_db = copy.copy(db)
 dummy_db.tumor_distances = denoise(dummy_db.tumor_distances, normalize = False, noise = .5, lr = .0001)
-#dummy_db.volumes = denoise(dummy_db.volumes, noise = .01, lr = .0001)
+dummy_db.volumes = denoise(dummy_db.volumes, noise = .1, lr = .0001)
+test_distance_similarity = TsimModel(
+        organs = [Constants.organ_list.index(o) for o in Constants.optimal_organs]).get_similarity(dummy_db)
+
+threshold_grid_search(db, distance_similarity, start_k = .9)
+threshold_grid_search(db, distance_similarity*total_dose_similarity, start_k = .92)
+threshold_grid_search(db, distance_similarity*class_similarity, start_k = .92)
+
+threshold_grid_search(db, test_distance_similarity, start_k = .9)
+threshold_grid_search(db, test_distance_similarity*total_dose_similarity, start_k = .92)
+threshold_grid_search(db, test_distance_similarity*class_similarity, start_k = .92)
+
+dummy_db.tumor_distances = new_tumor_distances
 test_distance_similarity = TsimModel(
         organs = [Constants.organ_list.index(o) for o in Constants.optimal_organs]).get_similarity(dummy_db)
 threshold_grid_search(db, test_distance_similarity, start_k = .9)
@@ -688,10 +723,8 @@ total_dose_similarity = get_sim(db, lambda d,x,y: percent_diff(d.prescribed_dose
 class_similarity = get_sim(db, lambda d,x,y: 1 if db.classes[x] == db.classes[y] else 0)
 threshold_grid_search(db, test_distance_similarity*total_dose_similarity, start_k = .92)
 threshold_grid_search(db, test_distance_similarity*class_similarity, start_k = .92)
-#features = get_input_distance_features(db)
-#features = (features - features.mean(axis = 0))/features.std(axis = 0)
-#clusters = db.classes.astype('int32')
-#doses = db.doses
+    
+#optimal_organ_search(dummy_db)
 
 #p = np.array([0,1,2])
 #nn_sim = np.zeros((db.get_num_patients(), db.get_num_patients()))

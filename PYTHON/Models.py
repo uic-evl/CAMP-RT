@@ -353,7 +353,7 @@ class TreeSimilarity():
         return features
         
 class TsimModel():
-    def __init__(self, max_distance = 80, patients = None, organs = None):
+    def __init__(self, max_distance = 50, patients = None, organs = None):
         self.max_distance = max_distance
         #for subsetting the data later
         self.patients = patients
