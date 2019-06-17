@@ -623,45 +623,61 @@ def optimal_organ_search(db):
         best_score = best
     return optimal_organs, best_score
 
-from keras.models import Sequential, Model
-from keras.layers import Dense, Activation
-from keras import losses, optimizers,regularizers, layers 
-from keras import backend as K
+import cv2
     
+def get_transformed_tumor_centroids(gtvs, transform):
+    t_centroids = np.ones((len(gtvs), 4))
+    pos = 0
+    for gtv in gtvs:
+        t_centroids[pos, 0:3] = gtv.position
+        pos += 1
+    new_centroids = np.dot(transform, t_centroids.T).T
+    return new_centroids
+
 #db = PatientSet(root = 'data\\patients_v*\\',
 #                use_distances = False)
-
-distances = []
-for gtvset in db.gtvs:
-    for gtv in gtvset:
-        distances.append(gtv.dists)
-distances = np.array(distances)
-distances = Denoiser(normalize = False, noise = .5).fit_transform(distances, lr = .0001)
-i = 0
-#p = 0
-new_tumor_distances = np.zeros(db.tumor_distances.shape)
+reference_centroids = db.centroids.mean(axis = 0)
+new_centroids = []
 for p in range(db.get_num_patients()):
-    count = len(db.gtvs[p])
-    new_dists = 1000*np.ones((db.tumor_distances.shape[1]))
-    for c in range(count):
-        new_dists = np.minimum(new_dists, distances[i])
-        i += 1
-    new_tumor_distances[p,:] = new_dists
+    centroids = db.centroids[p,:,:]
+    transform = cv2.estimateAffine3D(centroids, reference_centroids)
+    print(transform[0])
+    new_centroids.append(get_transformed_tumor_centroids(db.gtvs[p], transform[1]))
     
-dummy_db = copy.copy(db)
+def get_centroid_emd_sim(db, p1, p2):
+    def weighted_point(p):
+        centroid = new_centroids[p]
+        volume = np.array([g.volume for g in db.gtvs[p]]).reshape(-1,1)
+        max_volume = volume.max()
+        for v in range(len(volume)):
+            if volume[v] == max_volume:
+                volume[v] = 2
+            else:
+                volume[v] = np.sign(volume[v])
+        return np.hstack([np.sqrt(volume), centroid]).astype('float32')
+    point1 = weighted_point(p1)
+    point2 = weighted_point(p2)
+    return cv2.EMD(point1, point2, cv2.DIST_C)[0]
 
-dummy_db.tumor_distances = Denoiser(normalize = False, noise = .5).fit_transform(dummy_db.tumor_distances, lr = .0001)
-dummy_db.volumes = Denoiser(noise = .1).fit_transform(db.volumes, lr = .0001)
-test_distance_similarity = TsimModel(
-        organs = [Constants.organ_list.index(o) for o in Constants.optimal_organs]).get_similarity(dummy_db)
-threshold_grid_search(db, test_distance_similarity, start_k = .9)
+def dist_to_sim(distance):
+    distance = copy.copy(distance)
+    distance -= distance.min()
+    distance /= distance.max()
+    diagonals = ( np.arange(distance.shape[0]), np.arange(distance.shape[0]) )
+    sim = 1-distance
+    sim[diagonals] = 0
+    return sim
 
-dummy_db.tumor_distances = new_tumor_distances
-test_distance_similarity = TsimModel(
-        organs = [Constants.organ_list.index(o) for o in Constants.optimal_organs]).get_similarity(dummy_db)
-threshold_grid_search(db, test_distance_similarity, start_k = .9)
+emd_sim = get_sim(db, get_centroid_emd_sim)
+emd_sim = dist_to_sim(emd_sim)
+#threshold_grid_search(db,emd_sim)
 
+#    ref = np.hstack([centroids, np.ones((Constants.num_organs, 1))]).T
+#    transformed_centroids = np.dot(transform, ref)
+#    new_centroids[p,:,:] = transformed_centroids.T
     
+
+
 #optimal_organ_search(dummy_db)
 
 #p = np.array([0,1,2])

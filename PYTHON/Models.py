@@ -219,9 +219,9 @@ class KnnEstimator():
         outliers = ErrorChecker().get_data_outliers(data.doses)
         for p in range( dose_matrix.shape[0] ):
             num_matches = self.get_num_matches(p, similarity_matrix, clusters)
+            scores = similarity_matrix[p, :]
             if p not in outliers:
                 scores[list(outliers)] = 0
-            scores = similarity_matrix[p, :]
             args = np.argsort(-scores)
             
             args = args[0 : num_matches] + 1

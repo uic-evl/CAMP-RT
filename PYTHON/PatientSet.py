@@ -12,16 +12,19 @@ from collections import OrderedDict
 from Constants import Constants
 from Patient import Patient
 from ErrorChecker import ErrorChecker 
+from preprocessing import Denoiser
 
 class PatientSet():
 
     def __init__(self, outliers = [], root = 'data\\patients_v2*\\', 
-                 use_distances = False, use_clean_subset = True):
+                 use_distances = False, use_clean_subset = True, denoise = True):
         self.classes = None
         self.num_classes = 0
         self.read_patient_data(root, outliers, use_distances)
         if use_clean_subset:
             self.clean_values()
+        if denoise:
+            self.denoise_tumor_distances()
         print('\npatient data loaded...\n')
 
     def read_patient_data(self, root, outliers, use_distances):
@@ -279,4 +282,27 @@ class PatientSet():
         else:
             organ_dist_df = pd.DataFrame(mean_dists, index = Constants.organ_list, columns = Constants.organ_list)
         organ_dist_df.to_csv(file)
+        
+    def get_all_tumor_distances(self):
+        distances = []
+        for gtvset in self.gtvs:
+            for gtv in gtvset:
+                distances.append(gtv.dists)
+        distances = np.array(distances)
+        return distances
+        
+    def denoise_tumor_distances(self):
+        distances = self.get_all_tumor_distances()
+        distances = Denoiser(normalize = False, noise = .5).fit_transform(distances, lr = .0001)
+        i = 0
+        #p = 0
+        new_tumor_distances = np.zeros(self.tumor_distances.shape)
+        for p in range(self.get_num_patients()):
+            count = len(self.gtvs[p])
+            new_dists = 1000*np.ones((self.tumor_distances.shape[1]))
+            for c in range(count):
+                new_dists = np.minimum(new_dists, distances[i])
+                i += 1
+            new_tumor_distances[p,:] = new_dists
+        self.tumor_distance = new_tumor_distances
         

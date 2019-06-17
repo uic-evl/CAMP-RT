@@ -59,7 +59,8 @@ class Denoiser():
             x = features
         self.model.fit(x,x,
                        epochs = epochs,
-                       batch_size = batch_size)
+                       batch_size = batch_size,
+                       verbose = 0)
         
     def transform(self, features, normalize = True):
         if self.normalizer is not None:
