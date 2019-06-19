@@ -13,6 +13,7 @@ from Constants import Constants
 from Patient import Patient
 from ErrorChecker import ErrorChecker 
 from preprocessing import Denoiser
+from cv2 import estimateAffine3D
 
 class PatientSet():
 
@@ -292,6 +293,8 @@ class PatientSet():
         return distances
         
     def denoise_tumor_distances(self):
+        #passes tumors through a densoiing autoencoder.  
+        #will change self.tumor_distance but not self.gtvs
         distances = self.get_all_tumor_distances()
         distances = Denoiser(normalize = False, noise = .5).fit_transform(distances, lr = .0001)
         i = 0
@@ -305,4 +308,33 @@ class PatientSet():
                 i += 1
             new_tumor_distances[p,:] = new_dists
         self.tumor_distance = new_tumor_distances
+        
+    def get_transformed_centroids(self, reference_centroids = None):
+        
+        def get_transformed_tumor_centroids(gtvs, transform):
+        #finds the mean organ centroid locations and applies an affine transform
+        #to each of the centroids in the current dataset
+        #returns a transformed 3d centroid matrix and a list of arrays with new tumor centroid positions
+            nonzero_centroids = [g.position for g in gtvs if g.volume > 0]
+            t_centroids = np.ones((len(nonzero_centroids), 4))
+            pos = 0
+            for gtv in nonzero_centroids:
+                t_centroids[pos, 0:3] = gtv
+                pos += 1
+            new_centroids = np.dot(transform, t_centroids.T).T
+            return new_centroids
+        
+        if reference_centroids is None:
+            reference_centroids = self.centroids.mean(axis = 0)
+        transformed_tumor_centroids = []
+        transformed_organ_centroids = np.empty(self.centroids.shape)
+        for p in range(self.get_num_patients()):
+            centroids = self.centroids[p,:,:]
+            transform = estimateAffine3D(centroids, reference_centroids)[1]
+            ref = np.hstack([centroids, np.ones((Constants.num_organs, 1))])
+            transformed_centroids = np.dot(transform, ref.T)
+            transformed_organ_centroids[p,:,:] = transformed_centroids.T
+            p_tumor_centroids = get_transformed_tumor_centroids(self.gtvs[p], transform)
+            transformed_tumor_centroids.append(p_tumor_centroids)
+        return transformed_organ_centroids, transformed_tumor_centroids
         

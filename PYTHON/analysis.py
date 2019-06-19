@@ -739,28 +739,11 @@ def convex_hull_projection(point_cloud, centroids):
         projections.append(curr_projection)
     return np.vstack(projections)
 
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                use_distances = False)
-#class_similarity = get_sim(db, lambda d,x,y: 1 if db.classes[x] == db.classes[y] else 0)    
+db = PatientSet(root = 'data\\patients_v*\\',
+                use_distances = False)
+class_similarity = get_sim(db, lambda d,x,y: 1 if db.classes[x] == db.classes[y] else 0)    
 
-reference_centroids = db.centroids.mean(axis = 0)
-new_tumor_centroids = []
-centered_tumor_centroids = []
-new_organ_centroids = np.empty(db.centroids.shape)
-tumor_projections = []
-all_tumor_projections = []
-for p in range(db.get_num_patients()):
-    centroids = db.centroids[p,:,:]
-    transform = cv2.estimateAffine3D(centroids, reference_centroids)[1]
-    ref = np.hstack([centroids, np.ones((Constants.num_organs, 1))]).T
-    transformed_centroids = np.dot(transform, ref)
-    new_organ_centroids[p,:,:] = transformed_centroids.T
-    patient_tumor_centroids = get_transformed_tumor_centroids(db.gtvs[p], transform)
-    new_tumor_centroids.append(patient_tumor_centroids)
-    tumor_projections.append(single_convex_hull_projection(transformed_centroids.T, patient_tumor_centroids))
-    all_tumor_projections.append(convex_hull_projection(transformed_centroids.T, patient_tumor_centroids))
-    max_tumor_pos = np.argmax([g.volume for g in db.gtvs[p]])
-    centered_tumor_centroids.append( patient_tumor_centroids - patient_tumor_centroids[max_tumor_pos]  )
+t_centroids, t_tumor_centroids = db.get_transformed_centroids()
 
 #organ_emd = lambda d,p1,p2: get_organ_emd_sim(d, p1, p2, new_organ_centroids)
 #tumor_emd = lambda d,p1,p2: get_tumor_emd_sim(d,p1,p2, new_tumor_centroids)
