@@ -7,6 +7,7 @@ Created on Fri Apr 12 10:15:21 2019
 import numpy as np
 from Constants import Constants
 from ErrorChecker import ErrorChecker
+from skimage.measure import compare_mse
 
 class Rankings():
     #ranking functions that generate a score, takes in pateint objects
@@ -20,7 +21,12 @@ class Rankings():
         principle_components = np.dot(points, eig)
         return(principle_components)
     
-    def jaccard_distance(x, y):
+    ##these metrics all take 4 arguments so they can be passed to the TSIM model class properly
+    #since that uses distance and volume vectors.  Others just take dummy arguments
+    def mse(x,y,w=None,v=None):
+        return compare_mse(x,y)
+    
+    def jaccard_distance(x, y, w = None, v = None):
         numerator = x.dot(y)
         denominator = x.dot(x) + y.dot(y) - x.dot(y)
         if numerator == 0 or denominator == 0:
@@ -353,11 +359,17 @@ class TreeSimilarity():
         return features
         
 class TsimModel():
-    def __init__(self, max_distance = 50, patients = None, organs = None):
+    def __init__(self, max_distance = 50, patients = None, organs = None, 
+                 similarity_function = None, use_classes = False):
         self.max_distance = max_distance
         #for subsetting the data later
         self.patients = patients
         self.organs = organs
+        self.use_classes = use_classes
+        if similarity_function is None:
+            self.similarity_function = self.local_ssim
+        else:
+            self.similarity_function = similarity_function
 
     def get_adjacency_lists(self, organ_distance_matrix, organs):
         #this code is much simpler than expected
@@ -387,14 +399,12 @@ class TsimModel():
         return scores
 
     def similarity(self, adjacency, distances, volumes, clusters, similarity_function = None):
-        if similarity_function is None:
-            similarity_function = self.local_ssim
         num_patients, num_organs = distances.shape
         score_matrix = np.zeros((num_patients, num_patients))
         for patient1 in range(0, num_patients - 1):
             for patient2 in range(patient1 + 1, num_patients):
-#                if clusters[patient1] != clusters[patient2]:
-#                    continue
+                if self.use_classes and clusters[patient1] != clusters[patient2]:
+                    continue
                 scores = []
                 for organ in range(num_organs):
                     adjacent_args = adjacency[organ]
@@ -404,7 +414,7 @@ class TsimModel():
                     d2 = distances[patient2, adjacent_args]
                     v1 = volumes[patient1, adjacent_args]
                     v2 = volumes[patient2, adjacent_args]
-                    scores.append( similarity_function(d1,d2,v1,v2) )
+                    scores.append( self.similarity_function(d1,d2,v1,v2) )
                 score_matrix[patient1, patient2] = np.mean(scores)
         score_matrix += np.transpose(score_matrix)
 #        scale to between 0 and .99

@@ -14,8 +14,15 @@ import pandas as pd
 from collections import OrderedDict
 import matplotlib.pyplot as plt
 import copy
-import metric_learn
+#import metric_learn
 from preprocessing import *
+import cv2
+from scipy.spatial.distance import directed_hausdorff
+from scipy.spatial import ConvexHull, procrustes
+from sklearn.cluster import KMeans, DBSCAN
+from NCA import NeighborhoodComponentsAnalysis
+from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
+
 
 
 def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_file = 'scores.csv',
@@ -105,6 +112,15 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
     except:
         print('error saving ssim score matrix')
     return
+
+def dist_to_sim(distance):
+    distance = copy.copy(distance)
+    distance -= distance.min()
+    distance /= distance.max()
+    diagonals = ( np.arange(distance.shape[0]), np.arange(distance.shape[0]) )
+    sim = 1-distance
+    sim[diagonals] = 0
+    return sim
 
 def get_lymph_similarity(db, file = 'data/spatial_lymph_scores.csv'):
     lymph_df = pd.read_csv(file, index_col = 0)
@@ -265,10 +281,6 @@ def get_input_distance_features(data, num_pca_components = 10):
 def get_input_lymph_features(data, num_pca_components = 10):
     return copy.copy(data.lymph_nodes)
 
-from sklearn.cluster import KMeans, DBSCAN
-from NCA import NeighborhoodComponentsAnalysis
-from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
-
 def get_dose_clusters(doses):
     kmeans = KMeans(n_clusters = 5, random_state = 0)
     bad_patients = set(ErrorChecker().get_data_outliers(doses))
@@ -422,11 +434,11 @@ def get_vector_sim(db, p1, p2):
     vectors = get_gtv_vectors(db)
     return np.dot(vectors[p1, 3:], vectors[p2, 3:])
 
-def threshold_grid_search(db, similarity, start_k = .1, max_matches = 20, print_out = True):
+def threshold_grid_search(db, similarity, start_k = .4, max_matches = 20, print_out = True, n_itters = 20):
     best_score = 100 #this is percent error at time of writing this
     best_threshold = 0
     best_min_matches = 0
-    for k in np.linspace(start_k, 1, 20):
+    for k in np.linspace(start_k, 1, n_itters):
         for m in range(1, max_matches):
             result = KnnEstimator(match_threshold = k, min_matches = m).evaluate(similarity, db)
             if result.mean() < best_score:
@@ -593,8 +605,14 @@ def get_distance_model(n_features, encoding_size = 25, reg = 0.000001):
                   loss = losses.mean_squared_error)
     return(model, distance_model)
 
-def organ_selection(organ_list, db):
-    distance_similarity = TsimModel(organs = [Constants.organ_list.index(o) for o in organ_list]).get_similarity(db)
+def organ_selection(organ_list, db, similarity_function = None, 
+                    use_classes = False):
+    def tsim(x):
+        model = TsimModel(organs = [Constants.organ_list.index(o) for o in x],
+                                   similarity_function = similarity_function,
+                                   use_classes = use_classes)
+        return model.get_similarity(db)
+    distance_similarity = tsim(organ_list)
     baseline = threshold_grid_search(db, distance_similarity)[0]
     optimal = (organ_list, baseline)
     bad_organs = []
@@ -602,7 +620,7 @@ def organ_selection(organ_list, db):
     for organ in organ_list:
         organ_subset = copy.copy(organ_list)
         organ_subset.remove(organ)
-        distance_subset_sim = TsimModel(organs = [Constants.organ_list.index(o) for o in organ_subset]).get_similarity(db)
+        distance_subset_sim = tsim(organ_subset)
         best_score, best_threshold, best_min_matches = threshold_grid_search(db, distance_subset_sim, print_out = False)
         if best_score < baseline:
             bad_organs.append((organ, best_score, best_threshold, best_min_matches))
@@ -611,19 +629,19 @@ def organ_selection(organ_list, db):
                 print(set(Constants.organ_list) - set(optimal[0]), best_score)
     return optimal
 
-def optimal_organ_search(db):
+def optimal_organ_search(db, similarity_function = None, use_classes = False):
     optimal_organs = []
     organ_set = Constants.organ_list
     best_score = None
     while True:
-        optimal_organs, best = organ_selection(organ_set, db)
+        optimal_organs, best = organ_selection(organ_set, db, 
+                                               similarity_function = similarity_function, 
+                                               use_classes = use_classes)
         if len(optimal_organs) == len(organ_set):
             break
         organ_set = optimal_organs
         best_score = best
     return optimal_organs, best_score
-
-import cv2
     
 def get_transformed_tumor_centroids(gtvs, transform):
     t_centroids = np.ones((len(gtvs), 4))
@@ -634,24 +652,14 @@ def get_transformed_tumor_centroids(gtvs, transform):
     new_centroids = np.dot(transform, t_centroids.T).T
     return new_centroids
 
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                use_distances = False)
-reference_centroids = db.centroids.mean(axis = 0)
-new_centroids = []
-for p in range(db.get_num_patients()):
-    centroids = db.centroids[p,:,:]
-    transform = cv2.estimateAffine3D(centroids, reference_centroids)
-    print(transform[0])
-    new_centroids.append(get_transformed_tumor_centroids(db.gtvs[p], transform[1]))
-    
-def get_centroid_emd_sim(db, p1, p2):
+def get_tumor_emd_sim(db, p1, p2, centroids):
     def weighted_point(p):
-        centroid = new_centroids[p]
+        centroid = centroids[p]
         volume = np.array([g.volume for g in db.gtvs[p]]).reshape(-1,1)
         max_volume = volume.max()
         for v in range(len(volume)):
             if volume[v] == max_volume:
-                volume[v] = 2
+                volume[v] = 3
             else:
                 volume[v] = np.sign(volume[v])
         return np.hstack([np.sqrt(volume), centroid]).astype('float32')
@@ -659,26 +667,117 @@ def get_centroid_emd_sim(db, p1, p2):
     point2 = weighted_point(p2)
     return cv2.EMD(point1, point2, cv2.DIST_C)[0]
 
-def dist_to_sim(distance):
-    distance = copy.copy(distance)
-    distance -= distance.min()
-    distance /= distance.max()
-    diagonals = ( np.arange(distance.shape[0]), np.arange(distance.shape[0]) )
-    sim = 1-distance
-    sim[diagonals] = 0
-    return sim
+def get_organ_emd_sim(db, p1, p2, centroids):
+    def weighted_point(p):
+        centroid = centroids[p,:,:]
+        volumes = db.volumes[p,:].reshape(-1,1)
+        return np.hstack([np.sqrt(volumes), centroid]).astype('float32')
+    point1 = weighted_point(p1)
+    point2 = weighted_point(p2)
+    return cv2.EMD(point1, point2, cv2.DIST_C)[0]
 
-emd_sim = get_sim(db, get_centroid_emd_sim)
-emd_sim = dist_to_sim(emd_sim)
-#threshold_grid_search(db,emd_sim)
+def undirected_hausdorff_distance(db,p1,p2,centroids):
+    h1 = directed_hausdorff(centroids[p1], centroids[p2], 1)
+    h2 = directed_hausdorff(centroids[p2], centroids[p1], 1)
+    return max([h1[0], h2[0]])
 
-#    ref = np.hstack([centroids, np.ones((Constants.num_organs, 1))]).T
-#    transformed_centroids = np.dot(transform, ref)
-#    new_centroids[p,:,:] = transformed_centroids.T
+def procrustes_distance(db,p1,p2,centroids, max_points = 1000):
+    #max points is in case I want to use a different # later
+    #centroids should be a list of n x 3 np arrays
+    c1 = centroids[p1]
+    c2 = centroids[p2]
+    n_points = max([len(c1), len(c2), max_points])
+    def scale_centroid(c):
+        if len(c) < n_points:
+            n_dummy_points = n_points - len(c)
+            dummy_values = np.zeros((n_dummy_points, c.shape[1]))
+            c = np.vstack([c, dummy_values])
+        elif len(c) > n_points:
+            c = c[:n_points, :]
+        return c
+    c1 = scale_centroid(c1)
+    c2 = scale_centroid(c2)
+    return procrustes(c1, c2)[2]
+
+def single_convex_hull_projection(point_cloud, centroids, cuttoff = 15):
+    hull = ConvexHull(point_cloud)
+    def project(point, plane):
+        distance = np.dot(plane, np.append(point, 1))
+        displacement = distance*plane[0:3]/np.linalg.norm(plane[0:3])
+        return (point + displacement, distance)
+    projections = np.zeros(centroids.shape)
+    for idx in range(centroids.shape[0]):
+        point = centroids[idx]
+        min_dist = np.inf
+        for hull_idx in range(hull.equations.shape[0]):
+            plane = hull.equations[hull_idx]
+            projection, distance = project(point,plane)
+            if np.abs(distance) < min_dist and projection[1] < cuttoff: #check if point is roughly in anerior of the head
+                min_dist = distance
+                projections[idx,:] = projection
+    return projections
     
+def convex_hull_projection(point_cloud, centroids):
+    #looks at every plane in the convex hull and finds the projection
+    #of the closest tumor?
+    hull = ConvexHull(point_cloud)
+    def project(point, plane):
+        distance = np.dot(plane, np.append(point, 1))
+        displacement = distance*plane[0:3]/np.linalg.norm(plane[0:3])
+        return (point + displacement, distance)
+    projections = []
+    for hull_idx in range(hull.equations.shape[0]):
+        plane = hull.equations[hull_idx]
+        min_dist = np.inf
+        curr_projection = np.zeros((3,))
+        for idx in range(centroids.shape[0]):
+            point = centroids[idx]
+            projection, distance = project(point,plane)
+            if distance < min_dist:
+                curr_projection = projection
+                min_dist = distance
+        projections.append(curr_projection)
+    return np.vstack(projections)
 
+#db = PatientSet(root = 'data\\patients_v*\\',
+#                use_distances = False)
+#class_similarity = get_sim(db, lambda d,x,y: 1 if db.classes[x] == db.classes[y] else 0)    
 
-#optimal_organ_search(dummy_db)
+reference_centroids = db.centroids.mean(axis = 0)
+new_tumor_centroids = []
+centered_tumor_centroids = []
+new_organ_centroids = np.empty(db.centroids.shape)
+tumor_projections = []
+all_tumor_projections = []
+for p in range(db.get_num_patients()):
+    centroids = db.centroids[p,:,:]
+    transform = cv2.estimateAffine3D(centroids, reference_centroids)[1]
+    ref = np.hstack([centroids, np.ones((Constants.num_organs, 1))]).T
+    transformed_centroids = np.dot(transform, ref)
+    new_organ_centroids[p,:,:] = transformed_centroids.T
+    patient_tumor_centroids = get_transformed_tumor_centroids(db.gtvs[p], transform)
+    new_tumor_centroids.append(patient_tumor_centroids)
+    tumor_projections.append(single_convex_hull_projection(transformed_centroids.T, patient_tumor_centroids))
+    all_tumor_projections.append(convex_hull_projection(transformed_centroids.T, patient_tumor_centroids))
+    max_tumor_pos = np.argmax([g.volume for g in db.gtvs[p]])
+    centered_tumor_centroids.append( patient_tumor_centroids - patient_tumor_centroids[max_tumor_pos]  )
+
+#organ_emd = lambda d,p1,p2: get_organ_emd_sim(d, p1, p2, new_organ_centroids)
+#tumor_emd = lambda d,p1,p2: get_tumor_emd_sim(d,p1,p2, new_tumor_centroids)
+#tumor_haus = lambda d,p1,p2: undirected_hausdorff_distance(d,p1,p2, new_tumor_centroids)
+#procrustes_d = lambda d,p1,p2: procrustes_distance(d,p1,p2, new_tumor_centroids)
+#organ_emd_sim = dist_to_sim(get_sim(db, organ_emd))
+#tumor_emd_sim = dist_to_sim(get_sim(db, tumor_emd))
+#hausdorf_sim = dist_to_sim(get_sim(db, tumor_haus))
+#procrustes_sim = dist_to_sim(get_sim(db, procrustes_d))
+#jaccard_tsim = TsimModel(organs = [Constants.organ_list.index(o) for o in Constants.optimal_jaccard_organs], similarity_function = Rankings.jaccard_distance).get_similarity(db)
+#
+#
+#threshold_grid_search(db, similarity = hausdorf_sim, start_k = .6, n_itters = 8)
+#threshold_grid_search(db, similarity = organ_emd_sim, start_k = .6, n_itters = 8)
+#threshold_grid_search(db, similarity = tumor_emd_sim, start_k = .6, n_itters = 8)
+#threshold_grid_search(db, similarity = procrustes_sim, start_k = .6, n_itters = 8)
+#threshold_grid_search(db, similarity = jaccard_tsim, start_k = .6, n_itters = 8)
 
 #p = np.array([0,1,2])
 #nn_sim = np.zeros((db.get_num_patients(), db.get_num_patients()))
