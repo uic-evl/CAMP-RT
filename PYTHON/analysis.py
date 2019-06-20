@@ -16,12 +16,9 @@ import matplotlib.pyplot as plt
 import copy
 #import metric_learn
 from preprocessing import *
-import cv2
-from scipy.spatial.distance import directed_hausdorff
-from scipy.spatial import ConvexHull, procrustes
-from sklearn.cluster import KMeans, DBSCAN
+from sklearn.cluster import KMeans
 from NCA import NeighborhoodComponentsAnalysis
-from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
+from Metrics import *
 
 
 
@@ -36,8 +33,8 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
     predicted_doses = estimator.predict_doses(similarity, data_set)
     similar_patients = estimator.get_matches(similarity, data_set)
     error = estimator.get_error(predicted_doses, data_set.doses) #a vector of errors
-    dose_pca = Rankings.pca(data_set.doses)
-    distance_pca = Rankings.pca(data_set.tumor_distances)
+    dose_pca = pca(data_set.doses)
+    distance_pca = pca(data_set.tumor_distances)
 
     export_data = []
     for x in range(data_set.get_num_patients()):
@@ -113,101 +110,28 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
         print('error saving ssim score matrix')
     return
 
-def dist_to_sim(distance):
-    distance = copy.copy(distance)
-    distance -= distance.min()
-    distance /= distance.max()
-    diagonals = ( np.arange(distance.shape[0]), np.arange(distance.shape[0]) )
-    sim = 1-distance
-    sim[diagonals] = 0
-    return sim
-
-def get_lymph_similarity(db, file = 'data/spatial_lymph_scores.csv'):
-    lymph_df = pd.read_csv(file, index_col = 0)
-    all_patients = set(lymph_df.index)
-    similarity = np.zeros((db.get_num_patients(), db.get_num_patients()))
-    for p1 in range( db.get_num_patients() ):
-        name1 = 'Patient ' + str(db.ids[p1])
-        if name1 not in all_patients:
-            print(name1, 'Not in Lymph Data', db.n_categories[p1], db.therapy_type[p1], db.gtvs[p1][1].volume)
-            continue
-        for p2 in range(p1 + 1, db.get_num_patients()):
-            name2 = 'Patient ' + str(db.ids[p2])
-            if name2 not in all_patients:
-                continue
-            similarity[p1, p2] = lymph_df.loc[name1, name2]
-    return similarity + similarity.transpose()
-
-def get_sim(db, similarity_function):
-    num_patients = db.get_num_patients()
-    similarity_matrix = np.zeros((num_patients, num_patients))
-    for p1 in range(num_patients):
-        for p2 in range(p1 + 1, num_patients):
-            similarity_matrix[p1,p2] = similarity_function(db, p1, p2)
-    similarity_matrix += similarity_matrix.transpose()
-    return similarity_matrix
-
-def n_category_sim(db, p1, p2):
-    n_categories = db.n_categories.astype('int32')
-    n1 = n_categories[p1]
-    n2 = n_categories[p2]
-    normalized_difference = abs(n1 - n2)/n_categories.max()
-    return 1 - normalized_difference
-
-t_category_map = {'Tis': 0, 'Tx': 1, 'T1': 2, 'T2': 3, 'T3': 4, 'T4': 5}
-def t_category_sim(db,p1,p2):
-    t1 = db.t_categories[p1]
-    t2 = db.t_categories[p2]
-    normalized_difference = (abs(t_category_map.get(t1, 0) - t_category_map.get(t2, 0))/5)
-    return 1 - normalized_difference
-
-
-def gtv_volume_sim(db,p1,p2):
-    gtvns1 = db.gtvs[p1]
-    gtvns2 = db.gtvs[p2]
-    vol1 = sorted([gtv.volume for gtv in gtvns1], key = lambda x: -x)
-    vol2 = sorted([gtv.volume for gtv in gtvns2], key = lambda x: -x)
-    if max([vol1, vol2]) == 0:
-        return 1
-    return np.abs(np.sum(vol1) - np.sum(vol2))/(np.sum(vol1) + np.sum(vol2))
-
-def gtv_organ_sim(db,p1,p2):
-    def vectorify(p):
-        v = np.zeros((Constants.num_organs,))
-        for gtv in db.gtvs[p]:
-            if gtv.organ in Constants.organ_list:
-                pos = Constants.organ_list.index(gtv.organ)
-                v[pos] = 1
-        return v
-    v1 = vectorify(p1)
-    v2 = vectorify(p2)
-    return Rankings.jaccard_distance(v1,v2) #1 if np.linalg.norm(v1 - v2) == 0 else 0 
-
-def gtv_count_sim(db,p1,p2):
-    gtvs1 = db.gtvs[p1]
-    gtvs2 = db.gtvs[p2]
-    count1 = 0
-    count2 = 0
-    for gtv in gtvs1:
-        if gtv.volume > 0:
-            count1 += 1
-    for gtv in gtvs2:
-        if gtv.volume > 0:
-            count2 += 1
-    return min([count1, count2])/max([count1, count2])
-
-def gtv_volume_jaccard_sim(db,p1,p2):
-    vols1 = [gtv.volume for gtv in db.gtvs[p1]]
-    vols2 = [gtv.volume for gtv in db.gtvs[p2]]
-    vector_len = np.max([len(vols2), len(vols1)])
-    volume_array1 = np.zeros((vector_len,))
-    volume_array2 = np.zeros((vector_len,))
-    volume_array1[0:len(vols1)] = vols1
-    volume_array2[0:len(vols2)] = vols2
-    return Rankings.jaccard_distance(volume_array1, volume_array2)
+def threshold_grid_search(db, similarity, start_k = .4, max_matches = 20, 
+                          print_out = True, n_itters = 20, get_model = False):
+    best_score = 100 #this is percent error at time of writing this
+    best_threshold = 0
+    best_min_matches = 0
+    for k in np.linspace(start_k, 1, n_itters):
+        for m in range(1, max_matches):
+            result = KnnEstimator(match_threshold = k, min_matches = m).evaluate(similarity, db)
+            if result.mean() < best_score:
+                best_score = result.mean()
+                best_threshold = copy.copy(k)
+                best_min_matches = copy.copy(m)
+    if print_out:
+        print('Score-', round(100*best_score,2) , ': Threshold-', round(best_threshold,2) , ': Min matches-', best_min_matches)
+    if get_model:
+        return KnnEstimator(match_type = 'threshold',
+                            match_threshold = best_threshold,
+                            min_matches = best_min_matches)
+    else:
+        return((best_score, best_threshold, best_min_matches))
 
 def get_all_features(data, num_pca_components = 10):
-    pca = lambda x: Rankings.pca(x, num_pca_components)
     num_patients = data.get_num_patients()
     tumor_volumes = np.zeros((num_patients, 2))
     tumor_count = np.array([len(gtv) for gtv in data.gtvs]).reshape(-1,1)
@@ -227,7 +151,7 @@ def get_all_features(data, num_pca_components = 10):
     features = np.hstack([tumor_volumes, total_doses, subsites,
                           laterality, tumor_count,
                           data.tumor_distances, data.volumes])
-    pca_features = Rankings.pca(features, features.shape[1])
+    pca_features = pca(features, features.shape[1])
     return (pca_features - pca_features.mean(axis = 0))/pca_features.std(axis = 0)
 
 def get_input_tumor_features(data, num_pca_components = 10):
@@ -307,7 +231,6 @@ def get_nca_features(features, doses, min_components = 5, lmnn = False, k = 4, r
         output[p,:] = tf/np.linalg.norm(tf)
         print(output[p,:])
     return output
-        
 
 def get_fitted_nca(features, doses, n_components = 5, lmnn = False, k = 4, reg = .25):
     if lmnn:
@@ -367,26 +290,6 @@ def get_nca_similarity(db, feature_type = 'tumors', min_nca_components = 4, lmnn
         similarity[i,i] = 0 
     return similarity
 
-def get_max_tumor_ssim(patient1, patient2):
-    options = set()
-    scores = -np.ones((len(patient1),))
-    similarities = []
-    for p1 in range(len(patient1)):
-        t1 = patient1[p1]
-        for p2 in range(len(patient2)):
-            t2 = patient2[p2]
-            options.add(p2)
-            similarity = Rankings.local_ssim(t1.dists, t2.dists, t1.volume, t2.volume)
-            similarities.append((similarity, p1, p2))
-    similarities = sorted(similarities, key = lambda x: -x[0])
-    for (s, p1, p2) in similarities:
-        if scores[p1] == -1 and p2 in options:
-            scores[p1] = s
-            options.remove(p2)
-    t_volumes = np.array([t.volume for t in patient1])
-    max_similarity = np.mean((scores*t_volumes)/t_volumes.sum())
-    return max_similarity
-
 def get_test_tumor_similarity(db):
     n_patients = db.get_num_patients()
     new_distance_similarity = np.zeros((n_patients, n_patients))
@@ -433,21 +336,6 @@ def get_gtv_vectors(db):
 def get_vector_sim(db, p1, p2):
     vectors = get_gtv_vectors(db)
     return np.dot(vectors[p1, 3:], vectors[p2, 3:])
-
-def threshold_grid_search(db, similarity, start_k = .4, max_matches = 20, print_out = True, n_itters = 20):
-    best_score = 100 #this is percent error at time of writing this
-    best_threshold = 0
-    best_min_matches = 0
-    for k in np.linspace(start_k, 1, n_itters):
-        for m in range(1, max_matches):
-            result = KnnEstimator(match_threshold = k, min_matches = m).evaluate(similarity, db)
-            if result.mean() < best_score:
-                best_score = result.mean()
-                best_threshold = copy.copy(k)
-                best_min_matches = copy.copy(m)
-    if print_out:
-        print('Score-', round(100*best_score,2) , ': Threshold-', round(best_threshold,2) , ': Min matches-', best_min_matches)
-    return((best_score, best_threshold, best_min_matches))
 
 def get_autoencoderish_model(features):
     input_x = Input(shape=(features.shape[1],))
@@ -652,92 +540,6 @@ def get_transformed_tumor_centroids(gtvs, transform):
     new_centroids = np.dot(transform, t_centroids.T).T
     return new_centroids
 
-def get_tumor_emd_sim(db, p1, p2, centroids):
-    def weighted_point(p):
-        centroid = centroids[p]
-        volume = np.array([g.volume for g in db.gtvs[p]]).reshape(-1,1)
-        max_volume = volume.max()
-        for v in range(len(volume)):
-            if volume[v] == max_volume:
-                volume[v] = 3
-            else:
-                volume[v] = np.sign(volume[v])
-        return np.hstack([np.sqrt(volume), centroid]).astype('float32')
-    point1 = weighted_point(p1)
-    point2 = weighted_point(p2)
-    return cv2.EMD(point1, point2, cv2.DIST_C)[0]
-
-def get_organ_emd_sim(db, p1, p2, centroids):
-    def weighted_point(p):
-        centroid = centroids[p,:,:]
-        volumes = db.volumes[p,:].reshape(-1,1)
-        return np.hstack([np.sqrt(volumes), centroid]).astype('float32')
-    point1 = weighted_point(p1)
-    point2 = weighted_point(p2)
-    return cv2.EMD(point1, point2, cv2.DIST_C)[0]
-
-def undirected_hausdorff_distance(db,p1,p2,centroids):
-    h1 = directed_hausdorff(centroids[p1], centroids[p2], 1)
-    h2 = directed_hausdorff(centroids[p2], centroids[p1], 1)
-    return max([h1[0], h2[0]])
-
-def procrustes_distance(db,p1,p2,centroids, max_points = 1000):
-    #max points is in case I want to use a different # later
-    #centroids should be a list of n x 3 np arrays
-    c1 = centroids[p1]
-    c2 = centroids[p2]
-    n_points = max([len(c1), len(c2), max_points])
-    def scale_centroid(c):
-        if len(c) < n_points:
-            n_dummy_points = n_points - len(c)
-            dummy_values = np.zeros((n_dummy_points, c.shape[1]))
-            c = np.vstack([c, dummy_values])
-        elif len(c) > n_points:
-            c = c[:n_points, :]
-        return c
-    c1 = scale_centroid(c1)
-    c2 = scale_centroid(c2)
-    return procrustes(c1, c2)[2]
-
-def single_convex_hull_projection(point_cloud, centroids, cuttoff = 15):
-    hull = ConvexHull(point_cloud)
-    def project(point, plane):
-        distance = np.dot(plane, np.append(point, 1))
-        displacement = distance*plane[0:3]/np.linalg.norm(plane[0:3])
-        return (point + displacement, distance)
-    projections = np.zeros(centroids.shape)
-    for idx in range(centroids.shape[0]):
-        point = centroids[idx]
-        min_dist = np.inf
-        for hull_idx in range(hull.equations.shape[0]):
-            plane = hull.equations[hull_idx]
-            projection, distance = project(point,plane)
-            if np.abs(distance) < min_dist and projection[1] < cuttoff: #check if point is roughly in anerior of the head
-                min_dist = distance
-                projections[idx,:] = projection
-    return projections
-    
-def convex_hull_projection(point_cloud, centroids):
-    #looks at every plane in the convex hull and finds the projection
-    #of the closest tumor?
-    hull = ConvexHull(point_cloud)
-    def project(point, plane):
-        distance = np.dot(plane, np.append(point, 1))
-        displacement = distance*plane[0:3]/np.linalg.norm(plane[0:3])
-        return (point + displacement, distance)
-    projections = []
-    for hull_idx in range(hull.equations.shape[0]):
-        plane = hull.equations[hull_idx]
-        min_dist = np.inf
-        curr_projection = np.zeros((3,))
-        for idx in range(centroids.shape[0]):
-            point = centroids[idx]
-            projection, distance = project(point,plane)
-            if distance < min_dist:
-                curr_projection = projection
-                min_dist = distance
-        projections.append(curr_projection)
-    return np.vstack(projections)
 
 db = PatientSet(root = 'data\\patients_v*\\',
                 use_distances = False)
@@ -745,23 +547,16 @@ class_similarity = get_sim(db, lambda d,x,y: 1 if db.classes[x] == db.classes[y]
 
 t_centroids, t_tumor_centroids = db.get_transformed_centroids()
 
-#organ_emd = lambda d,p1,p2: get_organ_emd_sim(d, p1, p2, new_organ_centroids)
-#tumor_emd = lambda d,p1,p2: get_tumor_emd_sim(d,p1,p2, new_tumor_centroids)
-#tumor_haus = lambda d,p1,p2: undirected_hausdorff_distance(d,p1,p2, new_tumor_centroids)
-#procrustes_d = lambda d,p1,p2: procrustes_distance(d,p1,p2, new_tumor_centroids)
-#organ_emd_sim = dist_to_sim(get_sim(db, organ_emd))
-#tumor_emd_sim = dist_to_sim(get_sim(db, tumor_emd))
-#hausdorf_sim = dist_to_sim(get_sim(db, tumor_haus))
-#procrustes_sim = dist_to_sim(get_sim(db, procrustes_d))
-#jaccard_tsim = TsimModel(organs = [Constants.organ_list.index(o) for o in Constants.optimal_jaccard_organs], similarity_function = Rankings.jaccard_distance).get_similarity(db)
-#
-#
-#threshold_grid_search(db, similarity = hausdorf_sim, start_k = .6, n_itters = 8)
-#threshold_grid_search(db, similarity = organ_emd_sim, start_k = .6, n_itters = 8)
-#threshold_grid_search(db, similarity = tumor_emd_sim, start_k = .6, n_itters = 8)
-#threshold_grid_search(db, similarity = procrustes_sim, start_k = .6, n_itters = 8)
-#threshold_grid_search(db, similarity = jaccard_tsim, start_k = .6, n_itters = 8)
+tjaccard_similarity = TJaccardModel().get_similarity(db)
 
+knn = threshold_grid_search(db, tjaccard_similarity, start_k = .8, n_itters = 10, get_model = True)
+export(db, similarity = tjaccard_similarity, model = knn)
+total_dose_distance = lambda d,p1,p2: np.abs(db.prescribed_doses[p1] - db.prescribed_doses[p2])
+total_dose_similarity = dist_to_sim(get_sim(db, total_dose_distance))
+
+estimator = SimilarityFuser()
+similarity = estimator.get_similarity(db, [tjaccard_similarity*total_dose_similarity])
+threshold_grid_search(db,similarity)
 #p = np.array([0,1,2])
 #nn_sim = np.zeros((db.get_num_patients(), db.get_num_patients()))
 #nn_sim2 = np.zeros(nn_sim.shape)
@@ -792,9 +587,9 @@ t_centroids, t_tumor_centroids = db.get_transformed_centroids()
 #nn_sim = (nn_sim - nn_sim.min())/(nn_sim.max() - nn_sim.min())
 #threshold_grid_search(db, nn_sim)
 
-#asymetric_lymph_similarity = get_lymph_similarity(db)
+#asymetric_lymph_similarity = lymph_similarity(db)
 #percent_diff = lambda x,y: 1 - np.abs(x-y)/np.max([x,y])
-#symmetric_lymph_similarity = get_sim(db, lambda d,x,y: Rankings.jaccard_distance(db.lymph_nodes[x], db.lymph_nodes[y]))
+#symmetric_lymph_similarity = get_sim(db, lambda d,x,y: jaccard_distance(db.lymph_nodes[x], db.lymph_nodes[y]))
 #age_similarity = get_sim(db, lambda d,x,y: np.abs(d.ages[x] - d.ages[y])/d.ages.max())
 #
 #subsite_similarity = get_sim(db, lambda d,x,y: 1 if d.subsites[x] == d.subsites[y] else 0)

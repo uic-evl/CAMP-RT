@@ -77,3 +77,4 @@ class Denoiser():
         self.fit(features, normalize = normalize, lr = lr,
                  epochs = epochs, batch_size=batch_size)
         return self.transform(features, normalize= normalize)
+    
