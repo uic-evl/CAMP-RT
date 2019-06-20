@@ -336,3 +336,160 @@ class ClassifierSimilarity():
         clusters = data.classes.reshape(num_patients, 1)
         features = np.hstack([distances, lymph_nodes, tumor_volumes, total_doses, subsites])
         return features
+
+##old code from testing neural nets
+        def get_autoencoderish_model(features):
+    input_x = Input(shape=(features.shape[1],))
+    encoder = Sequential([
+            Dense(45, input_dim=features.shape[1], activation = 'relu'),
+            Dense(100, activation = 'relu'),
+            Dense(100, activation = 'relu'),
+            Dense(100, activation = 'relu'),
+            ])(input_x)
+        
+    decoder = Sequential([
+            Dense(100,input_dim = 4, activation = 'relu',
+                  activity_regularizer = regularizers.l2(.01)),
+            Dense(45, activation = 'relu'),
+            ])(encoder)
+    model = Model(input_x, decoder)
+    encoder_model= Model(input_x, encoder)
+#    optimizer = optimizers.SGD(lr = .01, decay = 1e-12, momentum = .1)
+    optimizer = optimizers.Adam()
+    model.compile(loss = losses.mean_absolute_error, 
+                  optimizer = optimizer)
+    return(model, encoder_model)
+    
+def get_regression_model(features, activation = 'relu', lr = .01):
+    model = Sequential([
+            Dense(45, input_dim=features.shape[1], activation = activation),
+            Dense(100, activation = activation),
+            Dense(200, activation = activation),
+            Dense(45, activation = activation)
+            ])
+    optimizer = optimizers.SGD(lr = lr, decay = 1e-4, momentum = 0.05)
+    model.compile(loss = losses.mean_absolute_error, 
+                  optimizer = optimizer)
+    return(model)
+
+def run_autoencoder(db):
+    from keras.models import Sequential, Model
+    from keras.layers import Dense, Activation, Input
+    from keras import losses, optimizers,regularizers
+    from sklearn.model_selection import LeaveOneOut
+    features = get_input_distance_features(db)
+    features = (features - features.mean(axis = 0))/features.std(axis = 0)
+    clusters = db.classes.astype('int32')
+    doses = db.doses
+    
+    loo = LeaveOneOut()
+    loo.get_n_splits(features)
+    regression_errors = []
+    nn_sim = np.zeros((db.get_num_patients(),db.get_num_patients()))
+    p1 = 0
+    for train,test in loo.split(features, doses):
+        model, encoder_model = get_autoencoderish_model(features)
+        x_train = features[train]
+        y_train = doses[train]
+        x_test = features[test]
+        y_test = doses[test]
+        model.fit(x_train, y_train, epochs = 3, batch_size = 4, shuffle = True, verbose = 0)
+        regression_error = model.evaluate(x_test, y_test)
+        regression_errors.append(regression_error)
+        print(regression_error)
+        
+        x_embedding = encoder_model.predict(features)
+        for p2 in range(db.get_num_patients()):
+            if p1 == p2:
+                continue
+            nn_sim[p1, p2] = 1/np.linalg.norm(x_embedding[p1] - x_embedding[p2])
+        p1 += 1
+    print(np.mean(regression_errors))
+    nn_sim = (nn_sim - nn_sim.min(axis = 0))/(nn_sim.max(axis = 0) - nn_sim.min(axis = 0))
+    
+    threshold_grid_search(db, nn_sim)
+    
+def get_features(db, holdout = set([]) ):
+    n_patients = db.get_num_patients()
+    x = get_input_distance_features(db)
+    normalizer = Normalizer()
+    normalizer.fit( x[[ i for i in np.arange(n_patients) if i not in holdout] ] )
+    x = normalizer.transform(x)
+    a = []
+    b = []
+    y = []
+    a_validate = []
+    b_validate = []
+    y_validate = []
+    val_pairs = []
+    true_error = SimilarityFuser(min_matches = 7, max_error = .20).get_true_matches(db)
+    for p1 in range(n_patients):
+        for p2 in range(p1 + 1, n_patients):
+            loss = 0 if true_error[p1,p2] > 0 else 1
+            if p1 in holdout or p2 in holdout:
+                a_validate.append(x[p1])
+                b_validate.append(x[p2])
+                y_validate.append( loss )
+                val_pairs.append((p1,p2))
+            else:
+                a.append(x[p1])
+                b.append(x[p2])
+                y.append( loss )
+    a = np.array(a)
+    b = np.array(b)
+    y = np.array(y).ravel()
+    a_validate = np.array(a_validate)
+    b_validate = np.array(b_validate)
+    y_validate = np.array(y_validate)
+    
+    args = np.arange(len(y))
+    np.random.shuffle(args)
+    
+    return (a[args], b[args], y[args], a_validate, b_validate, y_validate, val_pairs)
+
+def get_similarity_model(n_features, encoding_size = 25, reg = .000001):
+    patient_a = layers.Input(shape = (n_features,))
+    patient_b = layers.Input(shape = (n_features,))
+    activation = 'selu'
+    encoder = Sequential([
+                Dense(50, input_dim = n_features, activation = activation,
+                      activity_regularizer = regularizers.l2( reg )),
+                Dense(100, activation = activation,
+                      activity_regularizer = regularizers.l2( reg )),
+                layers.Dropout(.5, seed = 0),
+                Dense(encoding_size, activation = 'relu'),
+                ])
+    encoded_a = encoder(patient_a)
+    encoded_b = encoder(patient_b)
+    distance_layer = layers.dot([encoded_a, encoded_b], axes = 1, normalize = True)
+    model = Model([patient_a, patient_b], distance_layer)
+#    optimizer = optimizers.SGD(lr = .001, decay = 1e-8, momentum = .01)
+    optimizer = optimizers.Adam()
+    model.compile(optimizer = optimizer, loss = losses.mean_absolute_error)
+    return(model)
+    
+def get_distance_model(n_features, encoding_size = 25, reg = 0.000001):
+    patient_a = layers.Input(shape = (n_features,))
+    patient_b = layers.Input(shape = (n_features,))
+    activation = 'relu'
+    encoder = Sequential([
+                Dense(500, input_dim = n_features, activation = activation,
+                      activity_regularizer = regularizers.l2( reg )),
+                layers.Dropout(.1, seed = 0),
+                Dense(encoding_size, activation = 'relu'),
+                layers.BatchNormalization(),
+                ])
+    encoded_a = encoder(patient_a)
+    encoded_b = encoder(patient_b)
+    distance_layer = layers.Lambda(lambda x: K.expand_dims(K.mean(K.square(x[0] - x[1]),axis=-1),1),
+                                   output_shape=(1,))([encoded_a, encoded_b])
+    distance_activation = Activation('sigmoid')(distance_layer)
+    model = Model(inputs=[patient_a, patient_b], outputs = distance_activation)
+    distance_model = Model(inputs=[patient_a, patient_b], outputs = distance_layer)
+#    optimizer = optimizers.SGD(lr = .01, decay = 1e-8, momentum = .01, nesterov = True)
+    optimizer = optimizers.Adam(lr = .001, decay = 1e-8)
+#    optimizer = optimizers.Adadelta()
+#    optimizer = optimizers.RMSprop()
+    model.compile(optimizer = optimizer, 
+                  loss = losses.mean_squared_error)
+    return(model, distance_model)

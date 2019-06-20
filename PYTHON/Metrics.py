@@ -99,7 +99,12 @@ def local_ssim(x,y,v = None, w = None):
         return 0
         
 def tumor_emd(db, p1, p2, centroids):
+    #calculates an emd between tumors
+    #should be passed as a lambda function to getsim with centroids as a 
+    #normalized list of tumor centroid value
     def weighted_point(p):
+        #currently set to give the largest tumor a weight of 3 and everything else 1
+        #works better than just volume
         centroid = centroids[p]
         volume = np.array([g.volume for g in db.gtvs[p]]).reshape(-1,1)
         max_volume = volume.max()
@@ -114,6 +119,8 @@ def tumor_emd(db, p1, p2, centroids):
     return cv2.EMD(point1, point2, cv2.DIST_C)[0]
 
 def organ_emd(db, p1, p2, centroids):
+    #this one calculates a patient-wise emd based on a list of organ centroids
+    #assumes centroids is an array npatientsxnorgansxndims
     def weighted_point(p):
         centroid = centroids[p,:,:]
         volumes = db.volumes[p,:].reshape(-1,1)
@@ -145,22 +152,25 @@ def procrustes_distance(db,p1,p2,centroids, max_points = 1000):
     c2 = scale_centroid(c2)
     return procrustes(c1, c2)[2]
 
-def n_category_sim(db, p1, p2):
+def n_category_dist(db, p1, p2):
+    #distance score for n category between patients
     n_categories = db.n_categories.astype('int32')
     n1 = n_categories[p1]
     n2 = n_categories[p2]
     normalized_difference = abs(n1 - n2)/n_categories.max()
-    return 1 - normalized_difference
+    return normalized_difference
 
-def t_category_sim(db,p1,p2):
+def t_category_dist(db,p1,p2):
+    #gives a value giving the distance between t-categories fore each patient
     t_category_map = {'Tis': 0, 'Tx': 1, 'T1': 2, 'T2': 3, 'T3': 4, 'T4': 5}
     t1 = db.t_categories[p1]
     t2 = db.t_categories[p2]
     normalized_difference = (abs(t_category_map.get(t1, 0) - t_category_map.get(t2, 0))/5)
-    return 1 - normalized_difference
+    return normalized_difference
 
 
-def gtv_volume_sim(db,p1,p2):
+def gtv_volume_dist(db,p1,p2):
+    #similarity giving the percent different
     gtvns1 = db.gtvs[p1]
     gtvns2 = db.gtvs[p2]
     vol1 = sorted([gtv.volume for gtv in gtvns1], key = lambda x: -x)
@@ -170,6 +180,8 @@ def gtv_volume_sim(db,p1,p2):
     return np.abs(np.sum(vol1) - np.sum(vol2))/(np.sum(vol1) + np.sum(vol2))
 
 def gtv_organ_sim(db,p1,p2):
+    #makes a binary vector denoting the organs that most overlap with each tumor
+    #computes a jaccard/tanimoto similarity based on that vector
     def vectorify(p):
         v = np.zeros((Constants.num_organs,))
         for gtv in db.gtvs[p]:
@@ -179,9 +191,10 @@ def gtv_organ_sim(db,p1,p2):
         return v
     v1 = vectorify(p1)
     v2 = vectorify(p2)
-    return Rankings.jaccard_distance(v1,v2) #1 if np.linalg.norm(v1 - v2) == 0 else 0 
+    return jaccard_distance(v1,v2) #1 if np.linalg.norm(v1 - v2) == 0 else 0 
 
 def gtv_count_sim(db,p1,p2):
+    #similarity based one the difference between number of organs
     gtvs1 = db.gtvs[p1]
     gtvs2 = db.gtvs[p2]
     count1 = 0
@@ -195,6 +208,7 @@ def gtv_count_sim(db,p1,p2):
     return min([count1, count2])/max([count1, count2])
 
 def gtv_volume_jaccard_sim(db,p1,p2):
+    #tanimoto/jaccard similarity between the vector of tumor volumes beteen patients
     vols1 = [gtv.volume for gtv in db.gtvs[p1]]
     vols2 = [gtv.volume for gtv in db.gtvs[p2]]
     vector_len = np.max([len(vols2), len(vols1)])
@@ -202,10 +216,16 @@ def gtv_volume_jaccard_sim(db,p1,p2):
     volume_array2 = np.zeros((vector_len,))
     volume_array1[0:len(vols1)] = vols1
     volume_array2[0:len(vols2)] = vols2
-    return Rankings.jaccard_distance(volume_array1, volume_array2)
+    return jaccard_distance(volume_array1, volume_array2)
+
+def vector_sim(db, p1, p2):
+    #cosine similarity between the vector between the main and secondary tumors
+    vectors = get_gtv_vectors(db)
+    return np.dot(vectors[p1, 3:], vectors[p2, 3:])
 
 #misc functions/features
 def single_convex_hull_projection(point_cloud, centroids, cuttoff = 15):
+    #computes the projection of a given tumor onto the conve
     hull = ConvexHull(point_cloud)
     def project(point, plane):
         distance = np.dot(plane, np.append(point, 1))
@@ -245,6 +265,25 @@ def convex_hull_projection(point_cloud, centroids):
         projections.append(curr_projection)
     return np.vstack(projections)
 
+def get_gtv_vectors(db):
+    #pretty sure this gets a matrix of tumor vectors of the centroid of the main tumor and slope? between the main
+    #tumor and a weighted value of the secondary tumors
+    vectors = np.zeros((db.get_num_patients(), 6))
+    for p in range(db.get_num_patients()):
+        gtvs = db.gtvs[p]
+        center = np.mean([x.position*x.volume for x in gtvs], axis = 0)/np.sum([x.volume for x in gtvs], axis = 0)
+        secondary_points = np.zeros((3,))
+        secondary_tumor_volume = np.sum([tumor.volume for tumor in gtvs])
+        if secondary_tumor_volume > 0:
+            for t in range(len(gtvs)):
+                weight = gtvs[t].volume/secondary_tumor_volume
+                secondary_points = secondary_points + weight*(gtvs[t].position - center)
+            slope = secondary_points/np.linalg.norm(secondary_points)
+        else:
+            slope = np.zeros((3,))
+        vectors[p] = np.hstack([center, slope])
+    return vectors
+
 def get_max_tumor_ssim(patient1, patient2):
     #todo: remember what his does exactly
     
@@ -256,7 +295,7 @@ def get_max_tumor_ssim(patient1, patient2):
         for p2 in range(len(patient2)):
             t2 = patient2[p2]
             options.add(p2)
-            similarity = Rankings.local_ssim(t1.dists, t2.dists, t1.volume, t2.volume)
+            similarity = local_ssim(t1.dists, t2.dists, t1.volume, t2.volume)
             similarities.append((similarity, p1, p2))
     similarities = sorted(similarities, key = lambda x: -x[0])
     for (s, p1, p2) in similarities:

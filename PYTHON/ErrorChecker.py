@@ -10,13 +10,18 @@ from collections import namedtuple
 
 OrganTuple = namedtuple('OrganTuple', ['organ', 'dose'])
 class ErrorChecker():
+    #class that takes the patientset and checks that the data for each patient meets some conditions
+    #used to get a list of the bad patients that the patientset class uses to remove values
 
     def __init__(self):
+        #saves locations of certain keys organs.
+        #eyes are exempt from needing to have non-zero values, since they are basically 0 anyway
         self.ra_eye = Constants.organ_list.index('Rt_Anterior_Seg_Eyeball')
         self.rp_eye = Constants.organ_list.index('Rt_Posterior_Seg_Eyeball')
         self.la_eye = Constants.organ_list.index('Lt_Anterior_Seg_Eyeball')
         self.lp_eye = Constants.organ_list.index('Lt_Posterior_Seg_Eyeball')
         self.eyes = [self.ra_eye, self.rp_eye, self.la_eye, self.lp_eye]
+        #check that these values don't go over a certain value, as that is almost definitely an error
         self.brainstem = Constants.organ_list.index('Brainstem')
         self.spinal_cord = Constants.organ_list.index('Spinal_Cord')
         self.eye_threshold = 14
@@ -24,6 +29,7 @@ class ErrorChecker():
         self.brainstem_threshold = 40
         
     def get_thresholds(self, db):
+        #get an acceptable dose threshold for an organ, either preset or >10 above tumor dose
         thresholds = (db.prescribed_doses.max() + 10)*np.ones((Constants.num_organs,))
         thresholds[self.eyes] = self.eye_threshold
         thresholds[self.spinal_cord] = self. spine_threshold
@@ -31,6 +37,8 @@ class ErrorChecker():
         return thresholds
 
     def check_high_doses(self, db):
+        #checks the patientset for organs with doses over a threshold
+        #usually a perset value or 10 more than the tumor dose (since that shouldn't happend)
         outliers = set([])
         thresholds = self.get_thresholds(db)
         for organ_index in range(0, Constants.num_organs):
@@ -95,6 +103,8 @@ class ErrorChecker():
         return outliers
     
     def get_clean_subset(self, db):
+        #takes a patientset and returns a sorted list of indices of all the patients
+        #that pass all tests
         bad_patients = self.check_missing_organs(db)
         all_patients = set(range(db.get_num_patients()))
         good_patients = all_patients - bad_patients

@@ -6,6 +6,8 @@ Created on Thu Jan 31 14:47:15 2019
 """
 
 class Constants():
+    #all constants I use in the code, so I can make sure they are universal. Organ list is used a lot
+    
     #all non-tumor organs being included (some datasets have more)
     #organ list set via affinity propogation clustering
     organ_list = ['Esophagus',
@@ -157,3 +159,6 @@ class Constants():
     #patients without organs, using their sorted order (12th patient in the sorted list ect)
     missing_organs = {}
     no_tumor = []
+    
+    subsite_map = {'BOT': 0, 'GPS': 1, 'NOS': 2, 'Soft palate': 3, 'Tonsil': 4}
+    laterality_map = {'B': 0, 'L': 1, 'R': 2}

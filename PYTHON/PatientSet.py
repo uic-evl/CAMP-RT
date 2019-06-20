@@ -48,6 +48,8 @@ class PatientSet():
                                usecols = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,18,31]
                                ).loc[ids]
         print(metadata.columns)
+        
+        #super inefficient way of reading in the data
         patients = OrderedDict()
         dose_matrix = np.zeros((num_patients, Constants.num_organs))
         max_dose_matrix = np.zeros((num_patients, Constants.num_organs))
@@ -95,6 +97,7 @@ class PatientSet():
             #misc patient info - laterality, subsite, total dose, etc
             info = metadata.loc[ids[patient_index]]
             group = self.get_patient_class(ids[patient_index], doses.set_index('ROI').mean_dose)
+            #uses a new patient class to acually parse/process data
             new_patient = Patient(distances, doses,
                                   ids[patient_index], group,
                                   info, use_distances = use_distances)
@@ -155,12 +158,16 @@ class PatientSet():
         self.gtvs = gtv_list
         
     def clean_values(self):
+        #subsets to the values approved by the error checker object
         error_checker = ErrorChecker()
         p = error_checker.get_clean_subset(self)
         p = sorted(p)
         self.subset(p)
         
     def subset(self, p):
+        #take of list of indices and just subsets all the data to match
+        #used when getting the error checker output for cleaning
+        #if new values are added, make sure to add them in here
         self.doses = self.doses[p]
         self.max_doses = self.max_doses[p]
         self.min_doses = self.min_doses[p]
@@ -300,14 +307,19 @@ class PatientSet():
         i = 0
         #p = 0
         new_tumor_distances = np.zeros(self.tumor_distances.shape)
+        all_tumor_distances = []
         for p in range(self.get_num_patients()):
+            p_dists = []
             count = len(self.gtvs[p])
-            new_dists = 1000*np.ones((self.tumor_distances.shape[1]))
+            new_dists = np.inf*np.ones((self.tumor_distances.shape[1]))
             for c in range(count):
+                p_dists.append(distances[i])
                 new_dists = np.minimum(new_dists, distances[i])
                 i += 1
             new_tumor_distances[p,:] = new_dists
-        self.tumor_distance = new_tumor_distances
+            all_tumor_distances.append( np.vstack(p_dists))
+        self.tumor_distances = new_tumor_distances
+        self.stack_tumor_distances  = all_tumor_distances
         
     def get_transformed_centroids(self, reference_centroids = None):
         

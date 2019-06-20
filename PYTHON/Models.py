@@ -10,8 +10,15 @@ from ErrorChecker import ErrorChecker
 import Metrics
 
 class KnnEstimator():
+    #class that works as a modified knn predictor for doses
+    #mainn function is evaluate, which gives you the precent prediction error given a patientset and a similarity matrix
     def __init__(self, match_threshold = .65, match_type = 'threshold', min_matches = 8):
+        #match type is how the number of matches are selected
+        #give clusters to make it based on the class.  
+        #threshold uses similarity score, uses max(min_matches, patients with score > match threshold)
+        
         self.min_matches = min_matches
+        #similarity needed to be a match
         self.match_threshold = match_threshold
         self.match_type = match_type
         return
@@ -83,6 +90,7 @@ class KnnEstimator():
         return(percent_error)
         
 class TsimModel():
+    #orginal-ish similarity model that gives a similarity matrix from get_simirity based on a spatial ssim 
     def __init__(self, max_distance = 50, patients = None, organs = None, 
                  similarity_function = None, use_classes = False):
         self.max_distance = max_distance
@@ -173,9 +181,11 @@ class TJaccardModel(TsimModel):
                  similarity_function = None, use_classes = False):
         super(TJaccardModel, self).__init__(max_distance, patients, organs, similarity_function, use_classes)
         self.similarity_function = Metrics.jaccard_distance
+        if organs is None:
+            self.organs = [Constants.organ_list.index(o) for o in Constants.optimal_jaccard_organs]
 
 class OsimModel(TsimModel):
-    
+    #variant that calculates the tsim similarity using organ-organ distances, rather than tumor-organ distances
     def get_similarity(self, data):
         #data is assumed to be a patientset object for now
         if self.patients is None:
@@ -218,7 +228,9 @@ class OsimModel(TsimModel):
         return score_matrix
 
 class SimilarityFuser():
-    
+    #class that uses (logistic regression) to map a list of similarity scores to a single score
+    #attempts to classify each vector as a neighbor (dose error < some number) 
+    #and the match probability is used as the similarity
     def __init__(self, model = None, min_matches = 4, max_error = .1):
         self.min_matches = min_matches
         self.max_error = max_error

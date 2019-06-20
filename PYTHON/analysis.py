@@ -143,9 +143,9 @@ def get_all_features(data, num_pca_components = 10):
             gtvn_volume += gtvn.volume
         tumor_volumes[i, :] = (gtvp_volume, gtvn_volume)
     laterality = data.lateralities.reshape(num_patients, 1)
-    laterality = np.vectorize(TreeEstimator.laterality_map.__getitem__)(laterality)
+    laterality = np.vectorize(Constants.laterality_map.__getitem__)(laterality)
     subsites = data.subsites.reshape(num_patients, 1)
-    subsites = np.vectorize(TreeEstimator.subsite_map.__getitem__)(subsites)
+    subsites = np.vectorize(Constants.subsite_map.__getitem__)(subsites)
     total_doses = data.prescribed_doses.reshape(num_patients, 1)
     ages = data.ages.reshape(-1,1)
     features = np.hstack([tumor_volumes, total_doses, subsites,
@@ -166,9 +166,9 @@ def get_input_tumor_features(data, num_pca_components = 10):
             gtvn_volume += gtvn.volume
         tumor_volumes[i, :] = (gtvp_volume, gtvn_volume)
     laterality = data.lateralities.reshape(num_patients, 1)
-    laterality = np.vectorize(TreeEstimator.laterality_map.__getitem__)(laterality)
+    laterality = np.vectorize(Constants.laterality_map.__getitem__)(laterality)
     subsites = data.subsites.reshape(num_patients, 1)
-    subsites = np.vectorize(TreeEstimator.subsite_map.__getitem__)(subsites)
+    subsites = np.vectorize(Constants.subsite_map.__getitem__)(subsites)
     total_doses = data.prescribed_doses.reshape(num_patients, 1)
     features = np.hstack([tumor_volumes, total_doses, 
                           subsites, tumor_count,
@@ -190,9 +190,9 @@ def get_input_distance_features(data, num_pca_components = 10):
             gtvn_volume += gtvn.volume
         tumor_volumes[i, :] = (gtvp_volume, gtvn_volume)
     laterality = data.lateralities.reshape(num_patients, 1)
-    laterality = np.vectorize(TreeEstimator.laterality_map.__getitem__)(laterality)
+    laterality = np.vectorize(Constants.laterality_map.__getitem__)(laterality)
     subsites = data.subsites.reshape(num_patients, 1)
-    subsites = np.vectorize(TreeEstimator.subsite_map.__getitem__)(subsites)
+    subsites = np.vectorize(Constants.subsite_map.__getitem__)(subsites)
     total_doses = data.prescribed_doses.reshape(num_patients, 1)
     features = np.hstack([tumor_volumes, 
                           total_doses, 
@@ -316,182 +316,6 @@ def centroid_based_tumor_organ_pairs(db):
                     organ = Constants.organ_list[o]
             gtv[t_ind] = GTV(t.name, t.volume, t.position, t.doses, t.dists, organ)
             
-def get_gtv_vectors(db):
-    vectors = np.zeros((db.get_num_patients(), 6))
-    for p in range(db.get_num_patients()):
-        gtvs = db.gtvs[p]
-        center = np.mean([x.position*x.volume for x in gtvs], axis = 0)/np.sum([x.volume for x in gtvs], axis = 0)
-        secondary_points = np.zeros((3,))
-        secondary_tumor_volume = np.sum([tumor.volume for tumor in gtvs])
-        if secondary_tumor_volume > 0:
-            for t in range(len(gtvs)):
-                weight = gtvs[t].volume/secondary_tumor_volume
-                secondary_points = secondary_points + weight*(gtvs[t].position - center)
-            slope = secondary_points/np.linalg.norm(secondary_points)
-        else:
-            slope = np.zeros((3,))
-        vectors[p] = np.hstack([center, slope])
-    return vectors
-
-def get_vector_sim(db, p1, p2):
-    vectors = get_gtv_vectors(db)
-    return np.dot(vectors[p1, 3:], vectors[p2, 3:])
-
-def get_autoencoderish_model(features):
-    input_x = Input(shape=(features.shape[1],))
-    encoder = Sequential([
-            Dense(45, input_dim=features.shape[1], activation = 'relu'),
-            Dense(100, activation = 'relu'),
-            Dense(100, activation = 'relu'),
-            Dense(100, activation = 'relu'),
-            ])(input_x)
-        
-    decoder = Sequential([
-            Dense(100,input_dim = 4, activation = 'relu',
-                  activity_regularizer = regularizers.l2(.01)),
-            Dense(45, activation = 'relu'),
-            ])(encoder)
-    model = Model(input_x, decoder)
-    encoder_model= Model(input_x, encoder)
-#    optimizer = optimizers.SGD(lr = .01, decay = 1e-12, momentum = .1)
-    optimizer = optimizers.Adam()
-    model.compile(loss = losses.mean_absolute_error, 
-                  optimizer = optimizer)
-    return(model, encoder_model)
-    
-def get_regression_model(features, activation = 'relu', lr = .01):
-    model = Sequential([
-            Dense(45, input_dim=features.shape[1], activation = activation),
-            Dense(100, activation = activation),
-            Dense(200, activation = activation),
-            Dense(45, activation = activation)
-            ])
-    optimizer = optimizers.SGD(lr = lr, decay = 1e-4, momentum = 0.05)
-    model.compile(loss = losses.mean_absolute_error, 
-                  optimizer = optimizer)
-    return(model)
-
-def run_autoencoder(db):
-    from keras.models import Sequential, Model
-    from keras.layers import Dense, Activation, Input
-    from keras import losses, optimizers,regularizers
-    from sklearn.model_selection import LeaveOneOut
-    features = get_input_distance_features(db)
-    features = (features - features.mean(axis = 0))/features.std(axis = 0)
-    clusters = db.classes.astype('int32')
-    doses = db.doses
-    
-    loo = LeaveOneOut()
-    loo.get_n_splits(features)
-    regression_errors = []
-    nn_sim = np.zeros((db.get_num_patients(),db.get_num_patients()))
-    p1 = 0
-    for train,test in loo.split(features, doses):
-        model, encoder_model = get_autoencoderish_model(features)
-        x_train = features[train]
-        y_train = doses[train]
-        x_test = features[test]
-        y_test = doses[test]
-        model.fit(x_train, y_train, epochs = 3, batch_size = 4, shuffle = True, verbose = 0)
-        regression_error = model.evaluate(x_test, y_test)
-        regression_errors.append(regression_error)
-        print(regression_error)
-        
-        x_embedding = encoder_model.predict(features)
-        for p2 in range(db.get_num_patients()):
-            if p1 == p2:
-                continue
-            nn_sim[p1, p2] = 1/np.linalg.norm(x_embedding[p1] - x_embedding[p2])
-        p1 += 1
-    print(np.mean(regression_errors))
-    nn_sim = (nn_sim - nn_sim.min(axis = 0))/(nn_sim.max(axis = 0) - nn_sim.min(axis = 0))
-    
-    threshold_grid_search(db, nn_sim)
-    
-def get_features(db, holdout = set([]) ):
-    n_patients = db.get_num_patients()
-    x = get_input_distance_features(db)
-    normalizer = Normalizer()
-    normalizer.fit( x[[ i for i in np.arange(n_patients) if i not in holdout] ] )
-    x = normalizer.transform(x)
-    a = []
-    b = []
-    y = []
-    a_validate = []
-    b_validate = []
-    y_validate = []
-    val_pairs = []
-    true_error = SimilarityFuser(min_matches = 7, max_error = .20).get_true_matches(db)
-    for p1 in range(n_patients):
-        for p2 in range(p1 + 1, n_patients):
-            loss = 0 if true_error[p1,p2] > 0 else 1
-            if p1 in holdout or p2 in holdout:
-                a_validate.append(x[p1])
-                b_validate.append(x[p2])
-                y_validate.append( loss )
-                val_pairs.append((p1,p2))
-            else:
-                a.append(x[p1])
-                b.append(x[p2])
-                y.append( loss )
-    a = np.array(a)
-    b = np.array(b)
-    y = np.array(y).ravel()
-    a_validate = np.array(a_validate)
-    b_validate = np.array(b_validate)
-    y_validate = np.array(y_validate)
-    
-    args = np.arange(len(y))
-    np.random.shuffle(args)
-    
-    return (a[args], b[args], y[args], a_validate, b_validate, y_validate, val_pairs)
-
-def get_similarity_model(n_features, encoding_size = 25, reg = .000001):
-    patient_a = layers.Input(shape = (n_features,))
-    patient_b = layers.Input(shape = (n_features,))
-    activation = 'selu'
-    encoder = Sequential([
-                Dense(50, input_dim = n_features, activation = activation,
-                      activity_regularizer = regularizers.l2( reg )),
-                Dense(100, activation = activation,
-                      activity_regularizer = regularizers.l2( reg )),
-                layers.Dropout(.5, seed = 0),
-                Dense(encoding_size, activation = 'relu'),
-                ])
-    encoded_a = encoder(patient_a)
-    encoded_b = encoder(patient_b)
-    distance_layer = layers.dot([encoded_a, encoded_b], axes = 1, normalize = True)
-    model = Model([patient_a, patient_b], distance_layer)
-#    optimizer = optimizers.SGD(lr = .001, decay = 1e-8, momentum = .01)
-    optimizer = optimizers.Adam()
-    model.compile(optimizer = optimizer, loss = losses.mean_absolute_error)
-    return(model)
-    
-def get_distance_model(n_features, encoding_size = 25, reg = 0.000001):
-    patient_a = layers.Input(shape = (n_features,))
-    patient_b = layers.Input(shape = (n_features,))
-    activation = 'relu'
-    encoder = Sequential([
-                Dense(500, input_dim = n_features, activation = activation,
-                      activity_regularizer = regularizers.l2( reg )),
-                layers.Dropout(.1, seed = 0),
-                Dense(encoding_size, activation = 'relu'),
-                layers.BatchNormalization(),
-                ])
-    encoded_a = encoder(patient_a)
-    encoded_b = encoder(patient_b)
-    distance_layer = layers.Lambda(lambda x: K.expand_dims(K.mean(K.square(x[0] - x[1]),axis=-1),1),
-                                   output_shape=(1,))([encoded_a, encoded_b])
-    distance_activation = Activation('sigmoid')(distance_layer)
-    model = Model(inputs=[patient_a, patient_b], outputs = distance_activation)
-    distance_model = Model(inputs=[patient_a, patient_b], outputs = distance_layer)
-#    optimizer = optimizers.SGD(lr = .01, decay = 1e-8, momentum = .01, nesterov = True)
-    optimizer = optimizers.Adam(lr = .001, decay = 1e-8)
-#    optimizer = optimizers.Adadelta()
-#    optimizer = optimizers.RMSprop()
-    model.compile(optimizer = optimizer, 
-                  loss = losses.mean_squared_error)
-    return(model, distance_model)
 
 def organ_selection(organ_list, db, similarity_function = None, 
                     use_classes = False):
@@ -531,18 +355,9 @@ def optimal_organ_search(db, similarity_function = None, use_classes = False):
         best_score = best
     return optimal_organs, best_score
     
-def get_transformed_tumor_centroids(gtvs, transform):
-    t_centroids = np.ones((len(gtvs), 4))
-    pos = 0
-    for gtv in gtvs:
-        t_centroids[pos, 0:3] = gtv.position
-        pos += 1
-    new_centroids = np.dot(transform, t_centroids.T).T
-    return new_centroids
 
-
-db = PatientSet(root = 'data\\patients_v*\\',
-                use_distances = False)
+#db = PatientSet(root = 'data\\patients_v*\\',
+#                use_distances = False)
 class_similarity = get_sim(db, lambda d,x,y: 1 if db.classes[x] == db.classes[y] else 0)    
 
 t_centroids, t_tumor_centroids = db.get_transformed_centroids()
@@ -557,90 +372,3 @@ total_dose_similarity = dist_to_sim(get_sim(db, total_dose_distance))
 estimator = SimilarityFuser()
 similarity = estimator.get_similarity(db, [tjaccard_similarity*total_dose_similarity])
 threshold_grid_search(db,similarity)
-#p = np.array([0,1,2])
-#nn_sim = np.zeros((db.get_num_patients(), db.get_num_patients()))
-#nn_sim2 = np.zeros(nn_sim.shape)
-#while p.min() < db.get_num_patients():
-#    while p.max() >= db.get_num_patients():
-#        p = p[:-1]
-#    (x1, x2, y, x1_val, x2_val, y_val, val_ids) = get_features(db, holdout = set(p))
-#    p = p + len(p)
-#    model, distance_model = get_distance_model(x1.shape[1])
-#    model.fit([x1, x2], y, 
-#              epochs = 100, 
-#              batch_size = 90*4, 
-#              shuffle = True, 
-#              verbose = 0,
-#              validation_data = ([x1_val, x2_val], y_val))
-#    y_pred = distance_model.predict([x1_val, x2_val])
-#    output = model.predict([x1_val, x2_val])
-#    print(p.max(), model.evaluate([x1_val, x2_val], y_val))
-#    print((y_pred[0:5]).ravel(), y_pred.mean())
-#    print(output[0:5].ravel(), output.mean()) 
-#    for idx in range(len(y_pred)):
-#        score = y_pred[idx]
-#        (p1, p2) = val_ids[idx]
-#        nn_sim[p1, p2] = score
-#        nn_sim2[p1, p2] = output[idx]
-#nn_sim += nn_sim.transpose()
-#nn_sim2 += nn_sim2.transpose()
-#nn_sim = (nn_sim - nn_sim.min())/(nn_sim.max() - nn_sim.min())
-#threshold_grid_search(db, nn_sim)
-
-#asymetric_lymph_similarity = lymph_similarity(db)
-#percent_diff = lambda x,y: 1 - np.abs(x-y)/np.max([x,y])
-#symmetric_lymph_similarity = get_sim(db, lambda d,x,y: jaccard_distance(db.lymph_nodes[x], db.lymph_nodes[y]))
-#age_similarity = get_sim(db, lambda d,x,y: np.abs(d.ages[x] - d.ages[y])/d.ages.max())
-#
-#subsite_similarity = get_sim(db, lambda d,x,y: 1 if d.subsites[x] == d.subsites[y] else 0)
-#
-#total_dose_similarity = get_sim(db, lambda d,x,y: percent_diff(d.prescribed_doses[x], d.prescribed_doses[y]))
-#
-#gender_similarity = get_sim(db, lambda d,x,y: 1 if d.genders[x] == d.genders[y] else 0)
-#
-#n_category_similarity = get_sim(db, n_category_sim)
-#t_category_similarity = get_sim(db, t_category_sim)
-#
-#gtv_volume_similarity = get_sim(db, gtv_volume_sim)
-#gtv_count_similarity = get_sim(db, gtv_count_sim)
-#
-#vector_similarity = get_sim(db, get_vector_sim)
-#organ_similarity = get_sim(db, gtv_organ_sim)
-
-#ajcc_similarity = get_sim(db, 
-#                          lambda d,x,y: percent_diff(d.ajcc8[x] + 1, d.ajcc8[y] + 1))
-
-#class_similarity = get_sim(db, lambda d,x,y: 1 if db.classes[x] == db.classes[y] else 0)
-#distance_similarity = TsimModel(
-#        organs = [Constants.organ_list.index(o) for o in Constants.optimal_organs]).get_similarity(db)
-#best_score, best_k, best_min_matches = threshold_grid_search(db, distance_similarity)
-#best_score, best_k, best_min_matches = threshold_grid_search(db, distance_similarity*class_similarity)
-
-#nca_tumor_similarity = get_nca_similarity(db, min_nca_components = 15, lmnn = True)
-#nca_distance_similarity = get_nca_similarity(db, 'distances', min_nca_components = 15)
-#lmnn_distance_similarity = get_nca_similarity(db, 'distances', min_nca_components = 15, lmnn=True)
-#nca_lymph_similarity = get_nca_similarity(db, 'lymph')
-#nca_organ_similarity = get_nca_similarity(db, 'organs')
-
-#estimator = SimilarityFuser()
-#similarity = estimator.get_similarity(db, [distance_similarity*total_dose_similarity])
-
-#print('similarity finished')
-
-#best_score, best_k, best_min_matches = threshold_grid_search(db, similarity)
-#best_score, best_k, best_min_matches = threshold_grid_search(db, nca_distance_similarity)
-#best_score, best_k, best_min_matches = threshold_grid_search(db, lmnn_distance_similarity)
-           
-#export(db, similarity = similarity, estimator = KnnEstimator(match_threshold = best_k, min_matches = best_min_matches))
-#print(best_k, best_min_matches, best_score)
-#print(KnnEstimator(match_type = 'clusters').evaluate(similarity, db).mean())
-#print(KnnEstimator(match_type = 'clusters').evaluate(nca_tumor_similarity, db).mean())
-#print(KnnEstimator(match_type = 'clusters').evaluate(distance_similarity, db).mean())
-#print(KnnEstimator(match_type = 'clusters').evaluate(nca_distance_similarity, db).mean())
-#print('\n')
-#print(KnnEstimator(match_type = 'clusters').evaluate(similarity*class_similarity, db).mean())
-#print(KnnEstimator(match_type = 'clusters').evaluate(nca_tumor_similarity*class_similarity, db).mean())
-#print(KnnEstimator(match_type = 'clusters').evaluate(distance_similarity*class_similarity, db).mean())
-#print(KnnEstimator(match_type = 'clusters').evaluate(nca_distance_similarity*class_similarity, db).mean())
-
-
