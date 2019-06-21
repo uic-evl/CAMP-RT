@@ -69,7 +69,7 @@ var scatter;
 var bubbleChart;
 var data;
 var meshes;
-var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset_rtward3Only2.json"];
+var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset.json"];
 var promises = [];
 
 files.forEach(function (url) {
@@ -727,7 +727,6 @@ function getTargetVertices(gtvs){
 		let gtvn_suffix = 2;
 		while( gtvn_suffix < gtvs.length){
 			let gtv = gtvs[gtvn_suffix].clone();
-			console.log(gtv.userData.volume);
 			target_volume = gtv.userData.volume + target_volume;
 			let new_position = gtv.position.multiplyScalar(gtv.userData.volume);
 			target_position.add(new_position);
@@ -789,7 +788,7 @@ function formatFirstPatient(updatedPatient){
 		+ crossColor 
 		+ ';\'>&#10010</span>';//add a colored cross by the selected patients name
 	var patientSceneTop = firstPatient.querySelector('.patientSceneTop');
-	patientSceneTop.style.gridTemplateColumns = '1fr 1fr 1fr 1fr';
+	patientSceneTop.style.gridTemplateColumns = 'auto-fit 1fr 1fr 1fr';
 	var buttonNames = ['Real', 'Error', 'Pred.'];
 	buttonNames.forEach(function(name,idx){
 		var differenceButton = document.createElement('div')
@@ -816,7 +815,6 @@ function formatFirstPatient(updatedPatient){
 function updateOrder(updatedPatient) {
 	//sorts the divs of list-items for the patients based on similarity score
     var lastPatient = document.getElementById(data.getPatientMatches(selectedPatient)[scenes.length - 1]);
-	formatFirstPatient(updatedPatient);
     //insert last element from patientMatches in last place (before null)
     try{
 		parent.insertBefore(lastPatient, null);
@@ -846,7 +844,7 @@ function updateOrder(updatedPatient) {
 		pScoreElement.innerHTML = data.getPatientSimilarityScores(selectedPatient)[i+1].toFixed(5);
 		first.style.display = "none";
 	}
-
+	formatFirstPatient(updatedPatient);
 }
 
 function initializeRiskPrediction(rank) {
@@ -993,7 +991,6 @@ function updateSize() {
 function populateAndPlaceDetails(state) {
 	//I think this is hte organ-centroid tooltip
     if (state == "SHOW") {
-
         nodeDetails.style.display = "block";
         // PLACEMENT
         // check if details are offscreen, then shift appropriately
@@ -1011,8 +1008,14 @@ function populateAndPlaceDetails(state) {
             nodeDetails.style.top = (mouse.y + detailsOffsetY) + "px";
         }
        
-        // POPULATE
-
+        // fills in tooltip values when hovering over an organ node
+		var rounded = function(value){ //applies to fixed with error checking if value is undefined
+			if(value == undefined || value == '' || value == null){
+				return('N/A');
+			} else{
+				return (+value).toFixed(1)
+			}
+		}
         // Organ name
         organName.innerHTML = nodeHover.name;
 
@@ -1023,16 +1026,16 @@ function populateAndPlaceDetails(state) {
         lineSeparator.style["borderColor"] = "#" + nodeHover.material.color.getHexString();
 
         // Volume
-        volumeVal.innerHTML = nodeHover.userData.volume.toFixed(1) + "";
+        volumeVal.innerHTML = rounded(nodeHover.userData.volume) + "";
 
         // Mean Dose
-        meanDoseVal.innerHTML = nodeHover.userData.meanDose.toFixed(1) + "  GY";
+        meanDoseVal.innerHTML = rounded(nodeHover.userData.meanDose) + "  GY";
 
         // Min Dose
-        minDoseVal.innerHTML = nodeHover.userData.minDose.toFixed(1) + "";
+        minDoseVal.innerHTML = rounded(nodeHover.userData.minDose) + "";
 
         // Max Dose
-        maxDoseVal.innerHTML = nodeHover.userData.maxDose.toFixed(1) + "";
+        maxDoseVal.innerHTML = rounded(nodeHover.userData.maxDose) + "";
 
     } else if (state == "HIDE") {
         nodeDetails.style.display = "none";

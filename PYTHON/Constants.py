@@ -150,6 +150,7 @@ class Constants():
     v3_no_tumor = [17, 39, 101, 115, 2020, 10011, 10043, 10074, 10080, 10094, 10145, 10148, 10174, 10181]
     v3_bad_positions = [10018, 10022, 10020, 10044, 5041, 5309]
     v2_bad_entries = [239, 10034, 10164, 174, 175, 205, 249, 2009, 5059]
+    all_bad_entries = sorted(set(v3_bad_entries + v3_real_bad_entries + v3_no_tumor + v3_bad_positions + v2_bad_entries))
     v2_half_dosed = [160, 5077, 178, 155, 221, 251, 2007, 212, 234,154]
     #pateints with like, really high neck radation, chosen manually
     v2_high_throat_dose = [184, 276, 5084, 246, 289, 283, 5068, 197, 5007, 100, 10054, 10, 145, 10199]

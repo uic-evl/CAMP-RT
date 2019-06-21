@@ -55,9 +55,22 @@ var Controller = (function(){
 		},
 		
 		switchScene: function(scene, type, data){
+			//changes color scheme of main patient to predicted, actual dose or dose error
 			var id = scene.userData.element.parentElement.id;
+			var gtvRegex = RegExp('GTV*');
 			scene.children.forEach(function(d){
-				if(d.userData.type == 'node' && d.name != 'GTVp' && d.name != 'GTVn'){
+				//if not real dose, make the gtv outline translucent
+				if(gtvRegex.test(d.name)){
+					let organName = d.name;
+					let outline = scene.getObjectByName(d.name + '_outline');
+					if(type.toLowerCase() != 'pred.' && type.toLowerCase() != 'error'){
+						outline.material.opacity = 1;
+					} else{
+						outline.material.opacity = 0;
+					}
+				}
+				//else, change all the value and colors accordingly
+				else if(d.userData.type == 'node'){
 					var organName = d.name;
 					if(type.toLowerCase() == 'pred.'){
 						var dose = data.getEstimatedDose(id, organName);
@@ -71,14 +84,14 @@ var Controller = (function(){
 					}
 					d.material.color.set(color);
 
-					d.userData.meanDose = dose.toFixed(3);
-					d.userData.dosePerVolume = (dose/data.getOrganVolume(id, organName)).toFixed(3);
-					if(type.toLowerCase() == 'actual'){
-						d.userData.maxDose = data.getMaxDose(id, organName).toFixed(3);
-						d.userData.minDose = data.getMinDose(id, organName).toFixed(3);
+					d.userData.meanDose = +(dose.toFixed(3));
+					d.userData.dosePerVolume = +((dose/data.getOrganVolume(id, organName)).toFixed(3));
+					if(type.toLowerCase() == 'real'){
+						d.userData.maxDose = +(data.getMaxDose(id, organName).toFixed(3));
+						d.userData.minDose = +(data.getMinDose(id, organName).toFixed(3));
 					} else{
-						d.userData.maxDose = '';
-						d.userData.minDose = '';
+						d.userData.maxDose = undefined;
+						d.userData.minDose = undefined;
 					}
 					var model = scene.getObjectByName(organName + '_model');
 					if(model != undefined){
