@@ -275,6 +275,7 @@ class PatientSet():
             classes = pd.read_csv(class_file,
                                        index_col = 1)
             classes = classes.drop(labels = ['Unnamed: 0'], axis = 1)
+            classes = classes.sort_index()
             classes.columns = classes.columns.str.strip()
             self.classes = classes[class_name].values.astype('int32')
             self.num_classes = len(self.classes)

@@ -26,6 +26,8 @@ DoseScatterPlot.prototype.draw = function(target, selectedPerson = null){
 	this.yMargin = .03*this.width;
 	this.axisLabelSize = 16;//pix
 	this.clusterMargin = 20;
+	this.baseOpacity = .75;
+	this.highlightedOpacity = .9;
 	d3.select("#"+target).selectAll('.scatterSvg').remove();
 	this.svg = d3.select("#"+target).insert('svg',':first-child')
 					.attr('class', 'scatterSvg')
@@ -182,7 +184,7 @@ DoseScatterPlot.prototype.drawCircles = function(selectedPatient){
 		.attr('fill', function(d){ 
 			return getColor(d);})
 		.attr('stroke', 'black')
-		.attr('opacity', .8)
+		.attr('opacity', self.highlightedOpacity)
 		.attr('stroke-width', 1);
 	this.circles.on('click', function(d){
 		switchPatient(d);//from camprt.js
@@ -300,13 +302,13 @@ DoseScatterPlot.prototype.setupCurveTooltip = function(){
 			self.tooltip.transition().duration(50).style('visibility','visible');
 			let color = data.getClusterColor(d.cluster, patient = false);
 			d3.selectAll('.point[fill=' + color + "][opacity='0.5']")
-				.attr('opacity', .9);
+				.attr('opacity', self.highlightedOpacity);
 		}).on('mouseout', function(d){
 			d3.select(this).attr('opacity', .3);
 			self.tooltip.transition().duration(50).style('visibility', 'hidden');
 			let color = data.getClusterColor(d.cluster, patient=false);
 			d3.selectAll('.point[fill=' + color + "][opacity='0.9']")
-				.attr('opacity', .5);
+				.attr('opacity', self.baseOpacity);
 		});
 }
 
@@ -386,7 +388,7 @@ DoseScatterPlot.prototype.highlightSelectedPatients = function(selectedPerson){
 			return getColor(d);})
 		.attr('stroke', 'black')
 		.attr('stroke-width', 1)
-		.attr('opacity', .5);
+		.attr('opacity', self.baseOpacity);
 	//get entries linked to the person
 	var selectedMatches = new Array();
 	self.data.getPatientMatches(selectedPerson).forEach(function(id){

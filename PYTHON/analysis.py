@@ -355,20 +355,46 @@ def optimal_organ_search(db, similarity_function = None, use_classes = False):
         best_score = best
     return optimal_organs, best_score
     
+#db = PatientSet(root = 'data\\patients_v*\\', use_distances = True,
+#                denoise = False, use_clean_subset = False, outliers = Constants.v2_bad_entries)
+db = PatientSet(root = 'data\\patients_v*\\',
+                use_distances = False,
+                denoise = False)
+#    
+#distances = db.get_all_tumor_distances()
+#distances = Denoiser(normalize = False, noise = .5).fit_transform(distances, lr = .0001)
+#tumor_sets = np.zeros((db.get_num_patients(), Constants.num_organs, 2))
+#for p in range(db.get_num_patients()):
+#    gtvs = db.gtvs[p]
+#    left = np.zeros((Constants.num_organs,))
+#    right = copy.copy(left)
+#    #position[0] > 0 is left side 
+#    for gtv in gtvs:
+#        if gtv.position[0] > 0:
+#            left = np.minimum(left, gtv.dists)
+#        else:
+#            right = np.minimum(right, gtv.dists)
+        
 
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                use_distances = False)
-class_similarity = get_sim(db, lambda d,x,y: 1 if db.classes[x] == db.classes[y] else 0)    
-
-t_centroids, t_tumor_centroids = db.get_transformed_centroids()
-
-tjaccard_similarity = TJaccardModel().get_similarity(db)
-
-knn = threshold_grid_search(db, tjaccard_similarity, start_k = .8, n_itters = 10, get_model = True)
-export(db, similarity = tjaccard_similarity, model = knn)
-total_dose_distance = lambda d,p1,p2: np.abs(db.prescribed_doses[p1] - db.prescribed_doses[p2])
-total_dose_similarity = dist_to_sim(get_sim(db, total_dose_distance))
-
-estimator = SimilarityFuser()
-similarity = estimator.get_similarity(db, [tjaccard_similarity*total_dose_similarity])
-threshold_grid_search(db,similarity)
+#def denoise_tumor_distances(db):
+#    #passes tumors through a densoiing autoencoder.  
+#    #will change self.tumor_distance but not self.gtvs
+#    distances = self.get_all_tumor_distances()
+#    distances = Denoiser(normalize = False, noise = .5).fit_transform(distances, lr = .0001)
+#    i = 0
+#    #p = 0
+#    new_tumor_distances = np.zeros(self.tumor_distances.shape)
+#    all_tumor_distances = []
+#    for p in range(self.get_num_patients()):
+#        p_dists = []
+#        count = len(self.gtvs[p])
+#        new_dists = np.inf*np.ones((self.tumor_distances.shape[1]))
+#        for c in range(count):
+#            p_dists.append(distances[i])
+#            new_dists = np.minimum(new_dists, distances[i])
+#            i += 1
+#        new_tumor_distances[p,:] = new_dists
+#        all_tumor_distances.append( np.vstack(p_dists))
+#    self.tumor_distances = new_tumor_distances
+#    self.stack_tumor_distances  = all_tumor_distances
+    
