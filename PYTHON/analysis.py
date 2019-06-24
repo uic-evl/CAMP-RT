@@ -19,6 +19,7 @@ from preprocessing import *
 from sklearn.cluster import KMeans
 from NCA import NeighborhoodComponentsAnalysis
 from Metrics import *
+import re
 
 
 
@@ -356,8 +357,8 @@ def optimal_organ_search(db, similarity_function = None, use_classes = False):
     return optimal_organs, best_score
 
 
-db = PatientSet(root = 'data\\patients_v*\\',
-                use_distances = False)
+#db = PatientSet(root = 'data\\patients_v*\\',
+#                use_distances = False)
 #
 #distances = db.get_all_tumor_distances()
 #distances = Denoiser(normalize = False, noise = .5).fit_transform(distances, lr = .0001)
@@ -376,15 +377,18 @@ db = PatientSet(root = 'data\\patients_v*\\',
 #    tumor_sets[p, :, 0] = left
 #    tumor_sets[p, :, 1] = right
 #
-import re
-flip_args = np.arange(Constants.num_organs)
-for organ in Constants.organ_list:
-    for pattern in [('Rt_', 'Lt_'), ('Lt_', 'Rt_')]:
-        if re.match(pattern[0], organ) is not None:
-            other_organ = re.sub(pattern[0], pattern[1], organ)
-            idx1 = Constants.organ_list.index(organ)
-            idx2 = Constants.organ_list.index(other_organ)
-            flip_args[idx1] = idx2
+def get_flip_args(organ_list = None):
+    if organ_list is None:
+        organ_list = Constants.organ_list
+    flip_args = np.arange(len(organ_list))
+    for organ in organ_list:
+        for pattern in [('Rt_', 'Lt_'), ('Lt_', 'Rt_')]:
+            if re.match(pattern[0], organ) is not None:
+                other_organ = re.sub(pattern[0], pattern[1], organ)
+                idx1 = organ_list.index(organ)
+                idx2 = organ_list.index(other_organ)
+                flip_args[idx1] = idx2
+    return flip_args
             
 def tsim(d1, d2, adjacency):
     scores = []
@@ -394,33 +398,36 @@ def tsim(d1, d2, adjacency):
         scores.append(jaccard_distance(d1[organ_set], d2[organ_set]))
     return np.mean(scores)
 
-model = TJaccardModel()
-adjacency = model.get_adjacency_lists(db.organ_distances, np.arange(Constants.num_organs))
-normal_distances = db.tumor_distances
-flipped_distances = db.tumor_distances[:, flip_args]
-flipped_doses = db.doses[:, flip_args]
-dose_predictions = np.zeros((db.get_num_patients(), Constants.num_organs))
-for p1 in range(db.get_num_patients()):
-    matches = []
-    for p2 in range(0, db.get_num_patients()):
-        if p1 == p2:
-            continue
-        base_similarity = tsim(normal_distances[p1], normal_distances[p2], adjacency)
-        flipped_similarity = tsim(normal_distances[p1], flipped_distances[p2], adjacency)
-        if base_similarity > flipped_similarity:
-            match = (base_similarity, db.doses[p2])
-        else:
-            match = (flipped_similarity, flipped_doses[p2])
-        matches.append(match)
-    matches = sorted(matches, key = lambda x: -x[0])
-    n_matches = int(round(np.sqrt( len( np.where(db.classes == db.classes[p1])[0] ) )))
-    prediction = np.array([x[1] for x in matches[0:n_matches]])
-    weights = np.array([x[0] for x in matches[0:n_matches]]).reshape(-1,1)
-    if weights.mean() <= 0:
-        print(weights, p1, [x[0] for x in matches])
-    dose_predictions[p1,:] = np.mean(prediction*weights, axis = 0)/np.mean(weights)
-
-print(KnnEstimator().get_error(dose_predictions, db.doses).mean())
+def symmetric_similarity(db):
+    flip_args = get_flip_args()
+    adjacency = TJaccardModel().get_adjacency_lists(db.organ_distances, np.arange(Constants.num_organs))
+    normal_distances = db.tumor_distances
+    flipped_distances = db.tumor_distances[:, flip_args]
+    flipped_doses = db.doses[:, flip_args]
+    dose_predictions = np.zeros((db.get_num_patients(), Constants.num_organs))
+    for p1 in range(db.get_num_patients()):
+        matches = []
+        for p2 in range(0, db.get_num_patients()):
+            if p1 == p2:
+                continue
+            base_similarity = tsim(normal_distances[p1], normal_distances[p2], adjacency)
+            flipped_similarity = tsim(normal_distances[p1], flipped_distances[p2], adjacency)
+            if base_similarity > flipped_similarity:
+                match = (base_similarity, db.doses[p2])
+            else:
+                match = (flipped_similarity, flipped_doses[p2])
+            matches.append(match)
+        matches = sorted(matches, key = lambda x: -x[0])
+        n_matches = int(round(np.sqrt( len( np.where(db.classes == db.classes[p1])[0] ) )))
+        prediction = np.array([x[1] for x in matches[0:n_matches]])
+        weights = np.array([x[0] for x in matches[0:n_matches]]).reshape(-1,1)
+        if weights.mean() <= 0:
+            print(weights, p1, [x[0] for x in matches])
+        dose_predictions[p1,:] = np.mean(prediction*weights, axis = 0)/np.mean(weights)
+    
+    print(KnnEstimator().get_error(dose_predictions, db.doses).mean())
+    return(dose_predictions)
+symmetric_similarity(db)
 #best_val = np.inf
 #best_min_matches = 0
 #best_max_error= 0
