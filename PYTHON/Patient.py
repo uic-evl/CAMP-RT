@@ -331,16 +331,16 @@ class Patient():
     def get_main_tumor(self):
         #basically gives a proxy so we use only the most important tumor
         tumor_volume = 0.0
-        tumor_distances = np.zeros((Constants.num_organs,))
-#        tumor_distances = self.gtvs[0].dists[:]
+#        tumor_distances = np.zeros((Constants.num_organs,))
+        tumor_distances = self.gtvs[0].dists[:]
         tumor_position = np.zeros((3,))
         try:
             for gtv in self.gtvs:
                 tumor_volume += gtv.volume
-                tumor_distances += gtv.volume*gtv.dists
-#                tumor_distances = np.minimum(gtv.dists, tumor_distances)
+#                tumor_distances += gtv.volume*gtv.dists
+                tumor_distances = np.minimum(gtv.dists, tumor_distances)
                 tumor_position += gtv.volume*gtv.position
-            tumor_distances /= tumor_volume
+#            tumor_distances /= tumor_volume
             tumor_position /= tumor_volume
         except:
             print('error reading tumor volume for ', self.id)

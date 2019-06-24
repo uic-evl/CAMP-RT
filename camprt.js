@@ -69,7 +69,7 @@ var scatter;
 var bubbleChart;
 var data;
 var meshes;
-var files = ["data/organAtlas.json", "PYTHON/data/patients_dataset_rtward3Only2.json"];
+var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset_com.json"];
 var promises = [];
 
 files.forEach(function (url) {

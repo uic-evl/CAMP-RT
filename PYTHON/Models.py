@@ -103,7 +103,9 @@ class TsimModel():
         else:
             self.similarity_function = similarity_function
 
-    def get_adjacency_lists(self, organ_distance_matrix, organs):
+    def get_adjacency_lists(self, organ_distance_matrix, organs = None):
+        if organs is None:
+            organs = self.organs
         #this code is much simpler than expected
         organ_distances = organ_distance_matrix[organs][:, organs]
         adjacency_lists = []
@@ -135,19 +137,10 @@ class TsimModel():
         score_matrix = np.zeros((num_patients, num_patients))
         for patient1 in range(0, num_patients - 1):
             for patient2 in range(patient1 + 1, num_patients):
-                if self.use_classes and clusters[patient1] != clusters[patient2]:
-                    continue
-                scores = []
-                for organ in range(num_organs):
-                    adjacent_args = adjacency[organ]
-                    if len(adjacent_args) < 1:
-                        continue
-                    d1 = distances[patient1, adjacent_args]
-                    d2 = distances[patient2, adjacent_args]
-                    v1 = volumes[patient1, adjacent_args]
-                    v2 = volumes[patient2, adjacent_args]
-                    scores.append( self.similarity_function(d1,d2,v1,v2) )
-                score_matrix[patient1, patient2] = np.mean(scores)
+                scores = self.pairwise_similarity(patient1, patient2, 
+                                                     distances, volumes,
+                                                     clusters, adjacency)
+                score_matrix[patient1, patient2] = scores
         score_matrix += np.transpose(score_matrix)
 #        scale to between 0 and .99
         score_matrix = (score_matrix - score_matrix.min())
@@ -155,6 +148,22 @@ class TsimModel():
         for p in range(0, num_patients):
             score_matrix[p,p] = 0
         return score_matrix
+
+    def pairwise_similarity(self, patient1, patient2, distances, volumes, clusters, adjacency = None):
+        if self.use_classes and clusters[patient1] != clusters[patient2]:
+            return 0
+        scores = []
+        for organ in range(distances.shape[1]):
+            adjacent_args = adjacency[organ]
+            if len(adjacent_args) < 1:
+                continue
+            d1 = distances[patient1, adjacent_args]
+            d2 = distances[patient2, adjacent_args]
+            v1 = volumes[patient1, adjacent_args]
+            v2 = volumes[patient2, adjacent_args]
+            scores.append( self.similarity_function(d1,d2,v1,v2) )
+        return np.mean(scores)
+
 
     def local_ssim(self, x,y,v = None, w = None):
         c1 = .000001
