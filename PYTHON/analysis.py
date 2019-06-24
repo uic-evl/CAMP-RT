@@ -354,15 +354,18 @@ def optimal_organ_search(db, similarity_function = None, use_classes = False):
         organ_set = optimal_organs
         best_score = best
     return optimal_organs, best_score
-    
-#db = PatientSet(root = 'data\\patients_v*\\', use_distances = True,
-#                denoise = False, use_clean_subset = False, outliers = Constants.all_bad_entries)
-similarity = TJaccardModel(use_classes = True).get_similarity(db)
-export(db, similarity = similarity, estimator = KnnEstimator(match_type = 'clusters'),
-       patient_data_file = 'data\\patients_dataset_165patients.json')
 #db = PatientSet(root = 'data\\patients_v*\\',
 #                use_distances = False)
     
+#db = PatientSet(root = 'data\\patients_v2*\\', use_distances = True,
+#                denoise = False, use_clean_subset = False, outliers = Constants.v2_bad_entries)
+#db.change_classes(class_file = 'data//rt_plan_clusters.csv', class_name = 'rtward3')
+
+    
+similarity = TsimModel(use_classes = True).get_similarity(db)
+export(db, similarity = similarity, estimator = KnnEstimator(match_type = 'clusters'),
+       patient_data_file = 'data\\patients_dataset_rtward3Only2.json')
+
 #distances = db.get_all_tumor_distances()
 #distances = Denoiser(normalize = False, noise = .5).fit_transform(distances, lr = .0001)
     
