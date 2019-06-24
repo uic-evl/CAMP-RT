@@ -356,8 +356,8 @@ def optimal_organ_search(db, similarity_function = None, use_classes = False):
     return optimal_organs, best_score
 
 
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                use_distances = False)
+db = PatientSet(root = 'data\\patients_v*\\',
+                use_distances = False)
 #
 #distances = db.get_all_tumor_distances()
 #distances = Denoiser(normalize = False, noise = .5).fit_transform(distances, lr = .0001)
@@ -405,21 +405,20 @@ for p1 in range(db.get_num_patients()):
     for p2 in range(0, db.get_num_patients()):
         if p1 == p2:
             continue
-        side = db.lateralities[p2]
-        if side == 'B': #just use normal distance if reference patient is bilateral
-            scores[p1, p2] = tsim(normal_distances[p1], normal_distances[p2], adjacency)
-            continue
         base_similarity = tsim(normal_distances[p1], normal_distances[p2], adjacency)
         flipped_similarity = tsim(normal_distances[p1], flipped_distances[p2], adjacency)
         if base_similarity > flipped_similarity:
             match = (base_similarity, db.doses[p2])
         else:
             match = (flipped_similarity, flipped_doses[p2])
-            print(p1,p2, flipped_similarity, base_similarity)
         matches.append(match)
     matches = sorted(matches, key = lambda x: -x[0])
     n_matches = int(round(np.sqrt( len( np.where(db.classes == db.classes[p1])[0] ) )))
-    dose_predictions[p1,:] = np.mean([x[1] for x in matches[0:n_matches]], axis = 0)
+    prediction = np.array([x[1] for x in matches[0:n_matches]])
+    weights = np.array([x[0] for x in matches[0:n_matches]]).reshape(-1,1)
+    if weights.mean() <= 0:
+        print(weights, p1, [x[0] for x in matches])
+    dose_predictions[p1,:] = np.mean(prediction*weights, axis = 0)/np.mean(weights)
 
 print(KnnEstimator().get_error(dose_predictions, db.doses).mean())
 #best_val = np.inf
