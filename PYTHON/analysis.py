@@ -358,25 +358,41 @@ def optimal_organ_search(db, similarity_function = None, use_classes = False):
 
 
 #db = PatientSet(root = 'data\\patients_v*\\',
-#                use_distances = False)
+#                use_distances = False, denoise = False)
 #
 #distances = db.get_all_tumor_distances()
 #distances = Denoiser(normalize = False, noise = .5).fit_transform(distances, lr = .0001)
-#
-#tumor_sets = np.zeros((db.get_num_patients(), Constants.num_organs, 2))
-#for p in range(db.get_num_patients()):
-#    gtvs = db.gtvs[p]
-#    left = np.inf*np.ones((Constants.num_organs,))
-#    right = copy.copy(left)
-#    #position[0] > 0 is left side 
-#    for gtv in gtvs:
-#        if gtv.position[0] > 0:
-#            left = np.minimum(left, gtv.dists)
-#        else:
-#            right = np.minimum(right, gtv.dists)
-#    tumor_sets[p, :, 0] = left
-#    tumor_sets[p, :, 1] = right
-#
+
+o_centroids, t_centroids = db.get_transformed_centroids()
+t_centroids = np.vstack(t_centroids)
+from sklearn.cluster import AffinityPropagation, SpectralClustering, MeanShift
+#clusterer = AffinityPropagation(max_iter = 400, damping = .96)
+#clusterer = SpectralClustering(n_clusters = 6)
+clusterer = MeanShift()
+
+dist_pca = pca(distances, 3)
+c_pca = pca(t_centroids, 2)
+
+x = dist_pca
+
+clusters = clusterer.fit_predict(dist_pca)
+plt.scatter(x[:,0], x[:,1], c=clusters)
+print(len(np.unique(clusters)))
+
+tumor_sets = np.zeros((db.get_num_patients(), Constants.num_organs, 2))
+for p in range(db.get_num_patients()):
+    gtvs = db.gtvs[p]
+    left = np.inf*np.ones((Constants.num_organs,))
+    right = copy.copy(left)
+    #position[0] > 0 is left side 
+    for gtv in gtvs:
+        if gtv.position[0] > 0:
+            left = np.minimum(left, gtv.dists)
+        else:
+            right = np.minimum(right, gtv.dists)
+    tumor_sets[p, :, 0] = left
+    tumor_sets[p, :, 1] = right
+
 def get_flip_args(organ_list = None):
     if organ_list is None:
         organ_list = Constants.organ_list
@@ -427,7 +443,7 @@ def symmetric_similarity(db):
     
     print(KnnEstimator().get_error(dose_predictions, db.doses).mean())
     return(dose_predictions)
-symmetric_similarity(db)
+
 #best_val = np.inf
 #best_min_matches = 0
 #best_max_error= 0
