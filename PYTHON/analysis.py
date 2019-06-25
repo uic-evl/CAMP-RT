@@ -20,22 +20,23 @@ from sklearn.cluster import KMeans
 from NCA import NeighborhoodComponentsAnalysis
 from Metrics import *
 import re
+from sklearn.manifold import TSNE
 
 
 
 def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_file = 'scores.csv',
            model = None, estimator = None, similarity = None):
     if model is None:
-        model = TsimModel()
+        model = TJaccardModel()
     if estimator is None:
-        estimator = KnnEstimator()
+        estimator = KnnEstimator(match_type = 'clusters')
     if similarity is None:
         similarity = model.get_similarity(data_set) #similarity scores
     predicted_doses = estimator.predict_doses(similarity, data_set)
     similar_patients = estimator.get_matches(similarity, data_set)
     error = estimator.get_error(predicted_doses, data_set.doses) #a vector of errors
     dose_pca = pca(data_set.doses)
-    distance_pca = pca(data_set.tumor_distances)
+    distance_pca = TSNE(perplexity = 100).fit_transform(data_set.tumor_distances) #pca(data_set.tumor_distances)
 
     export_data = []
     for x in range(data_set.get_num_patients()):
@@ -359,39 +360,42 @@ def optimal_organ_search(db, similarity_function = None, use_classes = False):
 
 #db = PatientSet(root = 'data\\patients_v*\\',
 #                use_distances = False, denoise = False)
-#
+
 #distances = db.get_all_tumor_distances()
 #distances = Denoiser(normalize = False, noise = .5).fit_transform(distances, lr = .0001)
 
 o_centroids, t_centroids = db.get_transformed_centroids()
 t_centroids = np.vstack(t_centroids)
+
 from sklearn.cluster import AffinityPropagation, SpectralClustering, MeanShift
-#clusterer = AffinityPropagation(max_iter = 400, damping = .96)
+from sklearn.manifold import TSNE
+clusterer = AffinityPropagation(max_iter = 400, damping = .96)
 #clusterer = SpectralClustering(n_clusters = 6)
-clusterer = MeanShift()
+#clusterer = MeanShift()
 
 dist_pca = pca(distances, 3)
 c_pca = pca(t_centroids, 2)
+dist_tsne = TSNE( perplexity = 100).fit_transform(db.tumor_distances)
 
-x = dist_pca
+x = dist_tsne
 
-clusters = clusterer.fit_predict(dist_pca)
+clusters = clusterer.fit_predict(x)
 plt.scatter(x[:,0], x[:,1], c=clusters)
 print(len(np.unique(clusters)))
 
-tumor_sets = np.zeros((db.get_num_patients(), Constants.num_organs, 2))
-for p in range(db.get_num_patients()):
-    gtvs = db.gtvs[p]
-    left = np.inf*np.ones((Constants.num_organs,))
-    right = copy.copy(left)
-    #position[0] > 0 is left side 
-    for gtv in gtvs:
-        if gtv.position[0] > 0:
-            left = np.minimum(left, gtv.dists)
-        else:
-            right = np.minimum(right, gtv.dists)
-    tumor_sets[p, :, 0] = left
-    tumor_sets[p, :, 1] = right
+#tumor_sets = np.zeros((db.get_num_patients(), Constants.num_organs, 2))
+#for p in range(db.get_num_patients()):
+#    gtvs = db.gtvs[p]
+#    left = np.inf*np.ones((Constants.num_organs,))
+#    right = copy.copy(left)
+#    #position[0] > 0 is left side 
+#    for gtv in gtvs:
+#        if gtv.position[0] > 0:
+#            left = np.minimum(left, gtv.dists)
+#        else:
+#            right = np.minimum(right, gtv.dists)
+#    tumor_sets[p, :, 0] = left
+#    tumor_sets[p, :, 1] = right
 
 def get_flip_args(organ_list = None):
     if organ_list is None:
