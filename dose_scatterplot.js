@@ -46,7 +46,7 @@ DoseScatterPlot.prototype.draw = function(target, selectedPerson = null){
 	this.drawClusterCircles(this.clusterMargin);
 	this.setupTooltip(selectedPerson);
 	this.setupSwitchButtons();
-	this.drawAxisLabels('Distance PCA 1', 'Distance PCA 2');
+	this.drawAxisLabels('Tumor-Organ Distance TSNE 1', 'Tumor-Organ Distance TSNE 2');
 }
 
 DoseScatterPlot.prototype.setupSwitchButtons = function(){
@@ -59,33 +59,35 @@ DoseScatterPlot.prototype.setupSwitchButtons = function(){
 	var doseButton = document.getElementById('doseScatterButton');
 	var distanceButton = document.getElementById('distanceScatterButton');
 	var stagingButton = document.getElementById('stagingScatterButton');
+	var similarityButton = document.getElementById('similarityScatterButton');
+	allButtons = [doseButton, distanceButton, stagingButton, similarityButton];
+	var self = this;
+	var onScatterButtonClick = function(btn, axisVariable){
+		if(btn.style.opacity ==1)
+			return 
+		self.switchAxisVariable(axisVariable);
+		allButtons.forEach(function(b){
+			if(b != btn){
+				setUnselected(b);
+			}
+		});
+		setSelected(btn);
+	};
 	setSelected(distanceButton);
 	setUnselected(doseButton);
 	setUnselected(stagingButton);
-	var self = this;
+	setUnselected(similarityButton);
 	doseButton.addEventListener('click', function(){
-		if(doseButton.style.opacity == 1)
-			return
-		self.switchAxisVariable('dose');
-		setSelected(doseButton);
-		setUnselected(distanceButton);
-		setUnselected(stagingButton);
+		onScatterButtonClick(this, 'dose');
 	});
 	distanceButton.addEventListener('click', function(){
-		if(distanceButton.style.opacity == 1)
-			return
-		self.switchAxisVariable('distance');
-		setSelected(distanceButton);
-		setUnselected(doseButton);
-		setUnselected(stagingButton);
+		onScatterButtonClick(this, 'distance');
 	});
 	stagingButton.addEventListener('click', function(){
-		if(stagingButton.style.opacity == 1)
-			return
-		self.switchAxisVariable('staging');
-		setSelected(stagingButton);
-		setUnselected(doseButton);
-		setUnselected(distanceButton);
+		onScatterButtonClick(this, 'staging');
+	});
+	similarityButton.addEventListener('click', function(){
+		onScatterButtonClick(this, 'similarity');
 	});
 }
 
@@ -352,8 +354,14 @@ DoseScatterPlot.prototype.switchAxisFunction = function(type){
 			var volume = self.data.gtvnVol(d);
 			return (volume > Math.E)? Math.log(volume): volume; 
 		};
-	}
-	else{
+	} else if(type == 'similarity'){
+		this.getXAxis = function(d){
+			return self.data.getSimilaritySpaceEmbedding(d, 1);
+		};
+		this.getYAxis = function(d){
+			return self.data.getSimilaritySpaceEmbedding(d, 2);
+		};
+	} else{
 		this.getXAxis = function(d){ return self.data.getDosePCA(d, 1); };
 		this.getYAxis = function(d){ return self.data.getDosePCA(d, 2); };
 	}
@@ -362,10 +370,13 @@ DoseScatterPlot.prototype.switchAxisFunction = function(type){
 DoseScatterPlot.prototype.switchAxisVariable = function(type){
 	this.switchAxisFunction(type);
 	if(type == 'distance'){
-		this.renameAxis('Tumor-Organ Distance PC 1', 'Tumor-Organ Distance PC 2');
+		this.renameAxis('Tumor-Organ Distance TSNE 1', 'Tumor-Organ Distance TNSE 2');
 	} else if(type == 'staging'){
 		this.renameAxis('GTVp Volume', 'GTVn Volume');
-	} else{
+	} else if(type == 'similarity'){
+		this.renameAxis('2D Similarity Based Embedding', '');
+	}
+	else{
 		this.renameAxis('Dose PC 1', 'Dose PC 2');
 	}
 	this.animateAxisChange();

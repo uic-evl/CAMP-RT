@@ -3,6 +3,11 @@
 Created on Mon Jan 21 17:22:31 2019
 @author: Andrew
 """
+from numpy.random import seed
+seed(1)
+from tensorflow import set_random_seed
+set_random_seed(2)
+
 from glob import glob
 from re import findall
 import json

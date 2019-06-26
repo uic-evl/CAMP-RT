@@ -4,6 +4,11 @@ Created on Fri Mar  8 10:08:52 2019
 
 @author: Andrew
 """
+from numpy.random import seed
+seed(1)
+from tensorflow import set_random_seed
+set_random_seed(2)
+
 from PatientSet import PatientSet
 from ErrorChecker import ErrorChecker
 from Constants import Constants
@@ -20,7 +25,7 @@ from sklearn.cluster import KMeans
 from NCA import NeighborhoodComponentsAnalysis
 from Metrics import *
 import re
-from sklearn.manifold import TSNE
+from sklearn.manifold import TSNE, MDS
 
 
 
@@ -36,8 +41,9 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
     similar_patients = estimator.get_matches(similarity, data_set)
     error = estimator.get_error(predicted_doses, data_set.doses) #a vector of errors
     dose_pca = pca(data_set.doses)
-    distance_pca = TSNE(perplexity = 100).fit_transform(data_set.tumor_distances) #pca(data_set.tumor_distances)
-
+    distance_tsne = TSNE(perplexity = 60, init = 'pca').fit_transform(data_set.tumor_distances) #pca(data_set.tumor_distances)
+    disimilarity = 1- np.round(np.copy(similarity), 5)
+    similarity_embedding = MDS(dissimilarity='precomputed', random_state = 1).fit_transform(disimilarity)
     export_data = []
     for x in range(data_set.get_num_patients()):
         entry = OrderedDict()
@@ -54,7 +60,8 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
         entry['tumorSubsite'] = data_set.subsites[x]
         entry['total_Dose'] = int(data_set.prescribed_doses[x])
         entry['dose_pca'] = dose_pca[x, :].tolist()
-        entry['distance_pca'] = distance_pca[x, :].tolist()
+        entry['distance_pca'] = distance_tsne[x, :].tolist()
+        entry['similarity_embedding'] = similarity_embedding[x,:].tolist()
 
         organ_data = OrderedDict()
         organ_centroids = data_set.centroids[x, :, :]
@@ -102,7 +109,7 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
     except:
         print('error exporting patient data to json')
     try:
-        scaled_similarity = (similarity - similarity.min())/(similarity.max() - similarity.min())
+        scaled_similarity = minmax_scale(similarity)
         for i in range(scaled_similarity.shape[0]):
             scaled_similarity[i,i] = 1
         score_df = pd.DataFrame(scaled_similarity, index = data_set.ids, columns = data_set.ids)
@@ -131,193 +138,7 @@ def threshold_grid_search(db, similarity, start_k = .4, max_matches = 20,
                             match_threshold = best_threshold,
                             min_matches = best_min_matches)
     else:
-        return((best_score, best_threshold, best_min_matches))
-
-def get_all_features(data, num_pca_components = 10):
-    num_patients = data.get_num_patients()
-    tumor_volumes = np.zeros((num_patients, 2))
-    tumor_count = np.array([len(gtv) for gtv in data.gtvs]).reshape(-1,1)
-    for i in range(num_patients):
-        gtvs = data.gtvs[i]
-        gtvp_volume = gtvs[0].volume
-        gtvn_volume = 0
-        for gtvn in gtvs[1:]:
-            gtvn_volume += gtvn.volume
-        tumor_volumes[i, :] = (gtvp_volume, gtvn_volume)
-    laterality = data.lateralities.reshape(num_patients, 1)
-    laterality = np.vectorize(Constants.laterality_map.__getitem__)(laterality)
-    subsites = data.subsites.reshape(num_patients, 1)
-    subsites = np.vectorize(Constants.subsite_map.__getitem__)(subsites)
-    total_doses = data.prescribed_doses.reshape(num_patients, 1)
-    ages = data.ages.reshape(-1,1)
-    features = np.hstack([tumor_volumes, total_doses, subsites,
-                          laterality, tumor_count,
-                          data.tumor_distances, data.volumes])
-    pca_features = pca(features, features.shape[1])
-    return (pca_features - pca_features.mean(axis = 0))/pca_features.std(axis = 0)
-
-def get_input_tumor_features(data, num_pca_components = 10):
-    num_patients = data.get_num_patients()
-    tumor_volumes = np.zeros((num_patients, 2))
-    tumor_count = np.array([len(gtv) for gtv in data.gtvs]).reshape(-1,1)
-    for i in range(num_patients):
-        gtvs = data.gtvs[i]
-        gtvp_volume = gtvs[0].volume
-        gtvn_volume = 0
-        for gtvn in gtvs[1:]:
-            gtvn_volume += gtvn.volume
-        tumor_volumes[i, :] = (gtvp_volume, gtvn_volume)
-    laterality = data.lateralities.reshape(num_patients, 1)
-    laterality = np.vectorize(Constants.laterality_map.__getitem__)(laterality)
-    subsites = data.subsites.reshape(num_patients, 1)
-    subsites = np.vectorize(Constants.subsite_map.__getitem__)(subsites)
-    total_doses = data.prescribed_doses.reshape(num_patients, 1)
-    features = np.hstack([tumor_volumes, total_doses, 
-                          subsites, tumor_count,
-                          data.ajcc8.reshape(-1,1)])
-    return copy.copy(features)
-
-def get_input_organ_features(data):
-    return copy.copy(data.volumes)
-
-def get_input_distance_features(data, num_pca_components = 10):
-    num_patients = data.get_num_patients()
-    tumor_volumes = np.zeros((num_patients, 2))
-    tumor_count = np.array([len(gtv) for gtv in data.gtvs]).reshape(-1,1)
-    for i in range(num_patients):
-        gtvs = data.gtvs[i]
-        gtvp_volume = gtvs[0].volume
-        gtvn_volume = 0
-        for gtvn in gtvs[1:]:
-            gtvn_volume += gtvn.volume
-        tumor_volumes[i, :] = (gtvp_volume, gtvn_volume)
-    laterality = data.lateralities.reshape(num_patients, 1)
-    laterality = np.vectorize(Constants.laterality_map.__getitem__)(laterality)
-    subsites = data.subsites.reshape(num_patients, 1)
-    subsites = np.vectorize(Constants.subsite_map.__getitem__)(subsites)
-    total_doses = data.prescribed_doses.reshape(num_patients, 1)
-    features = np.hstack([tumor_volumes, 
-                          total_doses, 
-                          tumor_count, 
-                          laterality,
-                          data.ajcc8.reshape(-1,1),
-                          data.tumor_distances])
-    return copy.copy(features)
-
-def get_input_lymph_features(data, num_pca_components = 10):
-    return copy.copy(data.lymph_nodes)
-
-def get_dose_clusters(doses):
-    kmeans = KMeans(n_clusters = 5, random_state = 0)
-    bad_patients = set(ErrorChecker().get_data_outliers(doses))
-    good_patients = [i for i in np.arange(doses.shape[0]) if i not in bad_patients]
-    kmeans_clusters = kmeans.fit_predict(doses[good_patients])
-    return kmeans_clusters, good_patients
-
-def get_nca_features(features, doses, min_components = 5, lmnn = False, k = 4, reg = .25):
-    n_patients = doses.shape[0]
-    if lmnn is False:
-        n_components = min([min_components, features.shape[1]])
-    else:
-        n_components = features.shape[1]
-    output = np.zeros((n_patients,n_components))
-    for p in range(n_patients):
-        feature_subset = np.delete(features, p, axis = 0)
-        dose_subset = np.delete(doses, p , axis = 0)
-        nca = get_fitted_nca(feature_subset, dose_subset,
-                                          n_components = n_components,
-                                          lmnn = lmnn, k = k,
-                                          reg = reg)
-        tf = nca.transform(features[p,:].reshape(1,-1))
-#        output[p,:] = (tf - tf.min())/(tf.max() - tf.min())
-        output[p,:] = tf/np.linalg.norm(tf)
-        print(output[p,:])
-    return output
-
-def get_fitted_nca(features, doses, n_components = 5, lmnn = False, k = 4, reg = .25):
-    if lmnn:
-        nca = metric_learn.lmnn.python_LMNN(k = k, use_pca = False,
-                                            regularization = reg)
-    else:
-        nca = NeighborhoodComponentsAnalysis(n_components = n_components,
-                                         max_iter = 300,
-                                         init = 'pca',
-                                         random_state = 0)
-    kmeans_clusters, good_clusters = get_dose_clusters(doses)
-    for col in range(features.shape[1]):
-        feature = features[:, col]
-        if feature.std() > .0001:
-            features[:, col] = (feature - feature.mean())/feature.std()
-        else:
-            features[:, col] = feature - feature.mean()
-    sampler = SMOTE(k_neighbors  = 2)
-    resampled_features, resampled_clusters = sampler.fit_resample(
-            features[good_clusters, :], kmeans_clusters)
-    nca.fit(resampled_features, resampled_clusters)
-#    features = nca.transform(features)
-    return nca
-
-def get_nca_similarity(db, feature_type = 'tumors', min_nca_components = 4, lmnn = False, k = 4, reg = .25):
-    doses = db.doses
-    n_patients = doses.shape[0]
-    if feature_type == 'tumors':
-        input_features = get_input_tumor_features(db)
-    elif feature_type in ['distance', 'distances']:
-        input_features = get_input_distance_features(db)
-    elif feature_type in ['lymph', 'lymph nodes']:
-        input_features = get_input_lymph_features(db)
-    elif feature_type in ['organ', 'organs']:
-        input_features = get_input_organ_features(db)
-    nca_features = get_nca_features(input_features, doses, 
-                                    min_components = min_nca_components,
-                                    lmnn = lmnn, k = k, reg = reg)
-    similarity = np.zeros((n_patients, n_patients))
-    max_similarities = set([])
-    mixed_laterality = set(['R','L']) 
-    for p1 in range(n_patients):
-        x1 = nca_features[p1, :]
-        for p2 in range(p1+1, n_patients):
-            if set(db.lateralities[[p1,p2]]) == mixed_laterality:
-                continue
-            x2 = nca_features[p2, :]
-            if np.linalg.norm(x1 - x2) < .001:
-                max_similarities.add((p1,p2))
-                continue
-            similarity[p1, p2] = 1/np.linalg.norm(x1 - x2)
-    similarity += similarity.transpose()
-    similarity = .99*(similarity - similarity.min())/(similarity.max() - similarity.min())
-    for pair in max_similarities:
-        similarity[pair[0], pair[1]] = 1
-    for i in range(n_patients):
-        similarity[i,i] = 0 
-    return similarity
-
-def get_test_tumor_similarity(db):
-    n_patients = db.get_num_patients()
-    new_distance_similarity = np.zeros((n_patients, n_patients))
-    for i in range(n_patients):
-        gtvs1 = db.gtvs[i]
-        for ii in range(n_patients):
-            gtvs2 = db.gtvs[ii]
-            new_distance_similarity[i,ii] = get_max_tumor_ssim(gtvs1, gtvs2)
-    new_distance_similarity += new_distance_similarity.transpose()
-    return new_distance_similarity
-
-def centroid_based_tumor_organ_pairs(db):
-    for p in range(db.get_num_patients()):
-        p_centroids = db.centroids[p,:,:]
-        gtv = db.gtvs[p]
-        for t_ind in range(len(gtv)):
-            t = gtv[t_ind]
-            organ = Constants.organ_list[0]
-            min_dist = np.linalg.norm(t.position - p_centroids[0])
-            for o in range(1, Constants.num_organs):
-                dist = np.linalg.norm(t.position - p_centroids[o])
-                if dist < min_dist:
-                    min_dist = dist
-                    organ = Constants.organ_list[o]
-            gtv[t_ind] = GTV(t.name, t.volume, t.position, t.doses, t.dists, organ)
-            
+        return((best_score, best_threshold, best_min_matches))       
 
 def organ_selection(organ_list, db, similarity_function = None, 
                     use_classes = False):
@@ -358,30 +179,32 @@ def optimal_organ_search(db, similarity_function = None, use_classes = False):
     return optimal_organs, best_score
 
 
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                use_distances = False, denoise = False)
+db = PatientSet(root = 'data\\patients_v*\\',
+                use_distances = False)
+distance_sim = TJaccardModel().get_similarity(db)
+threshold_grid_search(db, distance_sim)
 
 #distances = db.get_all_tumor_distances()
 #distances = Denoiser(normalize = False, noise = .5).fit_transform(distances, lr = .0001)
+#
+#o_centroids, t_centroids = db.get_transformed_centroids()
+#t_centroids = np.vstack(t_centroids)
 
-o_centroids, t_centroids = db.get_transformed_centroids()
-t_centroids = np.vstack(t_centroids)
-
-from sklearn.cluster import AffinityPropagation, SpectralClustering, MeanShift
-from sklearn.manifold import TSNE
-clusterer = AffinityPropagation(max_iter = 400, damping = .96)
+#from sklearn.cluster import AffinityPropagation, SpectralClustering, MeanShift
+#
+#clusterer = AffinityPropagation(max_iter = 400, damping = .96)
 #clusterer = SpectralClustering(n_clusters = 6)
 #clusterer = MeanShift()
 
-dist_pca = pca(distances, 3)
-c_pca = pca(t_centroids, 2)
-dist_tsne = TSNE( perplexity = 100).fit_transform(db.tumor_distances)
-
-x = dist_tsne
-
-clusters = clusterer.fit_predict(x)
-plt.scatter(x[:,0], x[:,1], c=clusters)
-print(len(np.unique(clusters)))
+#dist_pca = pca(distances, 3)
+#c_pca = pca(t_centroids, 2)
+#dist_tsne = TSNE( perplexity = 100).fit_transform(db.tumor_distances)
+#dist_mds = MDS().fit_transform(db.tumor_distances)
+#x = dist_mds
+#
+#clusters = clusterer.fit_predict(x)
+#plt.scatter(x[:,0], x[:,1], c=clusters)
+#print(len(np.unique(clusters)))
 
 #tumor_sets = np.zeros((db.get_num_patients(), Constants.num_organs, 2))
 #for p in range(db.get_num_patients()):
@@ -447,17 +270,3 @@ def symmetric_similarity(db):
     
     print(KnnEstimator().get_error(dose_predictions, db.doses).mean())
     return(dose_predictions)
-
-#best_val = np.inf
-#best_min_matches = 0
-#best_max_error= 0
-#for min_matches in range(2,20):
-#    for max_error in np.arange(0, .2, 40):      
-#        estimator = SimilarityFuser(min_matches = min_matches, max_error = max_error)
-#        similarity = estimator.get_similarity(db, [tjaccard_similarity*total_dose_similarity])
-#        error, min_matches, whatever= threshold_grid_search(db,similarity)
-#        if error < best_val:
-#            best_val = error
-#            best_min_matches = min_matches
-#            best_max_error = max_error
-    

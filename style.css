@@ -162,7 +162,7 @@ option:hover {
 }
 #scatterButtonContainer{
 	display: grid;
-	grid-template-columns: 1fr 1fr 1fr;
+	grid-template-columns: 1fr 1fr 1fr 1fr;
 	align-items: stretch;
 	width: 100%;
 }
@@ -171,7 +171,7 @@ option:hover {
   background: hsl(200, 50%, 50%) !important;
   opacity: .4;
   position: relative;
-  margin: .2em;
+  margin: .1em;
   margin-top: .05em;
   margin-bottom: .05em;
   color: white;
@@ -181,7 +181,7 @@ option:hover {
   text-align: center;
   text-decoration: none;
   border-radius: .2em;
-  font-size: 1.2em;
+  font-size: 1em;
   box-shadow: 3px 3px 12px 3px rgba(0, 0, 0, 0.25);
 }
 

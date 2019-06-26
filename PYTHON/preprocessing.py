@@ -4,6 +4,11 @@ Created on Wed Jun  5 17:43:34 2019
 
 @author: Andrew
 """
+#need to set random seeds before imports for consistent results?
+from numpy.random import seed
+seed(1)
+from tensorflow import set_random_seed
+set_random_seed(2)
 from Constants import Constants
 from keras.models import Sequential, Model
 from keras.layers import Dense, Activation

@@ -27,13 +27,17 @@ def pca(points, n_components = 2):
     
 def dist_to_sim(distance):
     #converts a distance matrix to a similarity matrix with 0 in the diagonal
-    distance = copy.copy(distance)
+    distance = np.copy(distance)
     distance -= distance.min()
     distance /= distance.max()
     diagonals = ( np.arange(distance.shape[0]), np.arange(distance.shape[1]) )
     sim = 1-distance
     sim[diagonals] = 0
     return sim
+
+def minmax_scale(matrix):
+    m = matrix - matrix.min()
+    return m/m.max()
 
 #full similarity measures
     

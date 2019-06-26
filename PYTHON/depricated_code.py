@@ -493,3 +493,189 @@ def get_distance_model(n_features, encoding_size = 25, reg = 0.000001):
     model.compile(optimizer = optimizer, 
                   loss = losses.mean_squared_error)
     return(model, distance_model)
+    
+### stuff with meetric learning?
+def get_all_features(data, num_pca_components = 10):
+    num_patients = data.get_num_patients()
+    tumor_volumes = np.zeros((num_patients, 2))
+    tumor_count = np.array([len(gtv) for gtv in data.gtvs]).reshape(-1,1)
+    for i in range(num_patients):
+        gtvs = data.gtvs[i]
+        gtvp_volume = gtvs[0].volume
+        gtvn_volume = 0
+        for gtvn in gtvs[1:]:
+            gtvn_volume += gtvn.volume
+        tumor_volumes[i, :] = (gtvp_volume, gtvn_volume)
+    laterality = data.lateralities.reshape(num_patients, 1)
+    laterality = np.vectorize(Constants.laterality_map.__getitem__)(laterality)
+    subsites = data.subsites.reshape(num_patients, 1)
+    subsites = np.vectorize(Constants.subsite_map.__getitem__)(subsites)
+    total_doses = data.prescribed_doses.reshape(num_patients, 1)
+    ages = data.ages.reshape(-1,1)
+    features = np.hstack([tumor_volumes, total_doses, subsites,
+                          laterality, tumor_count,
+                          data.tumor_distances, data.volumes])
+    pca_features = pca(features, features.shape[1])
+    return (pca_features - pca_features.mean(axis = 0))/pca_features.std(axis = 0)
+
+def get_input_tumor_features(data, num_pca_components = 10):
+    num_patients = data.get_num_patients()
+    tumor_volumes = np.zeros((num_patients, 2))
+    tumor_count = np.array([len(gtv) for gtv in data.gtvs]).reshape(-1,1)
+    for i in range(num_patients):
+        gtvs = data.gtvs[i]
+        gtvp_volume = gtvs[0].volume
+        gtvn_volume = 0
+        for gtvn in gtvs[1:]:
+            gtvn_volume += gtvn.volume
+        tumor_volumes[i, :] = (gtvp_volume, gtvn_volume)
+    laterality = data.lateralities.reshape(num_patients, 1)
+    laterality = np.vectorize(Constants.laterality_map.__getitem__)(laterality)
+    subsites = data.subsites.reshape(num_patients, 1)
+    subsites = np.vectorize(Constants.subsite_map.__getitem__)(subsites)
+    total_doses = data.prescribed_doses.reshape(num_patients, 1)
+    features = np.hstack([tumor_volumes, total_doses, 
+                          subsites, tumor_count,
+                          data.ajcc8.reshape(-1,1)])
+    return copy.copy(features)
+
+def get_input_organ_features(data):
+    return copy.copy(data.volumes)
+
+def get_input_distance_features(data, num_pca_components = 10):
+    num_patients = data.get_num_patients()
+    tumor_volumes = np.zeros((num_patients, 2))
+    tumor_count = np.array([len(gtv) for gtv in data.gtvs]).reshape(-1,1)
+    for i in range(num_patients):
+        gtvs = data.gtvs[i]
+        gtvp_volume = gtvs[0].volume
+        gtvn_volume = 0
+        for gtvn in gtvs[1:]:
+            gtvn_volume += gtvn.volume
+        tumor_volumes[i, :] = (gtvp_volume, gtvn_volume)
+    laterality = data.lateralities.reshape(num_patients, 1)
+    laterality = np.vectorize(Constants.laterality_map.__getitem__)(laterality)
+    subsites = data.subsites.reshape(num_patients, 1)
+    subsites = np.vectorize(Constants.subsite_map.__getitem__)(subsites)
+    total_doses = data.prescribed_doses.reshape(num_patients, 1)
+    features = np.hstack([tumor_volumes, 
+                          total_doses, 
+                          tumor_count, 
+                          laterality,
+                          data.ajcc8.reshape(-1,1),
+                          data.tumor_distances])
+    return copy.copy(features)
+
+def get_input_lymph_features(data, num_pca_components = 10):
+    return copy.copy(data.lymph_nodes)
+
+def get_dose_clusters(doses):
+    kmeans = KMeans(n_clusters = 5, random_state = 0)
+    bad_patients = set(ErrorChecker().get_data_outliers(doses))
+    good_patients = [i for i in np.arange(doses.shape[0]) if i not in bad_patients]
+    kmeans_clusters = kmeans.fit_predict(doses[good_patients])
+    return kmeans_clusters, good_patients
+
+def get_nca_features(features, doses, min_components = 5, lmnn = False, k = 4, reg = .25):
+    n_patients = doses.shape[0]
+    if lmnn is False:
+        n_components = min([min_components, features.shape[1]])
+    else:
+        n_components = features.shape[1]
+    output = np.zeros((n_patients,n_components))
+    for p in range(n_patients):
+        feature_subset = np.delete(features, p, axis = 0)
+        dose_subset = np.delete(doses, p , axis = 0)
+        nca = get_fitted_nca(feature_subset, dose_subset,
+                                          n_components = n_components,
+                                          lmnn = lmnn, k = k,
+                                          reg = reg)
+        tf = nca.transform(features[p,:].reshape(1,-1))
+#        output[p,:] = (tf - tf.min())/(tf.max() - tf.min())
+        output[p,:] = tf/np.linalg.norm(tf)
+        print(output[p,:])
+    return output
+
+def get_fitted_nca(features, doses, n_components = 5, lmnn = False, k = 4, reg = .25):
+    if lmnn:
+        nca = metric_learn.lmnn.python_LMNN(k = k, use_pca = False,
+                                            regularization = reg)
+    else:
+        nca = NeighborhoodComponentsAnalysis(n_components = n_components,
+                                         max_iter = 300,
+                                         init = 'pca',
+                                         random_state = 0)
+    kmeans_clusters, good_clusters = get_dose_clusters(doses)
+    for col in range(features.shape[1]):
+        feature = features[:, col]
+        if feature.std() > .0001:
+            features[:, col] = (feature - feature.mean())/feature.std()
+        else:
+            features[:, col] = feature - feature.mean()
+    sampler = SMOTE(k_neighbors  = 2)
+    resampled_features, resampled_clusters = sampler.fit_resample(
+            features[good_clusters, :], kmeans_clusters)
+    nca.fit(resampled_features, resampled_clusters)
+#    features = nca.transform(features)
+    return nca
+
+def get_nca_similarity(db, feature_type = 'tumors', min_nca_components = 4, lmnn = False, k = 4, reg = .25):
+    doses = db.doses
+    n_patients = doses.shape[0]
+    if feature_type == 'tumors':
+        input_features = get_input_tumor_features(db)
+    elif feature_type in ['distance', 'distances']:
+        input_features = get_input_distance_features(db)
+    elif feature_type in ['lymph', 'lymph nodes']:
+        input_features = get_input_lymph_features(db)
+    elif feature_type in ['organ', 'organs']:
+        input_features = get_input_organ_features(db)
+    nca_features = get_nca_features(input_features, doses, 
+                                    min_components = min_nca_components,
+                                    lmnn = lmnn, k = k, reg = reg)
+    similarity = np.zeros((n_patients, n_patients))
+    max_similarities = set([])
+    mixed_laterality = set(['R','L']) 
+    for p1 in range(n_patients):
+        x1 = nca_features[p1, :]
+        for p2 in range(p1+1, n_patients):
+            if set(db.lateralities[[p1,p2]]) == mixed_laterality:
+                continue
+            x2 = nca_features[p2, :]
+            if np.linalg.norm(x1 - x2) < .001:
+                max_similarities.add((p1,p2))
+                continue
+            similarity[p1, p2] = 1/np.linalg.norm(x1 - x2)
+    similarity += similarity.transpose()
+    similarity = .99*(similarity - similarity.min())/(similarity.max() - similarity.min())
+    for pair in max_similarities:
+        similarity[pair[0], pair[1]] = 1
+    for i in range(n_patients):
+        similarity[i,i] = 0 
+    return similarity
+
+def get_test_tumor_similarity(db):
+    n_patients = db.get_num_patients()
+    new_distance_similarity = np.zeros((n_patients, n_patients))
+    for i in range(n_patients):
+        gtvs1 = db.gtvs[i]
+        for ii in range(n_patients):
+            gtvs2 = db.gtvs[ii]
+            new_distance_similarity[i,ii] = get_max_tumor_ssim(gtvs1, gtvs2)
+    new_distance_similarity += new_distance_similarity.transpose()
+    return new_distance_similarity
+
+def centroid_based_tumor_organ_pairs(db):
+    for p in range(db.get_num_patients()):
+        p_centroids = db.centroids[p,:,:]
+        gtv = db.gtvs[p]
+        for t_ind in range(len(gtv)):
+            t = gtv[t_ind]
+            organ = Constants.organ_list[0]
+            min_dist = np.linalg.norm(t.position - p_centroids[0])
+            for o in range(1, Constants.num_organs):
+                dist = np.linalg.norm(t.position - p_centroids[o])
+                if dist < min_dist:
+                    min_dist = dist
+                    organ = Constants.organ_list[o]
+            gtv[t_ind] = GTV(t.name, t.volume, t.position, t.doses, t.dists, organ)

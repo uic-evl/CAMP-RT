@@ -158,6 +158,7 @@ var Data = function(patientData, oAtlas) {
 		},
 		
 		getDistancePCA: function(id, component){
+			//this is technically tsne embedding now but I'm afraid to change names
 			var patient = this.getPatient(id);
 			return patient.distance_pca[component - 1];
 		},
@@ -165,6 +166,11 @@ var Data = function(patientData, oAtlas) {
 		getDosePCA: function(id, component){
 			var patient = this.getPatient(id);
 			return patient.dose_pca[component - 1];
+		},
+		
+		getSimilaritySpaceEmbedding: function(id, component){
+			var patient = this.getPatient(id);
+			return patient.similarity_embedding[component - 1];
 		},
 		
 		gtvpVol: function(id){ return this.getPatient(id).gtvp_volume;},

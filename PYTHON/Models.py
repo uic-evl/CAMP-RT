@@ -28,9 +28,10 @@ class KnnEstimator():
         clusters = data.classes
         predicted_doses = np.zeros(dose_matrix.shape)
         outliers = ErrorChecker().get_data_outliers(data.doses)
+        similarity = np.copy(similarity_matrix)
         for p in range( dose_matrix.shape[0] ):
-            num_matches = self.get_num_matches(p, similarity_matrix, clusters)
-            scores = similarity_matrix[p, :]
+            num_matches = self.get_num_matches(p, similarity, clusters)
+            scores = similarity[p, :]
             if p not in outliers:
                 scores[list(outliers)] = 0
             args = np.argsort(-scores)
@@ -56,9 +57,10 @@ class KnnEstimator():
         #should return a list of matched patients
         matches = []
         outliers = ErrorChecker().get_data_outliers(data.doses)
+        similarity = np.copy(similarity_matrix)
         for p in range( dose_matrix.shape[0] ):
-            num_matches = self.get_num_matches(p, similarity_matrix, clusters)
-            scores = similarity_matrix[p, :]
+            num_matches = self.get_num_matches(p, similarity, clusters)
+            scores = similarity[p, :]
             if p not in outliers:
                 scores[list(outliers)] = 0
             args = np.argsort(-scores)
