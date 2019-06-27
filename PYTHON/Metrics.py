@@ -13,6 +13,7 @@ import copy
 import cv2
 from skimage.measure import compare_mse
 import pandas as pd
+from re import match, sub, search
 
 #misc functions?
 def pca(points, n_components = 2):
@@ -38,6 +39,48 @@ def dist_to_sim(distance):
 def minmax_scale(matrix):
     m = matrix - matrix.min()
     return m/m.max()
+
+def get_flip_args(organ_list = None):
+    #get arguments from an organ list that will swap left and right oriented organs 
+    #assumes naming conventions Rt_ and Lt_ for right and left
+    if organ_list is None:
+        organ_list = Constants.organ_list
+    flip_args = np.arange(len(organ_list))
+    for organ in organ_list:
+        for pattern in [('Rt_', 'Lt_'), ('Lt_', 'Rt_')]:
+            if match(pattern[0], organ) is not None:
+                other_organ = sub(pattern[0], pattern[1], organ)
+                if other_organ in organ_list:
+                    idx1 = organ_list.index(organ)
+                    idx2 = organ_list.index(other_organ)
+                    flip_args[idx1] = idx2
+    return flip_args
+
+def lcr_args(organ_list = None, exclude = None):
+    #gets indexes of organs for different regions of the head
+    #also assumes Rt_, Lt_ naming conventions for lateral organs
+    if organ_list is None:
+        organ_list = Constants.organ_list
+    left = []
+    right = []
+    center = []
+    left_pattern = 'Lt_'
+    right_pattern = 'Rt_'
+    for organ in organ_list:
+        #exclude should be a list of patterns to skip over
+        if exclude is not None:
+            for pattern in exclude:
+                if search(pattern, organ) is not None:
+                    continue
+        position = organ_list.index(organ)
+        if match(left_pattern, organ) is not None:
+            left.append(position)
+            continue
+        elif match(right_pattern, organ) is not None:
+            right.append(position)
+        else:
+            center.append(position)
+    return (left, center, right)
 
 #full similarity measures
     

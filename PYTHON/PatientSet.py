@@ -9,7 +9,7 @@ from tensorflow import set_random_seed
 set_random_seed(2)
 
 from glob import glob
-from re import findall
+from re import findall, match
 import json
 import numpy as np
 import pandas as pd
@@ -19,6 +19,7 @@ from Patient import Patient
 from ErrorChecker import ErrorChecker 
 from preprocessing import Denoiser
 from cv2 import estimateAffine3D
+from Metrics import lcr_args
 
 class PatientSet():
 
@@ -26,6 +27,7 @@ class PatientSet():
                  use_distances = False, use_clean_subset = True, denoise = True):
         self.classes = None
         self.num_classes = 0
+        self.left, center, self.right = lcr_args()
         self.read_patient_data(root, outliers, use_distances)
         if use_clean_subset:
             self.clean_values()
@@ -237,24 +239,41 @@ class PatientSet():
     def check_if_full_dose(self, dose_vector):
         #checks difference in sternoceldomastoids to seperate out unilaterally dosed patients?
         #may be used for getting classes eventually?
+        def confirm():
+            try:
+                if isinstance(dose_vector, pd.core.series.Series):
+                    ls = dose_vector.loc['Lt_Sternocleidomastoid_M']
+                    rs = dose_vector.loc['Rt_Sternocleidomastoid_M']
+                else:
+                    ls_pos = Constants.organ_list.index('Lt_Sternocleidomastoid_M')
+                    rs_pos = Constants.organ_list.index('Rt_Sternocleidomastoid_M')
+                    ls = dose_vector[ls_pos]
+                    rs = dose_vector[rs_pos]
+            except:
+                print('error in getting dose?')
+                ls = 1
+                rs = 1
+            if np.abs(ls - rs)/max([ls, rs]) < .6:
+                full_dose = True
+            else:
+                full_dose = False
+            return(full_dose, (ls > rs))
         try:
             if isinstance(dose_vector, pd.core.series.Series):
-                ls = dose_vector.loc['Lt_Sternocleidomastoid_M']
-                rs = dose_vector.loc['Rt_Sternocleidomastoid_M']
+                left, center, right = lcr_args(list(dose_vector.index), exclude = ['[e,E]ye'])
+                if len(left) != len(right):
+                    return confirm()
+                ls = dose_vector[left].values
+                rs = dose_vector[right].values
             else:
-                ls_pos = Constants.organ_list.index('Lt_Sternocleidomastoid_M')
-                rs_pos = Constants.organ_list.index('Rt_Sternocleidomastoid_M')
-                ls = dose_vector[ls_pos]
-                rs = dose_vector[rs_pos]
+                ls = dose_vector[self.left]
+                rs = dose_vector[self.right]
         except:
             print('error in getting dose?')
-            ls = 1
-            rs = 1
-        if np.abs(ls - rs)/max([ls, rs]) < .6:
-            full_dose = True
-        else:
-            full_dose = False
-        return(full_dose, (ls > rs))
+            return(True, False)
+        full_dose = bool(np.abs(ls - rs).mean() < 22)
+        left_dominant = bool(ls.mean() > rs.mean())
+        return(full_dose, left_dominant)
 
     def delete_outliers(self, outliers, distance_files, dose_files):
         id_map = {max([int(x) for x in findall('[0-9]+', file)]): distance_files.index(file)  for file in distance_files}
@@ -326,6 +345,19 @@ class PatientSet():
             all_tumor_distances.append( np.vstack(p_dists))
         self.tumor_distances = new_tumor_distances
         self.stack_tumor_distances  = all_tumor_distances
+        
+    def tumorcount_patients(self, min_tumors = 3):
+        #gets all patients with more than a given number of tumors
+        mtumors = []
+        for p in range(self.get_num_patients()):
+            n_tumors = 0
+            gtvset = self.gtvs[p]
+            for gtv in gtvset:
+                if gtv.volume > 0.001:
+                    n_tumors += 1
+            if n_tumors >= min_tumors:
+                mtumors.append(p)
+        return mtumors
         
     def get_transformed_centroids(self, reference_centroids = None):
         

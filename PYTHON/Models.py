@@ -8,11 +8,12 @@ import numpy as np
 from Constants import Constants
 from ErrorChecker import ErrorChecker
 import Metrics
+from scipy.optimize import basinhopping, minimize
 
 class KnnEstimator():
     #class that works as a modified knn predictor for doses
     #mainn function is evaluate, which gives you the precent prediction error given a patientset and a similarity matrix
-    def __init__(self, match_threshold = .65, match_type = 'threshold', min_matches = 8):
+    def __init__(self, match_threshold = .65, match_type = 'threshold', min_matches = 8, lmbda = 1):
         #match type is how the number of matches are selected
         #give clusters to make it based on the class.  
         #threshold uses similarity score, uses max(min_matches, patients with score > match threshold)
@@ -21,6 +22,7 @@ class KnnEstimator():
         #similarity needed to be a match
         self.match_threshold = match_threshold
         self.match_type = match_type
+        self.l = lmbda
         return
 
     def predict_doses(self, similarity_matrix, data):
@@ -30,7 +32,7 @@ class KnnEstimator():
         outliers = ErrorChecker().get_data_outliers(data.doses)
         similarity = np.copy(similarity_matrix)
         for p in range( dose_matrix.shape[0] ):
-            num_matches = self.get_num_matches(p, similarity, clusters)
+            num_matches = self.get_num_matches(p, similarity[p], clusters)
             scores = similarity[p, :]
             if p not in outliers:
                 scores[list(outliers)] = 0
@@ -50,6 +52,26 @@ class KnnEstimator():
 #            print(patient, 'doesnt have any matches')
             predicted_doses = dose_matrix.mean(axis=0) #return average if bad
         return predicted_doses
+#        dose_matrix = data.doses
+#        matched_scores = scores[args].reshape(len(args), 1)
+#        matched_doses = dose_matrix[args, :]
+#        matched_distances = data.tumor_distances[args, :]
+#        current_distances = data.tumor_distances[patient,:]
+#        def loss_function(score_vector):
+#            weighted_distances = np.mean(matched_distances*score_vector.reshape(-1,1), axis = 0)/score_vector.mean()
+#            distance_loss = np.linalg.norm(weighted_distances - current_distances)/np.linalg.norm(current_distances)
+#            score_loss = np.sum((score_vector - matched_scores)**2)
+#            return self.l*distance_loss**2 + score_loss
+#        bounds = [(0,1) for dummy in matched_scores]
+#        x0 = np.copy(matched_scores)
+#        optimized = minimize(loss_function, x0, bounds = bounds)
+#        if optimized.success:
+#            weights = optimized.x.reshape(-1,1)
+#        else:
+#            print('failure')
+#            weights = matched_scores
+#        return np.mean(weights*matched_doses, axis = 0)/weights.mean()
+
 
     def get_matches(self, similarity_matrix, data):
         dose_matrix = data.doses
@@ -59,20 +81,22 @@ class KnnEstimator():
         outliers = ErrorChecker().get_data_outliers(data.doses)
         similarity = np.copy(similarity_matrix)
         for p in range( dose_matrix.shape[0] ):
-            num_matches = self.get_num_matches(p, similarity, clusters)
-            scores = similarity[p, :]
-            if p not in outliers:
-                scores[list(outliers)] = 0
-            args = np.argsort(-scores)
-            
-            args = args[0 : num_matches] + 1
-            matches.append(args)
+            patient_matches = self.get_patient_matches(p, similarity[p], data, outliers, clusters)
+            matches.append(patient_matches)
         return(matches)
+        
+    def get_patient_matches(self, p, scores, data, outliers, clusters):
+        num_matches = self.get_num_matches(p, scores, clusters)
+        if p not in outliers:
+            scores[list(outliers)] = 0
+        args = np.argsort(-scores)
+        args = args[0 : num_matches] + 1
+        return args
 
-    def get_num_matches(self, p, similarity, clusters):
+    def get_num_matches(self, p, score_vector, clusters):
         #for later better use probs
         if self.match_type == 'threshold':
-            good_matches= len(np.where(similarity[p,:] > self.match_threshold)[0])
+            good_matches= len(np.where(score_vector > self.match_threshold)[0])
             matches = max([self.min_matches, good_matches])
         elif self.match_type == 'clusters':
             num_cluster_values = len(np.where(clusters == clusters[p])[0])

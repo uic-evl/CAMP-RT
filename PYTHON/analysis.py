@@ -182,11 +182,13 @@ def optimal_organ_search(db, similarity_function = None, use_classes = False):
 db = PatientSet(root = 'data\\patients_v*\\',
                 use_distances = False)
 distance_sim = TJaccardModel().get_similarity(db)
-threshold_grid_search(db, distance_sim)
+export(db, similarity = distance_sim)
+#threshold_grid_search(db, distance_sim, start_k = .94, n_itters = 1)
+
 
 #distances = db.get_all_tumor_distances()
 #distances = Denoiser(normalize = False, noise = .5).fit_transform(distances, lr = .0001)
-#
+
 #o_centroids, t_centroids = db.get_transformed_centroids()
 #t_centroids = np.vstack(t_centroids)
 
@@ -220,18 +222,6 @@ threshold_grid_search(db, distance_sim)
 #    tumor_sets[p, :, 0] = left
 #    tumor_sets[p, :, 1] = right
 
-def get_flip_args(organ_list = None):
-    if organ_list is None:
-        organ_list = Constants.organ_list
-    flip_args = np.arange(len(organ_list))
-    for organ in organ_list:
-        for pattern in [('Rt_', 'Lt_'), ('Lt_', 'Rt_')]:
-            if re.match(pattern[0], organ) is not None:
-                other_organ = re.sub(pattern[0], pattern[1], organ)
-                idx1 = organ_list.index(organ)
-                idx2 = organ_list.index(other_organ)
-                flip_args[idx1] = idx2
-    return flip_args
             
 def tsim(d1, d2, adjacency):
     scores = []
@@ -268,5 +258,9 @@ def symmetric_similarity(db):
             print(weights, p1, [x[0] for x in matches])
         dose_predictions[p1,:] = np.mean(prediction*weights, axis = 0)/np.mean(weights)
     
-    print(KnnEstimator().get_error(dose_predictions, db.doses).mean())
     return(dose_predictions)
+    
+prediction = symmetric_similarity(db)
+result = KnnEstimator().get_error(prediction, db.doses)
+print(result[db.tumorcount_patients()].mean())
+print(result[np.argwhere(db.classes < 3)].mean())
