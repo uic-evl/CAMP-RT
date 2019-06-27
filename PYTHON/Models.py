@@ -13,7 +13,7 @@ from scipy.optimize import basinhopping, minimize
 class KnnEstimator():
     #class that works as a modified knn predictor for doses
     #mainn function is evaluate, which gives you the precent prediction error given a patientset and a similarity matrix
-    def __init__(self, match_threshold = .65, match_type = 'threshold', min_matches = 8, lmbda = 1):
+    def __init__(self, match_threshold = .94, match_type = 'threshold', min_matches = 8):
         #match type is how the number of matches are selected
         #give clusters to make it based on the class.  
         #threshold uses similarity score, uses max(min_matches, patients with score > match threshold)
@@ -22,28 +22,38 @@ class KnnEstimator():
         #similarity needed to be a match
         self.match_threshold = match_threshold
         self.match_type = match_type
-        self.l = lmbda
         return
 
     def predict_doses(self, similarity_matrix, data):
+        n_patients = data.get_num_patients()
         dose_matrix = data.doses
-        clusters = data.classes
-        predicted_doses = np.zeros(dose_matrix.shape)
         outliers = ErrorChecker().get_data_outliers(data.doses)
-        similarity = np.copy(similarity_matrix)
-        for p in range( dose_matrix.shape[0] ):
-            num_matches = self.get_num_matches(p, similarity[p], clusters)
+        is_augmented = similarity_matrix.shape[0] > n_patients
+        if is_augmented: #if matrix is agumented
+            dose_matrix = Metrics.augment_mirrored(dose_matrix)
+            outliers = outliers | set([o + n_patients for o in outliers])
+        similarity = np.copy(similarity_matrix[:n_patients, :])
+        clusters = data.classes
+        predicted_doses = np.zeros((n_patients, dose_matrix.shape[1]))
+        for p in range( n_patients ):
             scores = similarity[p, :]
+#            if is_augmented:
+#                for pnt in range(n_patients):
+#                    if scores[pnt] > scores[pnt + n_patients]:
+#                        scores[pnt + n_patients] = 0
+#                    else:
+#                        scores[pnt] = 0
             if p not in outliers:
                 scores[list(outliers)] = 0
+            num_matches = self.get_num_matches(p, scores, clusters)
             args = np.argsort(-scores)
             args = args[0 : num_matches]
             
-            predicted_doses[p, :] = self.get_prediction(data, scores, args, p)
+            predicted_doses[p, :] = self.get_prediction(dose_matrix, scores, args, p)
         return(predicted_doses)
     
-    def get_prediction(self, data, scores, args, patient):
-        dose_matrix = data.doses
+    def get_prediction(self, dose_matrix, scores, args, patient):
+        #default, l is bascially a flag to do the version that attempts optimization
         matched_scores = scores[args].reshape(len(args), 1)
         matched_doses = dose_matrix[args, :]
         if matched_scores.mean() > 0:
@@ -52,25 +62,29 @@ class KnnEstimator():
 #            print(patient, 'doesnt have any matches')
             predicted_doses = dose_matrix.mean(axis=0) #return average if bad
         return predicted_doses
-#        dose_matrix = data.doses
-#        matched_scores = scores[args].reshape(len(args), 1)
-#        matched_doses = dose_matrix[args, :]
-#        matched_distances = data.tumor_distances[args, :]
-#        current_distances = data.tumor_distances[patient,:]
-#        def loss_function(score_vector):
-#            weighted_distances = np.mean(matched_distances*score_vector.reshape(-1,1), axis = 0)/score_vector.mean()
-#            distance_loss = np.linalg.norm(weighted_distances - current_distances)/np.linalg.norm(current_distances)
-#            score_loss = np.sum((score_vector - matched_scores)**2)
-#            return self.l*distance_loss**2 + score_loss
-#        bounds = [(0,1) for dummy in matched_scores]
-#        x0 = np.copy(matched_scores)
-#        optimized = minimize(loss_function, x0, bounds = bounds)
-#        if optimized.success:
-#            weights = optimized.x.reshape(-1,1)
-#        else:
-#            print('failure')
-#            weights = matched_scores
-#        return np.mean(weights*matched_doses, axis = 0)/weights.mean()
+        
+    def get_prediction_with_optimization(self,data,scores,args,patient):
+        #version of matching that attempts to change scoring so the mean matches distance matrix lines up better
+        #shouldn't be used, but I took like 5 hours to get this to work so I don't want to delete it
+        dose_matrix = data.doses
+        matched_scores = scores[args].reshape(len(args), 1)
+        matched_doses = dose_matrix[args, :]
+        matched_distances = data.tumor_distances[args, :]
+        current_distances = data.tumor_distances[patient,:]
+        def loss_function(score_vector):
+            weighted_distances = np.mean(matched_distances*score_vector.reshape(-1,1), axis = 0)/score_vector.mean()
+            distance_loss = np.linalg.norm(weighted_distances - current_distances)/np.linalg.norm(current_distances)
+            score_loss = np.sum((score_vector - matched_scores)**2)
+            return self.l*distance_loss**2 + score_loss
+        bounds = [(0,1) for dummy in matched_scores]
+        x0 = np.copy(matched_scores)
+        optimized = minimize(loss_function, x0, bounds = bounds)
+        if optimized.success:
+            weights = optimized.x.reshape(-1,1)
+        else:
+            print('failure')
+            weights = matched_scores
+        return np.mean(weights*matched_doses, axis = 0)/weights.mean()
 
 
     def get_matches(self, similarity_matrix, data):
@@ -140,7 +154,7 @@ class TsimModel():
             adjacency_lists.append(adjacent_args.ravel())
         return adjacency_lists
 
-    def get_similarity(self, data, denoise = True):
+    def get_similarity(self, data, augment = False):
         #data is assumed to be a patientset object for now
         if self.patients is None:
             patients = range(len(data.ids))
@@ -155,14 +169,21 @@ class TsimModel():
         distances = data.tumor_distances[index]
         volumes = data.volumes[index]
         clusters = data.classes[patients]
+        if augment:
+            organ_list = list(np.array(Constants.organ_list)[organs])
+            distances = Metrics.augment_mirrored(distances, organ_list = organ_list)
+            volumes = Metrics.augment_mirrored(volumes, organ_list = organ_list)
         scores = self.similarity(adjacency, distances, volumes, clusters)
         return scores
 
     def similarity(self, adjacency, distances, volumes, clusters, similarity_function = None):
         num_patients, num_organs = distances.shape
+        num_original_patients = len(clusters)
         score_matrix = np.zeros((num_patients, num_patients))
         for patient1 in range(0, num_patients - 1):
             for patient2 in range(patient1 + 1, num_patients):
+                if (patient1 % num_original_patients) == (patient2 % num_original_patients):
+                    continue
                 scores = self.pairwise_similarity(patient1, patient2, 
                                                      distances, volumes,
                                                      clusters, adjacency)
@@ -171,13 +192,21 @@ class TsimModel():
 #        scale to between 0 and .99
         score_matrix = (score_matrix - score_matrix.min())
         score_matrix = .99*score_matrix/score_matrix.max()
-        for p in range(0, num_patients):
+        for p in range(num_original_patients):
             score_matrix[p,p] = 0
+            if num_original_patients < num_patients:
+                mirror_pos = p+num_original_patients
+                score_matrix[p, mirror_pos] = 0
+                score_matrix[mirror_pos, p] = 0
+                score_matrix[mirror_pos, mirror_pos] = 0
         return score_matrix
 
     def pairwise_similarity(self, patient1, patient2, distances, volumes, clusters, adjacency = None):
-        if self.use_classes and clusters[patient1] != clusters[patient2]:
-            return 0
+        if self.use_classes:
+            p1 = patient1 % len(clusters)
+            p2 = patient2 % len(clusters)
+            if clusters[p1] != clusters[p2]:
+                return 0
         scores = []
         for organ in range(distances.shape[1]):
             adjacent_args = adjacency[organ]

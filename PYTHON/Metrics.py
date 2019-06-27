@@ -82,6 +82,13 @@ def lcr_args(organ_list = None, exclude = None):
             center.append(position)
     return (left, center, right)
 
+def augment_mirrored(matrix, organ_list = None):
+    if len(matrix.shape) > 1:
+        flip_args = get_flip_args(organ_list)
+        return np.vstack([matrix, matrix[:, flip_args]])
+    else:
+        return np.hstack([matrix,matrix])
+
 #full similarity measures
     
 def get_sim(db, similarity_function):

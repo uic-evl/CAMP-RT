@@ -19,7 +19,7 @@ from Patient import Patient
 from ErrorChecker import ErrorChecker 
 from preprocessing import Denoiser
 from cv2 import estimateAffine3D
-from Metrics import lcr_args
+from Metrics import lcr_args, get_flip_args
 
 class PatientSet():
 

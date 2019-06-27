@@ -21,8 +21,6 @@ import matplotlib.pyplot as plt
 import copy
 #import metric_learn
 from preprocessing import *
-from sklearn.cluster import KMeans
-from NCA import NeighborhoodComponentsAnalysis
 from Metrics import *
 import re
 from sklearn.manifold import TSNE, MDS
@@ -38,11 +36,14 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
     if similarity is None:
         similarity = model.get_similarity(data_set) #similarity scores
     predicted_doses = estimator.predict_doses(similarity, data_set)
-    similar_patients = estimator.get_matches(similarity, data_set)
     error = estimator.get_error(predicted_doses, data_set.doses) #a vector of errors
+    n_patients = data_set.get_num_patients()
+    disimilarity = 1- np.round(similarity[:n_patients, :n_patients], 3)
+    if n_patients < similarity.shape[0]:
+        similarity = np.maximum(similarity[:n_patients, :n_patients], similarity[:n_patients, n_patients:])
+    similar_patients = estimator.get_matches(similarity, data_set)
     dose_pca = pca(data_set.doses)
     distance_tsne = TSNE(perplexity = 60, init = 'pca').fit_transform(data_set.tumor_distances) #pca(data_set.tumor_distances)
-    disimilarity = 1- np.round(np.copy(similarity), 5)
     similarity_embedding = MDS(dissimilarity='precomputed', random_state = 1).fit_transform(disimilarity)
     export_data = []
     for x in range(data_set.get_num_patients()):
@@ -178,13 +179,16 @@ def optimal_organ_search(db, similarity_function = None, use_classes = False):
         best_score = best
     return optimal_organs, best_score
 
-
-db = PatientSet(root = 'data\\patients_v*\\',
-                use_distances = False)
-distance_sim = TJaccardModel().get_similarity(db)
+#db = PatientSet(root = 'data\\patients_v*\\',
+#                use_distances = False)
+distance_sim = TJaccardModel().get_similarity(db, augment = True)
 export(db, similarity = distance_sim)
-#threshold_grid_search(db, distance_sim, start_k = .94, n_itters = 1)
-
+result = KnnEstimator().evaluate(distance_sim, db)
+print(result.mean())
+#print(result[db.tumorcount_patients()].mean())
+#print(result[db.tumorcount_patients(4)].mean())
+#print(result[np.argwhere(db.classes < 3)].mean())
+    
 
 #distances = db.get_all_tumor_distances()
 #distances = Denoiser(normalize = False, noise = .5).fit_transform(distances, lr = .0001)
@@ -259,8 +263,3 @@ def symmetric_similarity(db):
         dose_predictions[p1,:] = np.mean(prediction*weights, axis = 0)/np.mean(weights)
     
     return(dose_predictions)
-    
-prediction = symmetric_similarity(db)
-result = KnnEstimator().get_error(prediction, db.doses)
-print(result[db.tumorcount_patients()].mean())
-print(result[np.argwhere(db.classes < 3)].mean())
