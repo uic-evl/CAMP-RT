@@ -179,87 +179,57 @@ def optimal_organ_search(db, similarity_function = None, use_classes = False):
         best_score = best
     return optimal_organs, best_score
 
+def dose_similarity(dose_predictions, distance_metric = None):
+    if distance_metric is None:
+        distance_metric = mse
+    n_patients = dose_predictions.shape[0]
+    dists = np.zeros((n_patients, n_patients))
+    for p1 in range(n_patients):
+        d1 = dose_predictions[p1]
+        for p2 in range(p1+1, n_patients):
+            d2 = dose_predictions[p2]
+            dists[p1,p2] = distance_metric(d1, d2)
+    dists += dists.transpose()
+    similarity = dist_to_sim(dists)
+    return similarity
+    
 #db = PatientSet(root = 'data\\patients_v*\\',
 #                use_distances = False)
-distance_sim = TJaccardModel().get_similarity(db, augment = True)
-export(db, similarity = distance_sim)
-result = KnnEstimator().evaluate(distance_sim, db)
-print(result.mean())
-#print(result[db.tumorcount_patients()].mean())
-#print(result[db.tumorcount_patients(4)].mean())
-#print(result[np.argwhere(db.classes < 3)].mean())
-    
 
-#distances = db.get_all_tumor_distances()
-#distances = Denoiser(normalize = False, noise = .5).fit_transform(distances, lr = .0001)
+ 
+def get_tumor_organ_vectors(db):
+    o_centroids, t_centroids = db.get_transformed_centroids()
+    vectors = np.zeros((o_centroids.shape))
+    for p in range(db.get_num_patients()):
+        o_centers = o_centroids[p]
+        t_centers = t_centroids[p]
+        distances = np.stack([g.dists for g in db.gtvs[p] if g.volume > 0], axis = 1)
+        new_vectors = np.zeros(o_centers.shape)
+        for organ in range(new_vectors.shape[0]):
+            nearest_tumor_arg = np.argmin(distances[organ])
+            nearest_tumor = t_centers[nearest_tumor_arg]
+            organ_tumor_vector = nearest_tumor - o_centers[organ]
+            new_vectors[organ] = organ_tumor_vector/np.linalg.norm(organ_tumor_vector)
+        vectors[p] = new_vectors
+    return vectors
 
-#o_centroids, t_centroids = db.get_transformed_centroids()
-#t_centroids = np.vstack(t_centroids)
+def tumor_cosine_similarity(p1, p2, t_o_vectors, adjacency):
+    vects1 = t_o_vectors[p1]
+    vects2 = t_o_vectors[p2]
+    dist = []
+    for organ in range(t_o_vectors.shape[1]):
+        overlap = np.linalg.norm(np.dot(vects1[organ], vects2[organ]))
+        dist.append(overlap)
+    return np.mean(dist)
 
-#from sklearn.cluster import AffinityPropagation, SpectralClustering, MeanShift
-#
-#clusterer = AffinityPropagation(max_iter = 400, damping = .96)
-#clusterer = SpectralClustering(n_clusters = 6)
-#clusterer = MeanShift()
+#t_o_vectors = get_tumor_organ_vectors(db)
+#adjacency = TsimModel().get_adjacency_lists(db.tumor_distances)
+#cosine_dist = lambda d,x,y: tumor_cosine_similarity(x,y, t_o_vectors, adjacency)
+#cosine_sim = get_sim(db, cosine_dist)
+#distance_sim = TJaccardModel().get_similarity(db, augment = False)
 
-#dist_pca = pca(distances, 3)
-#c_pca = pca(t_centroids, 2)
-#dist_tsne = TSNE( perplexity = 100).fit_transform(db.tumor_distances)
-#dist_mds = MDS().fit_transform(db.tumor_distances)
-#x = dist_mds
-#
-#clusters = clusterer.fit_predict(x)
-#plt.scatter(x[:,0], x[:,1], c=clusters)
-#print(len(np.unique(clusters)))
+similarity_list = [cosine_sim, distance_sim]
 
-#tumor_sets = np.zeros((db.get_num_patients(), Constants.num_organs, 2))
-#for p in range(db.get_num_patients()):
-#    gtvs = db.gtvs[p]
-#    left = np.inf*np.ones((Constants.num_organs,))
-#    right = copy.copy(left)
-#    #position[0] > 0 is left side 
-#    for gtv in gtvs:
-#        if gtv.position[0] > 0:
-#            left = np.minimum(left, gtv.dists)
-#        else:
-#            right = np.minimum(right, gtv.dists)
-#    tumor_sets[p, :, 0] = left
-#    tumor_sets[p, :, 1] = right
 
-            
-def tsim(d1, d2, adjacency):
-    scores = []
-    if d2.sum() == np.inf:
-        return 0
-    for organ_set in adjacency:
-        scores.append(jaccard_distance(d1[organ_set], d2[organ_set]))
-    return np.mean(scores)
 
-def symmetric_similarity(db):
-    flip_args = get_flip_args()
-    adjacency = TJaccardModel().get_adjacency_lists(db.organ_distances, np.arange(Constants.num_organs))
-    normal_distances = db.tumor_distances
-    flipped_distances = db.tumor_distances[:, flip_args]
-    flipped_doses = db.doses[:, flip_args]
-    dose_predictions = np.zeros((db.get_num_patients(), Constants.num_organs))
-    for p1 in range(db.get_num_patients()):
-        matches = []
-        for p2 in range(0, db.get_num_patients()):
-            if p1 == p2:
-                continue
-            base_similarity = tsim(normal_distances[p1], normal_distances[p2], adjacency)
-            flipped_similarity = tsim(normal_distances[p1], flipped_distances[p2], adjacency)
-            if base_similarity > flipped_similarity:
-                match = (base_similarity, db.doses[p2])
-            else:
-                match = (flipped_similarity, flipped_doses[p2])
-            matches.append(match)
-        matches = sorted(matches, key = lambda x: -x[0])
-        n_matches = int(round(np.sqrt( len( np.where(db.classes == db.classes[p1])[0] ) )))
-        prediction = np.array([x[1] for x in matches[0:n_matches]])
-        weights = np.array([x[0] for x in matches[0:n_matches]]).reshape(-1,1)
-        if weights.mean() <= 0:
-            print(weights, p1, [x[0] for x in matches])
-        dose_predictions[p1,:] = np.mean(prediction*weights, axis = 0)/np.mean(weights)
-    
-    return(dose_predictions)
+

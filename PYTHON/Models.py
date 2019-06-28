@@ -8,21 +8,145 @@ import numpy as np
 from Constants import Constants
 from ErrorChecker import ErrorChecker
 import Metrics
-from scipy.optimize import basinhopping, minimize
+from scipy.optimize import minimize
+from abc import ABC, abstractmethod
 
-class KnnEstimator():
+class Estimator(ABC):
+    
+    def __init__(self, match_threshold = .94, match_type = 'threshold', min_matches = 8):
+        #match type is how the number of matches are selected
+        #give clusters to make it based on the class.  
+        #threshold uses similarity score, uses max(min_matches, patients with score > match threshold)
+        self.min_matches = min_matches
+        #similarity needed to be a match
+        self.match_threshold = match_threshold
+        self.match_type = match_type
+        return
+        
+    @abstractmethod
+    def predict_doses(self, similarity, data):
+        pass
+    
+    @abstractmethod
+    def get_matches(self, similarity_matrix, data):
+        pass
+    
+    def get_error(self, predicted_doses, dose_matrix):
+        differences = np.abs(predicted_doses - dose_matrix)
+        percent_error = np.sum(differences, axis = 1)/np.sum(dose_matrix, axis = 1)
+        return percent_error
+
+    def evaluate(self, similarity_matrix, data):
+        predicted_doses = self.predict_doses(similarity_matrix, data)
+        percent_error = self.get_error(predicted_doses, data.doses)
+        return(percent_error)
+        
+        
+class SymmetryAugmentedModel(Estimator):
+    
+    def __init__(self, match_threshold = .94, match_type = 'threshold', min_matches = 8):
+        #match type is how the number of matches are selected
+        #give clusters to make it based on the class.  
+        #threshold uses similarity score, uses max(min_matches, patients with score > match threshold)
+        super().__init__(match_threshold, match_type, min_matches)
+        
+     
+    def tsim(self, d1, d2, adjacency):
+        scores = []
+        if d2.sum() == np.inf:
+            return 0
+        for organ_set in adjacency:
+            scores.append(Metrics.jaccard_distance(d1[organ_set], d2[organ_set]))
+        return np.mean(scores)
+    
+    def predict_doses(self, similarity, data):
+        flip_args = Metrics.get_flip_args()
+        adjacency = TJaccardModel().get_adjacency_lists(data.organ_distances, 
+                                 np.arange(Constants.num_organs))
+        normal_distances = data.tumor_distances
+        flipped_distances = data.tumor_distances[:, flip_args]
+        flipped_doses = data.doses[:, flip_args]
+        dose_predictions = np.zeros((data.get_num_patients(), 
+                                     Constants.num_organs))
+        for p1 in range(data.get_num_patients()):
+            matches = []
+            for p2 in range(0, data.get_num_patients()):
+                if p1 == p2:
+                    continue
+                match = self.get_patient_similarity(p1, p2, 
+                                                 normal_distances, 
+                                                 flipped_distances,
+                                                 data.doses,
+                                                 flipped_doses,
+                                                 adjacency)
+                matches.append(match)
+            matches = sorted(matches, key = lambda x: -x[0])
+            n_matches = self.get_num_matches(p1, matches, data.classes)
+            prediction = np.array([x[1] for x in matches[0:n_matches]])
+            weights = np.array([x[0] for x in matches[0:n_matches]]).reshape(-1,1)
+            if weights.mean() <= 0:
+                print(weights, p1, [x[0] for x in matches])
+            dose_predictions[p1,:] = np.mean(prediction*weights, axis = 0)/np.mean(weights)
+        return(dose_predictions)
+        
+    def get_num_matches(self, p, matches, clusters):
+        #for later better use probs
+        if self.match_type == 'threshold':
+            good_matches= np.sum([1 for m in matches if m[0] > self.match_threshold])
+            matches = max([self.min_matches, good_matches])
+        elif self.match_type == 'clusters':
+            num_cluster_values = len(np.where(clusters == clusters[p])[0])
+            matches = max([int(np.sqrt(num_cluster_values) + 1), self.min_matches])
+        else:
+            matches = self.min_matches
+        return matches
+        
+    def get_matches(self, similarity_matrix, data):
+        flip_args = Metrics.get_flip_args()
+        adjacency = TJaccardModel().get_adjacency_lists(data.organ_distances, 
+                                 np.arange(Constants.num_organs))
+        normal_distances = data.tumor_distances
+        flipped_distances = data.tumor_distances[:, flip_args]
+        flipped_doses = data.doses[:, flip_args]
+        all_matches = []
+        for p1 in range(data.get_num_patients()):
+            matches = []
+            for p2 in range(0, data.get_num_patients()):
+                match = self.get_patient_similarity(p1, p2, 
+                                                 normal_distances, 
+                                                 flipped_distances,
+                                                 data.doses,
+                                                 flipped_doses,
+                                                 adjacency)
+                matches.append(match) 
+            n_matches = self.get_num_matches(p1, matches, data.classes)
+            similarities = np.array([-m[0] for m in matches])#this is inverse because argsort is ascending
+            match_args = (np.argsort(similarities))[:n_matches]
+            all_matches.append(match_args)
+        return all_matches
+    
+    def get_patient_similarity(self, p1, p2, 
+                            normal_distances, flipped_distances, 
+                            doses, flipped_doses, adjacency):
+        if p1 == p2:
+            return (-np.inf, doses[p2])
+        base_similarity = self.tsim(normal_distances[p1], normal_distances[p2], adjacency)
+        flipped_similarity = self.tsim(normal_distances[p1], flipped_distances[p2], adjacency)
+        if base_similarity > flipped_similarity:
+            match = (base_similarity, doses[p2])
+        else:
+            match = (flipped_similarity, flipped_doses[p2])
+        return match
+        
+
+class KnnEstimator(Estimator):
     #class that works as a modified knn predictor for doses
     #mainn function is evaluate, which gives you the precent prediction error given a patientset and a similarity matrix
     def __init__(self, match_threshold = .94, match_type = 'threshold', min_matches = 8):
         #match type is how the number of matches are selected
         #give clusters to make it based on the class.  
         #threshold uses similarity score, uses max(min_matches, patients with score > match threshold)
-        
-        self.min_matches = min_matches
-        #similarity needed to be a match
-        self.match_threshold = match_threshold
-        self.match_type = match_type
-        return
+        super().__init__(match_threshold, match_type, min_matches)
 
     def predict_doses(self, similarity_matrix, data):
         n_patients = data.get_num_patients()
@@ -118,16 +242,6 @@ class KnnEstimator():
         else:
             matches = self.min_matches
         return matches
-
-    def get_error(self, predicted_doses, dose_matrix):
-        differences = np.abs(predicted_doses - dose_matrix)
-        percent_error = np.sum(differences, axis = 1)/np.sum(dose_matrix, axis = 1)
-        return percent_error
-
-    def evaluate(self, similarity_matrix, data):
-        predicted_doses = self.predict_doses(similarity_matrix, data)
-        percent_error = self.get_error(predicted_doses, data.doses)
-        return(percent_error)
         
 class TsimModel():
     #orginal-ish similarity model that gives a similarity matrix from get_simirity based on a spatial ssim 
@@ -146,6 +260,8 @@ class TsimModel():
     def get_adjacency_lists(self, organ_distance_matrix, organs = None):
         if organs is None:
             organs = self.organs
+            if organs is None:
+                organs = range(Constants.num_organs)
         #this code is much simpler than expected
         organ_distances = organ_distance_matrix[organs][:, organs]
         adjacency_lists = []

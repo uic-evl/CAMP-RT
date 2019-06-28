@@ -231,7 +231,7 @@ def gtv_volume_dist(db,p1,p2):
     vol2 = sorted([gtv.volume for gtv in gtvns2], key = lambda x: -x)
     if max([vol1, vol2]) == 0:
         return 1
-    return np.abs(np.sum(vol1) - np.sum(vol2))/(np.sum(vol1) + np.sum(vol2))
+    return np.abs(np.sum(vol1) - np.sum(vol2))
 
 def gtv_organ_sim(db,p1,p2):
     #makes a binary vector denoting the organs that most overlap with each tumor
@@ -318,6 +318,22 @@ def convex_hull_projection(point_cloud, centroids):
                 min_dist = distance
         projections.append(curr_projection)
     return np.vstack(projections)
+
+def get_lr_tumors(db):
+    tumor_sets = np.zeros((db.get_num_patients(), Constants.num_organs, 2))
+    for p in range(db.get_num_patients()):
+        gtvs = db.gtvs[p]
+        left = np.inf*np.ones((Constants.num_organs,))
+        right = copy.copy(left)
+        #position[0] > 0 is left side 
+        for gtv in gtvs:
+            if gtv.position[0] > 0:
+                left = np.minimum(left, gtv.dists)
+            else:
+                right = np.minimum(right, gtv.dists)
+        tumor_sets[p, :, 0] = left
+        tumor_sets[p, :, 1] = right
+    return tumor_sets
 
 def get_gtv_vectors(db):
     #pretty sure this gets a matrix of tumor vectors of the centroid of the main tumor and slope? between the main
