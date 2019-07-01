@@ -18,11 +18,12 @@ import json
 import pandas as pd
 from collections import OrderedDict
 import matplotlib.pyplot as plt
-import copy
+from copy import copy
 #import metric_learn
 from preprocessing import *
 from Metrics import *
 import re
+from SyntheticDataGenerator import *
 from sklearn.manifold import TSNE, MDS
 
 
@@ -84,7 +85,10 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
         tumors = data_set.gtvs[x]
         entry['tumorVolume'] = np.sum([tumor.volume for tumor in tumors])
         entry['gtvp_volume'] = tumors[0].volume
-        entry['gtvn_volume'] = tumors[1].volume
+        if len(tumors) > 1:
+            entry['gtvn_volume'] = tumors[1].volume
+        else:
+            entry['gtvn_volume'] = 0
         for tumor_idx in range(len(tumors)):
             tumor = tumors[tumor_idx]
             tumor_entry = OrderedDict()
@@ -131,8 +135,8 @@ def threshold_grid_search(db, similarity, start_k = .4, max_matches = 20,
             result = KnnEstimator(match_threshold = k, min_matches = m).evaluate(similarity, db)
             if result.mean() < best_score:
                 best_score = result.mean()
-                best_threshold = copy.copy(k)
-                best_min_matches = copy.copy(m)
+                best_threshold = copy(k)
+                best_min_matches = copy(m)
     if print_out:
         print('Score-', round(100*best_score,2) , ': Threshold-', round(best_threshold,2) , ': Min matches-', best_min_matches)
     if get_model:
@@ -155,7 +159,7 @@ def organ_selection(organ_list, db, similarity_function = None,
     bad_organs = []
     best_score = 100
     for organ in organ_list:
-        organ_subset = copy.copy(organ_list)
+        organ_subset = copy(organ_list)
         organ_subset.remove(organ)
         distance_subset_sim = tsim(organ_subset)
         best_score, best_threshold, best_min_matches = threshold_grid_search(db, distance_subset_sim, print_out = False)
@@ -222,46 +226,19 @@ def tumor_cosine_similarity(p1, p2, t_o_vectors, adjacency):
 #db = PatientSet(root = 'data\\patients_v*\\',
 #                use_distances = False)
 
-from sklearn.ensemble import RandomForestRegressor
-class_densities = [len(np.argwhere(db.classes == c))/len(db.classes) for c in sorted(np.unique(db.classes))]
-class_args = [np.argwhere(db.classes == c).ravel() for c in sorted(np.unique(db.classes))]
-generator = RandomForestRegressor(n_estimators = 10)
-patients_to_generate = 200
-for c in range(len(class_args)):
-    args = class_args[c]
-    o_centroids = db.centroids[c]
-    tumor_centroids = []
-    tumor_volumes = []
-    tumor_distances = []
-    training_organ_centroids = []
-    for arg in args:
-        tumorset = db.gtvs[arg]
-        for tumor in tumorset:
-            if tumor.volume > 0:
-                tumor_centroids.append(tumor.position)
-                tumor_volumes.append(tumor.volume)
-                tumor_distances.append(tumor.dists)
-                training_organ_centroids.append(db.centroids[arg].ravel())
-    tumor_centroids = np.vstack(tumor_centroids).astype('float32')
-    tumor_volumes = np.vstack(tumor_volumes).astype('float32')
-    t_centroid_stats =  (tumor_centroids.mean(axis = 0), tumor_centroids.std(axis = 0 ))
-    volume_stats = (tumor_volumes.mean(), tumor_volumes.std())
-    y = np.hstack([np.vstack(tumor_distances), np.vstack(training_organ_centroids)])
-    x = np.hstack([tumor_centroids, tumor_volumes])
-    generator.fit(x,y)
-    generated_tumor_distance = np.zeros((patients_to_generate, Constants.nunum_organs))
-#t_o_vectors = get_tumor_organ_vectors(db)
-#adjacency = TsimModel().get_adjacency_lists(db.tumor_distances)
-#cosine_dist = lambda d,x,y: tumor_cosine_similarity(x,y, t_o_vectors, adjacency)
-#cosine_sim = get_sim(db, cosine_dist)
-#distance_sim = TJaccardModel().get_similarity(db, augment = False)
-#vol_sim = dist_to_sim(get_sim(db, gtv_volume_dist))
-#total_dose_sim = dist_to_sim(get_sim(db, lambda d,x,y: np.abs(db.prescribed_doses[x] - db.prescribed_doses[y])))
-#
-#similarity_list = [cosine_sim, distance_sim, vol_sim, total_dose_sim]
-#fused_similarity = SimilarityBooster().get_similarity(db, similarity_list)
-#export(db, similarity = fused_similarity)
-#threshold_grid_search(db, fused_similarity, n_itters = 10)
+
+t_o_vectors = get_tumor_organ_vectors(db)
+adjacency = TsimModel().get_adjacency_lists(db.tumor_distances)
+cosine_dist = lambda d,x,y: tumor_cosine_similarity(x,y, t_o_vectors, adjacency)
+cosine_sim = get_sim(db, cosine_dist)
+distance_sim = TJaccardModel().get_similarity(db, augment = False)
+vol_sim = dist_to_sim(get_sim(db, gtv_volume_dist))
+total_dose_sim = dist_to_sim(get_sim(db, lambda d,x,y: np.abs(db.prescribed_doses[x] - db.prescribed_doses[y])))
+
+similarity_list = [cosine_sim, distance_sim, vol_sim, total_dose_sim]
+fused_similarity = SimilarityBooster(model = RandomForestRegressor(n_estimators = 30)).get_similarity(db, similarity_list)
+export(db, similarity = fused_similarity)
+threshold_grid_search(db, fused_similarity, n_itters = 10)
 
 #from sklearn.ensemble import AdaBoostClassifier, AdaBoostRegressor
 #tree = AdaBoostRegressor(n_estimators = 2*len(similarity_list),

@@ -161,12 +161,6 @@ class KnnEstimator(Estimator):
         predicted_doses = np.zeros((n_patients, dose_matrix.shape[1]))
         for p in range( n_patients ):
             scores = similarity[p, :]
-#            if is_augmented:
-#                for pnt in range(n_patients):
-#                    if scores[pnt] > scores[pnt + n_patients]:
-#                        scores[pnt + n_patients] = 0
-#                    else:
-#                        scores[pnt] = 0
             if p not in outliers:
                 scores[list(outliers)] = 0
             num_matches = self.get_num_matches(p, scores, clusters)
@@ -518,7 +512,7 @@ class SimilarityBooster(SimilarityFuser):
         
         
     def extract_features(self, similarities, num_patients, data):
-        true_similarity = self.get_true_matches(data)
+        true_similarity = (self.get_true_matches(data))
         x = []
         y = []
         positions = []
@@ -539,4 +533,4 @@ class SimilarityBooster(SimilarityFuser):
     
     def get_true_matches(self, data):
         error = self.get_match_error(data)
-        return Metrics.dist_to_sim(error)
+        return Metrics.dist_to_sim(error**2)

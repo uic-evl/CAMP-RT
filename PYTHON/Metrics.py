@@ -151,7 +151,10 @@ def local_ssim(x,y,v = None, w = None):
     else:
         print('error, zero denomiator in ssim function')
         return 0
-        
+    
+def harmonic_sum(values):
+    return 1/np.sum([1/v for v in values])
+
 def tumor_emd(db, p1, p2, centroids):
     #calculates an emd between tumors
     #should be passed as a lambda function to getsim with centroids as a 
