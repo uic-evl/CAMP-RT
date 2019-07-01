@@ -39,6 +39,7 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
     error = estimator.get_error(predicted_doses, data_set.doses) #a vector of errors
     n_patients = data_set.get_num_patients()
     disimilarity = 1- np.round(similarity[:n_patients, :n_patients], 3)
+    disimilarity = (disimilarity + disimilarity.T)/2
     if n_patients < similarity.shape[0]:
         similarity = np.maximum(similarity[:n_patients, :n_patients], similarity[:n_patients, n_patients:])
     similar_patients = estimator.get_matches(similarity, data_set)
@@ -193,10 +194,6 @@ def dose_similarity(dose_predictions, distance_metric = None):
     similarity = dist_to_sim(dists)
     return similarity
     
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                use_distances = False)
-
- 
 def get_tumor_organ_vectors(db):
     o_centroids, t_centroids = db.get_transformed_centroids()
     vectors = np.zeros((o_centroids.shape))
@@ -222,13 +219,59 @@ def tumor_cosine_similarity(p1, p2, t_o_vectors, adjacency):
         dist.append(overlap)
     return np.mean(dist)
 
+#db = PatientSet(root = 'data\\patients_v*\\',
+#                use_distances = False)
+
+from sklearn.ensemble import RandomForestRegressor
+class_densities = [len(np.argwhere(db.classes == c))/len(db.classes) for c in sorted(np.unique(db.classes))]
+class_args = [np.argwhere(db.classes == c).ravel() for c in sorted(np.unique(db.classes))]
+generator = RandomForestRegressor(n_estimators = 10)
+patients_to_generate = 200
+for c in range(len(class_args)):
+    args = class_args[c]
+    o_centroids = db.centroids[c]
+    tumor_centroids = []
+    tumor_volumes = []
+    tumor_distances = []
+    training_organ_centroids = []
+    for arg in args:
+        tumorset = db.gtvs[arg]
+        for tumor in tumorset:
+            if tumor.volume > 0:
+                tumor_centroids.append(tumor.position)
+                tumor_volumes.append(tumor.volume)
+                tumor_distances.append(tumor.dists)
+                training_organ_centroids.append(db.centroids[arg].ravel())
+    tumor_centroids = np.vstack(tumor_centroids).astype('float32')
+    tumor_volumes = np.vstack(tumor_volumes).astype('float32')
+    t_centroid_stats =  (tumor_centroids.mean(axis = 0), tumor_centroids.std(axis = 0 ))
+    volume_stats = (tumor_volumes.mean(), tumor_volumes.std())
+    y = np.hstack([np.vstack(tumor_distances), np.vstack(training_organ_centroids)])
+    x = np.hstack([tumor_centroids, tumor_volumes])
+    generator.fit(x,y)
+    generated_tumor_distance = np.zeros((patients_to_generate, Constants.nunum_organs))
 #t_o_vectors = get_tumor_organ_vectors(db)
 #adjacency = TsimModel().get_adjacency_lists(db.tumor_distances)
 #cosine_dist = lambda d,x,y: tumor_cosine_similarity(x,y, t_o_vectors, adjacency)
 #cosine_sim = get_sim(db, cosine_dist)
 #distance_sim = TJaccardModel().get_similarity(db, augment = False)
+#vol_sim = dist_to_sim(get_sim(db, gtv_volume_dist))
+#total_dose_sim = dist_to_sim(get_sim(db, lambda d,x,y: np.abs(db.prescribed_doses[x] - db.prescribed_doses[y])))
+#
+#similarity_list = [cosine_sim, distance_sim, vol_sim, total_dose_sim]
+#fused_similarity = SimilarityBooster().get_similarity(db, similarity_list)
+#export(db, similarity = fused_similarity)
+#threshold_grid_search(db, fused_similarity, n_itters = 10)
 
-similarity_list = [cosine_sim, distance_sim]
+#from sklearn.ensemble import AdaBoostClassifier, AdaBoostRegressor
+#tree = AdaBoostRegressor(n_estimators = 2*len(similarity_list),
+#                          learning_rate = 1,
+#                          random_state = 1)
+#true_similarity = dose_similarity(db.doses)
+#similarity_stack = np.hstack(similarity_list)
+#n_measures = len(similarity_list)
+#for p in range(db.get_num_patients()):
+#    
 
 
 

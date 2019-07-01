@@ -490,3 +490,53 @@ class SimilarityFuser():
                 error_matrix[p1, p2] = np.sum(dose_difference)/np.sum(doses[p1, :])
         error_matrix += error_matrix.transpose()
         return error_matrix
+    
+class SimilarityBooster(SimilarityFuser):
+    
+    def __init__(self, model = None):
+        self.model = model
+        if model is None:
+            from sklearn.ensemble import AdaBoostRegressor
+            self.model = AdaBoostRegressor(n_estimators = 6, learning_rate=.5)
+    
+    def get_similarity(self, db, similarity_matrices):
+        [x,y, positions] = self.extract_features(similarity_matrices, db.get_num_patients(), db)
+        final_similarity = np.zeros(similarity_matrices[0].shape)
+        x = (x-x.min(axis=0))/(x.max(axis=0) - x.min(axis=0))
+        for p in range(db.get_num_patients()):
+            test_pairs = np.where(positions == p)[0] 
+            x_train = np.delete(x, test_pairs, axis = 0)
+            y_train = np.delete(y, test_pairs, axis = 0)
+            predict_pairs  = np.where(positions[:,0] == p)[0]
+            x_test = x[predict_pairs,:]
+            self.model.fit(x_train, y_train)
+            y_pred = self.model.predict(x_test)
+            print(y_pred.shape)
+            final_similarity[p, :] = np.insert(y_pred, p, 0)
+#        final_similarity += final_similarity.transpose()
+        return(final_similarity)
+        
+        
+    def extract_features(self, similarities, num_patients, data):
+        true_similarity = self.get_true_matches(data)
+        x = []
+        y = []
+        positions = []
+        for p1 in range(num_patients):
+            for p2 in range(num_patients):
+                if p1 == p2:
+                    continue
+                x_row = []
+                for similarity in similarities:
+                    x_row.append(similarity[p1, p2])
+                x.append(x_row)
+                y.append(true_similarity[p1, p2])
+                positions.append([p1,p2])
+        x = np.array(x)
+        y = np.array(y)
+        positions = np.array(positions)
+        return [x, y, positions]
+    
+    def get_true_matches(self, data):
+        error = self.get_match_error(data)
+        return Metrics.dist_to_sim(error)
