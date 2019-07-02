@@ -6,9 +6,10 @@ Created on Fri Mar  8 10:08:52 2019
 """
 from numpy.random import seed
 seed(1)
-from tensorflow import set_random_seed
+from tensorflow.compat.v1 import set_random_seed
 set_random_seed(2)
-
+import tensorflow_probability as tfp
+tfd = tfp.distributions
 from PatientSet import PatientSet
 from ErrorChecker import ErrorChecker
 from Constants import Constants
@@ -25,18 +26,20 @@ from Metrics import *
 import re
 from SyntheticDataGenerator import *
 from sklearn.manifold import TSNE, MDS
+from sklearn.cluster import KMeans
 
 
 
 def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_file = 'scores.csv',
-           model = None, estimator = None, similarity = None):
+           model = None, estimator = None, similarity = None, predicted_doses = None):
     if model is None:
         model = TJaccardModel()
     if estimator is None:
         estimator = KnnEstimator(match_type = 'clusters')
     if similarity is None:
         similarity = model.get_similarity(data_set) #similarity scores
-    predicted_doses = estimator.predict_doses(similarity, data_set)
+    if predicted_doses is None:
+        predicted_doses = estimator.predict_doses(similarity, data_set)
     error = estimator.get_error(predicted_doses, data_set.doses) #a vector of errors
     n_patients = data_set.get_num_patients()
     disimilarity = 1- np.round(similarity[:n_patients, :n_patients], 3)
@@ -223,32 +226,72 @@ def tumor_cosine_similarity(p1, p2, t_o_vectors, adjacency):
         dist.append(overlap)
     return np.mean(dist)
 
+
+from sklearn.preprocessing import KBinsDiscretizer
+from sklearn.naive_bayes import MultinomialNB, ComplementNB
 #db = PatientSet(root = 'data\\patients_v*\\',
 #                use_distances = False)
 
+def classify_by_clusters(db, clusterer=None, inplace = True):
+    if clusterer is None:
+        clusterer = KMeans(n_clusters = 5)
+    outliers = ErrorChecker().get_data_outliers(db.doses)
+    innlier_doses = np.delete(db.doses, list(outliers), axis = 0)
+    clusterer.fit(innlier_doses)
+    clusters = clusterer.predict(db.doses)
+    clusters = (clusters - clusters.min() + 1).ravel().astype('int32')
+    old_classes = np.copy(db.classes)
+    if inplace:
+        db.classes = clusters
+    return (clusters, old_classes)
 
-t_o_vectors = get_tumor_organ_vectors(db)
-adjacency = TsimModel().get_adjacency_lists(db.tumor_distances)
-cosine_dist = lambda d,x,y: tumor_cosine_similarity(x,y, t_o_vectors, adjacency)
-cosine_sim = get_sim(db, cosine_dist)
-distance_sim = TJaccardModel().get_similarity(db, augment = False)
-vol_sim = dist_to_sim(get_sim(db, gtv_volume_dist))
-total_dose_sim = dist_to_sim(get_sim(db, lambda d,x,y: np.abs(db.prescribed_doses[x] - db.prescribed_doses[y])))
+def get_bayes_features(db, num_bins = 5):
+    features_to_use = [db.ajcc8, db.prescribed_doses, db.tumor_distances,
+                       np.array([np.sum([g.volume for g in gtv]) for gtv in db.gtvs]),
+                       db.volumes.sum(axis = 1)]
+    discretizer = KBinsDiscretizer(n_bins = num_bins, 
+                                   encode = 'ordinal',
+                                   strategy = 'kmeans')
+    formated_features = []
+    for feature in features_to_use:
+        if len(feature.shape) == 1:
+            feature = feature.reshape(-1,1)
+        if len(np.unique(feature)) > num_bins:
+            feature = discretizer.fit_transform(feature)
+        feature = feature - feature.min()
+        formated_features.append(feature)
+    return(np.hstack(formated_features))
+    
+x = get_bayes_features(db)
+classes, old_classes = classify_by_clusters(db, inplace = True)
+bayes = ComplementNB(alpha = 100, ).fit(x, classes)
+densities = np.array([len(np.argwhere(classes == c))/len(classes) for c in sorted(np.unique(classes))])
+class_probs = bayes.predict_proba(x)
+discrete_doses = KBinsDiscretizer(n_bins = 10, strategy = 'kmeans', encode = 'ordinal').fit_transform(db.doses)
+fuzzy_clusters = ComplementNB().fit(discrete_doses, classes).predict_proba(discrete_doses)
+weighted_probs = class_probs/densities
 
-similarity_list = [cosine_sim, distance_sim, vol_sim, total_dose_sim]
-fused_similarity = SimilarityBooster(model = RandomForestRegressor(n_estimators = 30)).get_similarity(db, similarity_list)
-export(db, similarity = fused_similarity)
-threshold_grid_search(db, fused_similarity, n_itters = 10)
+cluster_centers = np.vstack([db.doses[np.argwhere(db.classes == c)].mean(axis = 0) for c in sorted(np.unique(db.classes))])
+predicted_doses = np.zeros((db.get_num_patients(), Constants.num_organs))
+for p in range(db.get_num_patients()):
+    cluster_probs = weighted_probs[p]/np.sum(weighted_probs[p])
+    weighted_centers = cluster_probs.reshape(-1,1)*cluster_centers
+    predicted_doses[p] = weighted_centers.sum(axis = 0)
+fuzzy_similarity = dose_similarity(predicted_doses)
+export(db, similarity = fuzzy_similarity, predicted_doses = predicted_doses)
+#t_o_vectors = get_tumor_organ_vectors(db)
+#adjacency = TsimModel().get_adjacency_lists(db.tumor_distances)
+#cosine_dist = lambda d,x,y: tumor_cosine_similarity(x,y, t_o_vectors, adjacency)
+#cosine_sim = get_sim(db, cosine_dist)
+#distance_sim = TJaccardModel().get_similarity(db, augment = False)
+#vol_sim = dist_to_sim(get_sim(db, gtv_volume_dist))
+#total_dose_sim = dist_to_sim(get_sim(db, lambda d,x,y: np.abs(db.prescribed_doses[x] - db.prescribed_doses[y])))
+#
+#similarity_list = [cosine_sim, distance_sim, vol_sim, total_dose_sim]
+#fused_similarity = SimilarityBooster(model = RandomForestRegressor(n_estimators = 30)).get_similarity(db, similarity_list)
+#export(db, similarity = fused_similarity)
+#threshold_grid_search(db, fused_similarity, n_itters = 10)
 
-#from sklearn.ensemble import AdaBoostClassifier, AdaBoostRegressor
-#tree = AdaBoostRegressor(n_estimators = 2*len(similarity_list),
-#                          learning_rate = 1,
-#                          random_state = 1)
-#true_similarity = dose_similarity(db.doses)
-#similarity_stack = np.hstack(similarity_list)
-#n_measures = len(similarity_list)
-#for p in range(db.get_num_patients()):
-#    
 
 
 

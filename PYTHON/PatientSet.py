@@ -82,6 +82,9 @@ class PatientSet():
         subsite_list = []
         gtv_list = []
         classes = np.zeros((num_patients,))
+        
+        self.mean_tumor_distances = np.copy(tumor_distance_matrix)
+        self.max_tumor_distances = np.copy(tumor_distance_matrix)
         #putting all the data into a patient object for further objectification
 
         for patient_index in range(0, num_patients):
@@ -132,6 +135,9 @@ class PatientSet():
             age_vector[patient_index] = new_patient.age
             self.ajcc8[patient_index] = new_patient.ajcc8
             self.hpv[patient_index] = new_patient.hpv
+            
+            self.max_tumor_distances[patient_index] = new_patient.max_tumor_distances
+            self.mean_tumor_distances[patient_index] = new_patient.mean_tumor_distances
             
             if use_distances:
                 organ_distance_matrix[:, :, patient_index] = np.nan_to_num(new_patient.distances)
@@ -200,6 +206,9 @@ class PatientSet():
         self.ajcc8 = self.ajcc8[p]
         self.pathological_grades = self.pathological_grades[p]
         self.hpv = self.hpv[p]
+        
+        self.mean_tumor_distances = self.mean_tumor_distances[p]
+        self.max_tumor_distances = self.max_tumor_distances[p]
         if self.all_organ_distances is not None:
             self.all_organ_distances = self.all_organ_distances[:,:,p]
             

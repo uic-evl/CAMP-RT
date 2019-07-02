@@ -98,7 +98,7 @@ class Patient():
         if use_distances:
             self.distances = self.gen_distance_matrix(distances)
         #store the entries without gtvp for future study
-        (self.tumor_volume, self.tumor_distances, self.tumor_position) = self.get_main_tumor()
+        (self.tumor_volume, self.tumor_distances, self.mean_tumor_distances, self.max_tumor_distances, self.tumor_position) = self.get_main_tumor()
         self.laterality = self.get_laterality(self.gtvs)
         self.check_missing_organs(doses)
         ##self.check_if_full_dose()
@@ -331,20 +331,25 @@ class Patient():
     def get_main_tumor(self):
         #basically gives a proxy so we use only the most important tumor
         tumor_volume = 0.0
-#        tumor_distances = np.zeros((Constants.num_organs,))
-        tumor_distances = self.gtvs[0].dists[:]
+        mean_tumor_distances = np.zeros((Constants.num_organs,))
+        min_tumor_distances = self.gtvs[0].dists[:]
+        max_tumor_distances = self.gtvs[0].dists[:]
         tumor_position = np.zeros((3,))
         try:
             for gtv in self.gtvs:
                 tumor_volume += gtv.volume
-#                tumor_distances += gtv.volume*gtv.dists
-                tumor_distances = np.minimum(gtv.dists, tumor_distances)
+                mean_tumor_distances += gtv.volume*gtv.dists
+                min_tumor_distances = np.minimum(gtv.dists, min_tumor_distances)
+                max_tumor_distances = np.maximum(gtv.dists, max_tumor_distances)
                 tumor_position += gtv.volume*gtv.position
-#            tumor_distances /= tumor_volume
+            mean_tumor_distances /= tumor_volume
             tumor_position /= tumor_volume
         except:
             print('error reading tumor volume for ', self.id)
             tumor_volume = 0.0
-            tumor_distances = np.zeros((Constants.num_organs,))
+            min_tumor_distances = np.zeros((Constants.num_organs,))
+            mean_tumor_distances = np.zeros((Constants.num_organs,))
+            max_tumor_distances = np.zeros((Constants.num_organs,))
             tumor_position = np.zeros((3,))
-        return(tumor_volume, tumor_distances, tumor_position)
+        return(tumor_volume, min_tumor_distances, mean_tumor_distances, 
+               max_tumor_distances, tumor_position)
