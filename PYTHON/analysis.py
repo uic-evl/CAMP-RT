@@ -27,7 +27,7 @@ import re
 from SyntheticDataGenerator import *
 from sklearn.manifold import TSNE, MDS
 from sklearn.cluster import KMeans
-
+from sklearn.preprocessing import KBinsDiscretizer
 
 
 def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_file = 'scores.csv',
@@ -226,12 +226,6 @@ def tumor_cosine_similarity(p1, p2, t_o_vectors, adjacency):
         dist.append(overlap)
     return np.mean(dist)
 
-
-from sklearn.preprocessing import KBinsDiscretizer
-from sklearn.naive_bayes import MultinomialNB, ComplementNB
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                use_distances = False)
-
 def classify_by_clusters(db, clusterer=None, inplace = True):
     if clusterer is None:
         clusterer = KMeans(n_clusters = 5)
@@ -262,33 +256,62 @@ def get_bayes_features(db, num_bins = 5):
         formated_features.append(feature)
     return(np.hstack(formated_features))
     
-x = get_bayes_features(db)
-classes, old_classes = classify_by_clusters(db, inplace = True)
-bayes = ComplementNB(alpha = 100, ).fit(x, classes)
-densities = np.array([len(np.argwhere(classes == c))/len(classes) for c in sorted(np.unique(classes))])
-class_probs = bayes.predict_proba(x)
-discrete_doses = KBinsDiscretizer(n_bins = 10, strategy = 'kmeans', encode = 'ordinal').fit_transform(db.doses)
-fuzzy_clusters = ComplementNB().fit(discrete_doses, classes).predict_proba(discrete_doses)
-weighted_probs = class_probs/densities
 
-cluster_centers = np.vstack([db.doses[np.argwhere(db.classes == c)].mean(axis = 0) for c in sorted(np.unique(db.classes))])
-predicted_doses = np.zeros((db.get_num_patients(), Constants.num_organs))
-for p in range(db.get_num_patients()):
-    cluster_probs = weighted_probs[p]/np.sum(weighted_probs[p])
-    weighted_centers = cluster_probs.reshape(-1,1)*cluster_centers
-    predicted_doses[p] = weighted_centers.sum(axis = 0)
-fuzzy_similarity = dose_similarity(predicted_doses)
-export(db, similarity = fuzzy_similarity, predicted_doses = predicted_doses)
+#db = PatientSet(root = 'data\\patients_v*\\',
+#                use_distances = False)
+discretizer = KBinsDiscretizer(n_bins = 10 , encode = 'ordinal', strategy = 'kmeans')
+discrete_dists = discretizer.fit_transform(-db.tumor_distances)
+l,c,r = lcr_args()
+left_distances = discrete_dists[l+c]
+right_distances = discrete_dists[r+c]
+
+left_patients = np.argwhere(db.lateralities == 'L').ravel()
+right_patients = np.argwhere(db.lateralities == 'R').ravel()
+bilateral_patients = np.argwhere(db.lateralities == 'B').ravel()
+sims = np.zeros((db.get_num_patients(), db.get_num_patients()))
+for p in range(db.get_num_patients):
+    if p in left_patients:
+        argset = left_patients
+    else if p in right_patients:
+        argset = right_patients
+    else:
+        argset = np.arange(db.get_num_patients())
+    for p2 in argset:
+        
+#
+#discrete_jaccard= lambda d,x,y: jaccard_distance(discrete_dists[x], discrete_dists[y])
+#discrete_jaccard_sim = get_sim(db, discrete_jaccard)
+#print(KnnEstimator(match_type = 'clusters').evaluate(discrete_jaccard_sim, db).mean())
+#threshold_grid_search(db, discrete_jaccard_sim, n_itters = 10)
+
+#x = get_bayes_features(db)
+#classes, old_classes = classify_by_clusters(db, inplace = True)
+#bayes = ComplementNB(alpha = 100, ).fit(x, classes)
+#densities = np.array([len(np.argwhere(classes == c))/len(classes) for c in sorted(np.unique(classes))])
+#class_probs = bayes.predict_proba(x)
+#discrete_doses = KBinsDiscretizer(n_bins = 10, strategy = 'kmeans', encode = 'ordinal').fit_transform(db.doses)
+#fuzzy_clusters = ComplementNB().fit(discrete_doses, classes).predict_proba(discrete_doses)
+#weighted_probs = class_probs/densities
+#
+#cluster_centers = np.vstack([db.doses[np.argwhere(db.classes == c)].mean(axis = 0) for c in sorted(np.unique(db.classes))])
+#predicted_doses = np.zeros((db.get_num_patients(), Constants.num_organs))
+#for p in range(db.get_num_patients()):
+#    cluster_probs = weighted_probs[p]/np.sum(weighted_probs[p])
+#    weighted_centers = cluster_probs.reshape(-1,1)*cluster_centers
+#    predicted_doses[p] = weighted_centers.sum(axis = 0)
+#fuzzy_similarity = dose_similarity(predicted_doses)
+
 #t_o_vectors = get_tumor_organ_vectors(db)
 #adjacency = TsimModel().get_adjacency_lists(db.tumor_distances)
 #cosine_dist = lambda d,x,y: tumor_cosine_similarity(x,y, t_o_vectors, adjacency)
 #cosine_sim = get_sim(db, cosine_dist)
-#distance_sim = TJaccardModel().get_similarity(db, augment = False)
+#distance_sim = get_sim(db, lambda d,x,y: jaccard_distance(d.tumor_distances[x], d.tumor_distances[y]))
+#mean_distance_sim = distance_sim = get_sim(db, lambda d,x,y: jaccard_distance(d.mean_tumor_distances[x], d.mean_tumor_distances[y]))
 #vol_sim = dist_to_sim(get_sim(db, gtv_volume_dist))
 #total_dose_sim = dist_to_sim(get_sim(db, lambda d,x,y: np.abs(db.prescribed_doses[x] - db.prescribed_doses[y])))
 #
 #similarity_list = [cosine_sim, distance_sim, vol_sim, total_dose_sim]
-#fused_similarity = SimilarityBooster(model = RandomForestRegressor(n_estimators = 30)).get_similarity(db, similarity_list)
+#fused_similarity = SimilarityBooster().get_similarity(db, similarity_list)
 #export(db, similarity = fused_similarity)
 #threshold_grid_search(db, fused_similarity, n_itters = 10)
 

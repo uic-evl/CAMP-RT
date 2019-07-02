@@ -108,7 +108,6 @@ class ClassStats():
                                         ['min_dose', 'mean_dose', 'max_dose'])
                 organ = 'NA'
             else:
-                print(t,num_tumors, len(t_volumes))
                 vol = t_volumes[t]/(t+1)
                 center = np.random.normal(self.tumor_centroids[0], 
                            self.tumor_centroids[1])

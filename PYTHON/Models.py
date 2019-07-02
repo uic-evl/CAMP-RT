@@ -490,8 +490,10 @@ class SimilarityBooster(SimilarityFuser):
     def __init__(self, model = None):
         self.model = model
         if model is None:
-            from sklearn.ensemble import AdaBoostRegressor
-            self.model = AdaBoostRegressor(n_estimators = 6, learning_rate=.5)
+            from sklearn.ensemble import GradientBoostingRegressor
+            self.model = GradientBoostingRegressor(n_estimators = 20)
+#            from sklearn.ensemble import AdaBoostRegressor
+#            self.model = AdaBoostRegressor(learning_rate=.1, loss = 'square')
     
     def get_similarity(self, db, similarity_matrices):
         [x,y, positions] = self.extract_features(similarity_matrices, db.get_num_patients(), db)
@@ -508,7 +510,7 @@ class SimilarityBooster(SimilarityFuser):
             print(y_pred.shape)
             final_similarity[p, :] = np.insert(y_pred, p, 0)
 #        final_similarity += final_similarity.transpose()
-        return(final_similarity)
+        return Metrics.dist_to_sim(final_similarity)
         
         
     def extract_features(self, similarities, num_patients, data):
@@ -533,4 +535,5 @@ class SimilarityBooster(SimilarityFuser):
     
     def get_true_matches(self, data):
         error = self.get_match_error(data)
-        return Metrics.dist_to_sim(error**2)
+        sim = Metrics.dist_to_sim(error)
+        return error
