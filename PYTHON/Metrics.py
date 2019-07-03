@@ -102,6 +102,25 @@ def get_sim(db, similarity_function):
     similarity_matrix += similarity_matrix.transpose()
     return similarity_matrix
 
+def augmented_sim(feature, similarity_function, organ_list = None):
+    #like get sim but needs to explicity give the data matrix (e.g. tumor distances)
+    #so it can augment the data with mirrored things
+    augmented_features = augment_mirrored(feature, organ_list)
+    n_patients = augmented_features.shape[0]
+    similarity_matrix = np.zeros((n_patients, n_patients))
+    for p1 in range(similarity_matrix.shape[0]):
+        data1 = augmented_features[p1]
+        for p2 in range(similarity_matrix.shape[1]):
+            if (p1%n_patients) == (p2%n_patients):
+                continue
+            data2 = augmented_features[p2]
+            similarity_matrix[p1,p2] = similarity_function(data1, data2)
+    similarity_matrix = minmax_scale(similarity_matrix)
+    for p in range(n_patients):
+        similarity_matrix[p,p] = 0
+    return similarity_matrix
+    
+
 def lymph_similarity(db, file = 'data/spatial_lymph_scores.csv'):
     #loads in lymph similarity from the lymnph node project data into a matrix
     #uses 0? is patients are missing

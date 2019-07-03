@@ -10,6 +10,7 @@ from ErrorChecker import ErrorChecker
 import Metrics
 from scipy.optimize import minimize
 from abc import ABC, abstractmethod
+from sklearn.cluster import KMeans
 
 class Estimator(ABC):
     
@@ -41,6 +42,27 @@ class Estimator(ABC):
         percent_error = self.get_error(predicted_doses, data.doses)
         return(percent_error)
         
+class SupervisedModel(ABC):
+    
+    @abstractmethod
+    def get_true_matches(self, data):
+        pass
+    
+    def get_match_error(self, data):
+        #get error in between patient dose distrubtions
+        #data can be the dose matrix or a patientset
+        if isinstance(data, np.ndarray):
+            doses = data
+        else:
+            doses = data.doses
+        n_patients = doses.shape[0]
+        error_matrix = np.zeros((n_patients, n_patients))
+        for p1 in range(n_patients):
+            for p2 in range(p1 + 1, n_patients):
+                dose_difference = np.abs(doses[p1,:] - doses[p2, :])
+                error_matrix[p1, p2] = np.sum(dose_difference)/np.sum(doses[p1, :])
+        error_matrix += error_matrix.transpose()
+        return error_matrix
         
 class SymmetryAugmentedModel(Estimator):
     
@@ -236,6 +258,78 @@ class KnnEstimator(Estimator):
         else:
             matches = self.min_matches
         return matches
+    
+class TreeKnnEstimator(KnnEstimator, SupervisedModel):
+    
+    def __init__(self, match_threshold = .94, 
+                 match_type = 'threshold', 
+                 min_matches = 8, match_model = None):
+        #match type is how the number of matches are selected
+        #give clusters to make it based on the class.  
+        #threshold uses similarity score, uses max(min_matches, patients with score > match threshold)
+        super().__init__(match_threshold, match_type, min_matches)
+        if match_model is not None:
+            self.match_model = match_model
+        else:
+            from sklearn.tree import DecisionTreeClassifier
+            self.match_model = DecisionTreeClassifier()
+            
+    def predict_doses(self, similarity_list, data):
+        n_patients = data.get_num_patients()
+        dose_matrix = data.doses
+        outliers = ErrorChecker().get_data_outliers(data.doses)
+        is_augmented = similarity_list[0].shape[0] > n_patients
+        if is_augmented: #if matrix is agumented
+            dose_matrix = Metrics.augment_mirrored(dose_matrix)
+            outliers = outliers | set([o + n_patients for o in outliers])
+        predicted_doses = np.zeros((n_patients, dose_matrix.shape[1]))
+        clusters = self.get_feature_clusters(data)
+        features = self.extract_features(similarity_list, dose_matrix, 
+                                         clusters, is_augmented)
+        return features
+            
+#            predicted_doses[p, :] = self.get_prediction(dose_matrix, scores, args, p)
+        return(predicted_doses)
+        
+    def get_feature_clusters(self, data):
+        dose_pca = Metrics.pca(data.doses, n_components = 3)
+        clusters = KMeans(n_clusters = 4, random_state = 1).fit_predict(data.tumor_distances)
+        return clusters.ravel()
+        
+    def get_true_matches(self, doses, negative_class = 0, max_error = .12):
+        min_matches = self.min_matches
+        dose_error = self.get_match_error(doses)
+        match_matrix = np.zeros(dose_error.shape) + negative_class
+        n_patients = doses.shape[0]
+        for p in range(n_patients):
+            errors = dose_error[p, :]
+            matches = []
+            while len(matches) < min_matches:
+                matches = np.where(errors < max_error)[0]
+                max_error = max_error + .01
+            match_matrix[p, matches] = 1
+        return match_matrix.astype('int32')
+        
+    def extract_features(self, similarities, doses, clusters, is_augmented):
+        true_similarity = self.get_true_matches(doses)
+        num_patients = int(doses.shape[0]/(is_augmented + 1))
+        x = []
+        y = []
+        positions = []
+        for p1 in range(num_patients):
+            for p2 in range(num_patients*(1 + is_augmented)):
+                if p1 == p2%num_patients:
+                    continue
+                x_row = [clusters[p1]]
+                for similarity in similarities:
+                    x_row.append(similarity[p1, p2])
+                x.append(x_row)
+                y.append(true_similarity[p1, p2])
+                positions.append([p1,p2])
+        x = np.array(x)
+        y = np.array(y)
+        positions = np.array(positions)
+        return [x, y, positions]
         
 class TsimModel():
     #orginal-ish similarity model that gives a similarity matrix from get_simirity based on a spatial ssim 
@@ -401,7 +495,7 @@ class OsimModel(TsimModel):
         score_matrix = .99*(score_matrix - score_matrix.min())/(score_matrix.max() - score_matrix.min())
         return score_matrix
 
-class SimilarityFuser():
+class SimilarityFuser(SupervisedModel):
     #class that uses (logistic regression) to map a list of similarity scores to a single score
     #attempts to classify each vector as a neighbor (dose error < some number) 
     #and the match probability is used as the similarity
@@ -473,17 +567,6 @@ class SimilarityFuser():
                 max_error = max_error + .01
             match_matrix[p, matches] = 1
         return match_matrix.astype('int32')
-        
-    def get_match_error(self, data):
-        n_patients = data.get_num_patients()
-        doses = data.doses
-        error_matrix = np.zeros((n_patients, n_patients))
-        for p1 in range(n_patients):
-            for p2 in range(p1 + 1, n_patients):
-                dose_difference = np.abs(doses[p1,:] - doses[p2, :])
-                error_matrix[p1, p2] = np.sum(dose_difference)/np.sum(doses[p1, :])
-        error_matrix += error_matrix.transpose()
-        return error_matrix
     
 class SimilarityBooster(SimilarityFuser):
     

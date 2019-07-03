@@ -31,7 +31,7 @@ from sklearn.preprocessing import KBinsDiscretizer
 
 
 def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_file = 'scores.csv',
-           model = None, estimator = None, similarity = None, predicted_doses = None):
+           model = None, estimator = None, similarity = None, predicted_doses = None, clusterer=None):
     if model is None:
         model = TJaccardModel()
     if estimator is None:
@@ -40,6 +40,9 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
         similarity = model.get_similarity(data_set) #similarity scores
     if predicted_doses is None:
         predicted_doses = estimator.predict_doses(similarity, data_set)
+    if clusterer == 'default':
+        from sklearn.cluster import AgglomerativeClustering
+        clusterer = AgglomerativeClustering(n_clusters = 4)
     error = estimator.get_error(predicted_doses, data_set.doses) #a vector of errors
     n_patients = data_set.get_num_patients()
     disimilarity = 1- np.round(similarity[:n_patients, :n_patients], 3)
@@ -48,8 +51,13 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
         similarity = np.maximum(similarity[:n_patients, :n_patients], similarity[:n_patients, n_patients:])
     similar_patients = estimator.get_matches(similarity, data_set)
     dose_pca = pca(data_set.doses)
-    distance_tsne = TSNE(perplexity = 60, init = 'pca').fit_transform(data_set.tumor_distances) #pca(data_set.tumor_distances)
+    distance_tsne = TSNE(perplexity = 100, init = 'pca').fit_transform(data_set.tumor_distances[:,l+r]) 
     similarity_embedding = MDS(dissimilarity='precomputed', random_state = 1).fit_transform(disimilarity)
+    if clusterer is not None:
+        clusters = clusterer.fit_predict(similarity_embedding).ravel()
+        clusters = (clusters - clusters.min() + 1).astype('int32')
+    else:
+        clusters = data_set.classes
     export_data = []
     for x in range(data_set.get_num_patients()):
         entry = OrderedDict()
@@ -61,7 +69,7 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
         entry['similar_patients'] = matches
         entry['mean_error'] = round(error[x], 4)
 
-        entry['cluster'] = data_set.classes[x]
+        entry['cluster'] = clusters[x]
         entry['laterality'] = data_set.lateralities[x]
         entry['tumorSubsite'] = data_set.subsites[x]
         entry['total_Dose'] = int(data_set.prescribed_doses[x])
@@ -259,29 +267,43 @@ def get_bayes_features(db, num_bins = 5):
 
 #db = PatientSet(root = 'data\\patients_v*\\',
 #                use_distances = False)
+
+#l,c,r = lcr_args()
+#left_distances = discrete_dists[l+c]
+#right_distances = discrete_dists[r+c]
+#
+#left_patients = np.argwhere(db.lateralities == 'L').ravel()
+#right_patients = np.argwhere(db.lateralities == 'R').ravel()
+#bilateral_patients = np.argwhere(db.lateralities == 'B').ravel()
+#sims = np.zeros((db.get_num_patients(), db.get_num_patients()))
+#for p in range(db.get_num_patients):
+#    if p in left_patients:
+#        argset = left_patients
+#    else if p in right_patients:
+#        argset = right_patients
+#    else:
+#        argset = np.arange(db.get_num_patients())
+#    for p2 in argset:
+
+#db.change_classes()
+#augmented_class_similarity = augmented_sim(db.classes, lambda x,y: int(x == y))
+#unilateral_classes = sorted(np.argwhere(db.classes >= 3).ravel())
+#for c1 in unilateral_classes:
+#    unilateral_classes.remove(c1)
+#    for c2 in unilateral_classes:
+#        augmented_class_similarity[c1, c2 + db.get_num_patients()] = 0 if db.classes[c1] == db.classes[c2] else 1
+
+
+
+from sklearn.preprocessing import quantile_transform
 discretizer = KBinsDiscretizer(n_bins = 10 , encode = 'ordinal', strategy = 'kmeans')
 discrete_dists = discretizer.fit_transform(-db.tumor_distances)
-l,c,r = lcr_args()
-left_distances = discrete_dists[l+c]
-right_distances = discrete_dists[r+c]
-
-left_patients = np.argwhere(db.lateralities == 'L').ravel()
-right_patients = np.argwhere(db.lateralities == 'R').ravel()
-bilateral_patients = np.argwhere(db.lateralities == 'B').ravel()
-sims = np.zeros((db.get_num_patients(), db.get_num_patients()))
-for p in range(db.get_num_patients):
-    if p in left_patients:
-        argset = left_patients
-    else if p in right_patients:
-        argset = right_patients
-    else:
-        argset = np.arange(db.get_num_patients())
-    for p2 in argset:
-        
-#
-#discrete_jaccard= lambda d,x,y: jaccard_distance(discrete_dists[x], discrete_dists[y])
-#discrete_jaccard_sim = get_sim(db, discrete_jaccard)
-#print(KnnEstimator(match_type = 'clusters').evaluate(discrete_jaccard_sim, db).mean())
+discrete_jaccard= lambda d,x,y: jaccard_distance(discrete_dists[x], discrete_dists[y])
+discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
+discrete_jaccard_sim = quantile_transform(discrete_jaccard_sim)
+result = TreeKnnEstimator().predict_doses([discrete_jaccard_sim], db)
+#export(db, similarity = discrete_jaccard_sim, clusterer = 'default')
+print(KnnEstimator(match_type = 'clusters').evaluate(discrete_jaccard_sim, db).mean())
 #threshold_grid_search(db, discrete_jaccard_sim, n_itters = 10)
 
 #x = get_bayes_features(db)
