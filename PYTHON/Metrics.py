@@ -83,7 +83,10 @@ def lcr_args(organ_list = None, exclude = None):
     return (left, center, right)
 
 def augment_mirrored(matrix, organ_list = None):
-    if len(matrix.shape) > 1:
+    matrix = np.array(matrix)
+    if organ_list is None:
+        organ_list = Constants.organ_list
+    if len(matrix.shape) > 1 and matrix.shape[1] == len(organ_list):
         flip_args = get_flip_args(organ_list)
         return np.vstack([matrix, matrix[:, flip_args]])
     else:

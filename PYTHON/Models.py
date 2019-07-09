@@ -11,6 +11,7 @@ import Metrics
 from scipy.optimize import minimize
 from abc import ABC, abstractmethod
 from sklearn.cluster import KMeans
+from copy import copy
 
 class Estimator(ABC):
     
@@ -259,22 +260,37 @@ class KnnEstimator(Estimator):
             matches = self.min_matches
         return matches
     
+class PSUpsampler():
+    
+    def __init__(self, db):
+        unique_classes = np.unique(db.classes)
+        self.class_ratios = [len(np.argwhere(db.classes == c)) for c in sorted(np.unique(db.classes))]
+        self.offset = np.min(np.unique(classes))
+    
+    def upsample(self, x, y):
+        
+    
+    
 class TreeKnnEstimator(KnnEstimator, SupervisedModel):
     
-    def __init__(self, match_threshold = .94, 
+    def __init__(self, match_threshold = .9, 
                  match_type = 'threshold', 
-                 min_matches = 8, match_model = None):
+                 min_matches = 7, min_true_matches = 2, 
+                 match_model = None):
         #match type is how the number of matches are selected
         #give clusters to make it based on the class.  
         #threshold uses similarity score, uses max(min_matches, patients with score > match threshold)
         super().__init__(match_threshold, match_type, min_matches)
+        self.min_true_matches = min_true_matches
         if match_model is not None:
             self.match_model = match_model
         else:
             from sklearn.tree import DecisionTreeClassifier
-            self.match_model = DecisionTreeClassifier()
+            self.match_model = DecisionTreeClassifier
             
-    def predict_doses(self, similarity_list, data):
+    def predict_doses(self, similarity_list, data, weight_matrix_loc = None):
+        from sklearn.preprocessing import quantile_transform
+        similarity_list = [quantile_transform(s, axis = 1) for s in similarity_list]
         n_patients = data.get_num_patients()
         dose_matrix = data.doses
         outliers = ErrorChecker().get_data_outliers(data.doses)
@@ -284,31 +300,98 @@ class TreeKnnEstimator(KnnEstimator, SupervisedModel):
             outliers = outliers | set([o + n_patients for o in outliers])
         predicted_doses = np.zeros((n_patients, dose_matrix.shape[1]))
         clusters = self.get_feature_clusters(data)
-        features = self.extract_features(similarity_list, dose_matrix, 
+        features, labels, positions = self.extract_features(similarity_list, dose_matrix, 
                                          clusters, is_augmented)
-        return features
+        model = self.match_model(max_depth = features.shape[1], class_weight = 'balanced')
+        for p in range(n_patients):
+            patient_positions = np.argwhere( np.any([p == positions, p + n_patients == positions], axis = 0) )[:,0]
+            train_x = np.delete(features, patient_positions, axis = 0)
+            train_labels = np.delete(labels, patient_positions, axis = 0)
+            model.fit(train_x, train_labels)
+            patient_args = np.argwhere( p == positions[:,0] ).ravel()
             
-#            predicted_doses[p, :] = self.get_prediction(dose_matrix, scores, args, p)
-        return(predicted_doses)
+#            scores = np.sum(features[patient_args]*model.feature_importances_, axis = 1)
+#            print(scores.shape)
+#            n_matches = len(np.argwhere(scores > self.match_threshold))
+#            n_matches = max([n_matches, self.min_matches])
+#            match_args = np.argsort(-scores)[:n_matches]
+#            predicted_doses[p,:] = self.get_individual_dose_prediction(dose_matrix, scores, match_args)
+#            print(np.sum(np.abs(predicted_doses[p,:] - dose_matrix[p,:]))/np.sum(dose_matrix[p,:]))
+            
+            match_probs = model.predict_proba(features[patient_args])[:,1]
+            match_probs = np.insert(match_probs, p, 0)
+            if is_augmented:
+                match_probs = np.insert(match_probs, p + n_patients, 0)
+            match_args = self.get_match_args(match_probs)
+            if weight_matrix_loc is None:
+                match_weights = match_probs
+            else:
+                match_weights = similarity_list[weight_matrix_loc][p, :]
+            dose_prediction = self.get_individual_dose_prediction(dose_matrix, match_weights, match_args)
+            print(np.sum(np.abs(dose_prediction - dose_matrix[p,:]))/np.sum(dose_matrix[p,:]))
+            print(model.feature_importances_)
+            predicted_doses[p,:] = dose_prediction
+        return predicted_doses
+    
+    def get_individual_dose_prediction(self, doses, weights, args):
+        match_doses = doses[args]
+        match_weights = weights[args].reshape(-1,1)
+        if np.sum(match_weights) > 0:
+            weighted_doses = np.sum(match_doses*match_weights, axis = 0)/np.sum(match_weights)
+        else:
+            weighted_doses = np.mean(doses, axis = 0)
+        return weighted_doses
+    
+    def get_match_args(self, scores):
+        threshold = copy(self.match_threshold)
+        num_matches = 0
+        while num_matches < self.min_matches:
+            num_matches = len(np.argwhere(scores > threshold))
+            threshold = threshold - .01
+        print(round(num_matches, 3))
+        match_args = np.argsort(-scores)[:num_matches]
+        return match_args
         
     def get_feature_clusters(self, data):
         dose_pca = Metrics.pca(data.doses, n_components = 3)
         clusters = KMeans(n_clusters = 4, random_state = 1).fit_predict(data.tumor_distances)
         return clusters.ravel()
         
-    def get_true_matches(self, doses, negative_class = 0, max_error = .12):
-        min_matches = self.min_matches
+    def get_true_matches(self, doses, negative_class = 0, error_threshold = .12):
         dose_error = self.get_match_error(doses)
-        match_matrix = np.zeros(dose_error.shape) + negative_class
+        match_matrix = np.zeros(dose_error.shape).astype('int32') + negative_class
         n_patients = doses.shape[0]
+        dose_error[np.arange(n_patients), np.arange(n_patients)] = 1
+        def get_error(p, m_args):
+            pred = np.mean(doses[m_args], axis = 0)
+            return np.sum(np.abs(doses[p] - pred))/np.sum(doses[p])
         for p in range(n_patients):
-            errors = dose_error[p, :]
-            matches = []
-            while len(matches) < min_matches:
-                matches = np.where(errors < max_error)[0]
-                max_error = max_error + .01
-            match_matrix[p, matches] = 1
-        return match_matrix.astype('int32')
+            ranked_args = np.argsort(dose_error[p])
+            num_matches = 1
+            match_error = np.inf
+            while True:
+                old_error = match_error + 0
+                match_args = ranked_args[:num_matches]
+                match_error = get_error(p, match_args)
+                if num_matches > self.min_true_matches and match_error > old_error:
+                    num_matches -= 1
+                    break
+                num_matches += 1
+            match_matrix[p,ranked_args[:num_matches]] = 1
+        return match_matrix
+#        min_matches = self.min_true_matches
+#        dose_error = self.get_match_error(doses)
+#        match_matrix = np.zeros(dose_error.shape) + negative_class
+#        n_patients = doses.shape[0]
+#        for p in range(n_patients):
+#            max_error = error_threshold
+#            errors = dose_error[p, :]
+#            matches = []
+#            while len(matches) < min_matches:
+#                matches = np.where(errors < max_error)[0]
+#                max_error = max_error + .01
+#            match_matrix[p, matches] = 1
+#        return match_matrix.astype('int32')
         
     def extract_features(self, similarities, doses, clusters, is_augmented):
         true_similarity = self.get_true_matches(doses)
@@ -320,7 +403,7 @@ class TreeKnnEstimator(KnnEstimator, SupervisedModel):
             for p2 in range(num_patients*(1 + is_augmented)):
                 if p1 == p2%num_patients:
                     continue
-                x_row = [clusters[p1]]
+                x_row = [clusters[p2%num_patients]]
                 for similarity in similarities:
                     x_row.append(similarity[p1, p2])
                 x.append(x_row)

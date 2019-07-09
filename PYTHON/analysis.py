@@ -268,6 +268,19 @@ def get_bayes_features(db, num_bins = 5):
 #db = PatientSet(root = 'data\\patients_v*\\',
 #                use_distances = False)
 
+discretizer = KBinsDiscretizer(n_bins = 9 , encode = 'ordinal', strategy = 'kmeans')
+discrete_dists = discretizer.fit_transform(-db.tumor_distances)
+discrete_jaccard= lambda d,x,y: jaccard_distance(discrete_dists[x], discrete_dists[y])
+discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
+normal_jaccard_sim = augmented_sim(db.tumor_distances, jaccard_distance)
+vol_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([g.volume for g in x]) - np.sum([t.volume for t in y])) ))
+count_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([bool(g.volume) for g in x]) - np.sum([bool(t.volume) for t in y])) ))
+total_dose_sim = dist_to_sim(augmented_sim(db.prescribed_doses, lambda x,y: np.abs(x - y)))
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
+sims = [discrete_jaccard_sim, vol_sim, total_dose_sim, count_sim]
+result = TreeKnnEstimator().evaluate(sims, db)
+print(result.mean())
+
 #l,c,r = lcr_args()
 #left_distances = discrete_dists[l+c]
 #right_distances = discrete_dists[r+c]
@@ -294,16 +307,8 @@ def get_bayes_features(db, num_bins = 5):
 #        augmented_class_similarity[c1, c2 + db.get_num_patients()] = 0 if db.classes[c1] == db.classes[c2] else 1
 
 
-
-from sklearn.preprocessing import quantile_transform
-discretizer = KBinsDiscretizer(n_bins = 10 , encode = 'ordinal', strategy = 'kmeans')
-discrete_dists = discretizer.fit_transform(-db.tumor_distances)
-discrete_jaccard= lambda d,x,y: jaccard_distance(discrete_dists[x], discrete_dists[y])
-discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
-discrete_jaccard_sim = quantile_transform(discrete_jaccard_sim)
-result = TreeKnnEstimator().predict_doses([discrete_jaccard_sim], db)
 #export(db, similarity = discrete_jaccard_sim, clusterer = 'default')
-print(KnnEstimator(match_type = 'clusters').evaluate(discrete_jaccard_sim, db).mean())
+#print(KnnEstimator(match_type = 'clusters').evaluate(discrete_jaccard_sim, db).mean())
 #threshold_grid_search(db, discrete_jaccard_sim, n_itters = 10)
 
 #x = get_bayes_features(db)
