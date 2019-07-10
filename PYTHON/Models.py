@@ -268,7 +268,7 @@ class PSUpsampler():
         self.offset = np.min(np.unique(classes))
     
     def upsample(self, x, y):
-        
+        pass
     
     
 class TreeKnnEstimator(KnnEstimator, SupervisedModel):

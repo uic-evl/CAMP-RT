@@ -274,12 +274,26 @@ discrete_jaccard= lambda d,x,y: jaccard_distance(discrete_dists[x], discrete_dis
 discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
 normal_jaccard_sim = augmented_sim(db.tumor_distances, jaccard_distance)
 vol_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([g.volume for g in x]) - np.sum([t.volume for t in y])) ))
+boolean_vol_sim = augmented_sim(db.gtvs, lambda x,y: np.sum([bool(g.volume) for g in x]) == np.sum([bool(t.volume) for t in y]) )
 count_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([bool(g.volume) for g in x]) - np.sum([bool(t.volume) for t in y])) ))
 total_dose_sim = dist_to_sim(augmented_sim(db.prescribed_doses, lambda x,y: np.abs(x - y)))
-from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
-sims = [discrete_jaccard_sim, vol_sim, total_dose_sim, count_sim]
-result = TreeKnnEstimator().evaluate(sims, db)
-print(result.mean())
+
+model = threshold_grid_search(db, boolean_vol_sim*discrete_jaccard_sim, start_k = .85, n_itters = 7, get_model = True)
+result = model.evaluate(discrete_jaccard_sim, db)
+counts = np.array([np.sum([bool(g.volume) for g in gtv]) for gtv in db.gtvs])
+ones = np.argwhere(counts == 1)
+twos = np.argwhere(counts == 2)
+threes = np.argwhere(counts == 3)
+mores = np.argwhere(counts > 3)
+print('ones', result[ones].mean())
+print('twos', result[twos].mean())
+print('threes', result[threes].mean())
+print('fours', result[mores].mean())
+
+#from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
+#sims = [discrete_jaccard_sim, vol_sim, total_dose_sim, count_sim]
+#result = TreeKnnEstimator().evaluate(sims, db)
+#print(result.mean())
 
 #l,c,r = lcr_args()
 #left_distances = discrete_dists[l+c]
