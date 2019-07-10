@@ -266,6 +266,16 @@ class PSUpsampler():
         unique_classes = np.unique(db.classes)
         self.class_ratios = [len(np.argwhere(db.classes == c)) for c in sorted(np.unique(db.classes))]
         self.offset = np.min(np.unique(classes))
+        self.single_tumor_positions = {}
+        pos = 0
+        for gtvset in db.gtvs:
+            self.single_tumor_positions[pos] = []
+            for gtv in gtvset:
+                if gtv.volume > 0:
+                    self.single_tumor_positions[pos].append(gtv.position)
+            self.single_tumor_positions[pos] = np.vstack(self.single_tumor_positions[pos])
+            pos += 1
+        
     
     def upsample(self, x, y):
         pass

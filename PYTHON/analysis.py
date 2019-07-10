@@ -278,7 +278,7 @@ boolean_vol_sim = augmented_sim(db.gtvs, lambda x,y: np.sum([bool(g.volume) for 
 count_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([bool(g.volume) for g in x]) - np.sum([bool(t.volume) for t in y])) ))
 total_dose_sim = dist_to_sim(augmented_sim(db.prescribed_doses, lambda x,y: np.abs(x - y)))
 
-model = threshold_grid_search(db, boolean_vol_sim*discrete_jaccard_sim, start_k = .85, n_itters = 7, get_model = True)
+model = threshold_grid_search(db, discrete_jaccard_sim, start_k = .85, n_itters = 7, get_model = True)
 result = model.evaluate(discrete_jaccard_sim, db)
 counts = np.array([np.sum([bool(g.volume) for g in gtv]) for gtv in db.gtvs])
 ones = np.argwhere(counts == 1)
