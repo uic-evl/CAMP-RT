@@ -81,6 +81,8 @@ class Patient():
         self.pathological_grade = info['Pathological Grade']
         self.gender = info['Gender']
         self.ajcc8 = Patient.ajcc8_map.get(info['AJCC 8th edition'], 0)
+        if self.ajcc8 == 0:
+            print(info['AJCC 8th edition'])
         self.therapy_type = info['Therapeutic combination']
         self.feeding_tube = info['Feeding tube 6m']
         self.t_category = info['T-category']

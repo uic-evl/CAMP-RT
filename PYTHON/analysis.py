@@ -8,8 +8,6 @@ from numpy.random import seed
 seed(1)
 from tensorflow.compat.v1 import set_random_seed
 set_random_seed(2)
-import tensorflow_probability as tfp
-tfd = tfp.distributions
 from PatientSet import PatientSet
 from ErrorChecker import ErrorChecker
 from Constants import Constants
@@ -279,18 +277,23 @@ boolean_vol_sim = augmented_sim(db.gtvs, lambda x,y: np.sum([bool(g.volume) for 
 count_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([bool(g.volume) for g in x]) - np.sum([bool(t.volume) for t in y])) ))
 total_dose_sim = dist_to_sim(augmented_sim(db.prescribed_doses, lambda x,y: np.abs(x - y)))
 
-model = threshold_grid_search(db, discrete_jaccard_sim, start_k = .85, n_itters = 7, get_model = True)
-export(db, estimator = model, similarity = discrete_jaccard_sim, clusterer='default')
-result = model.evaluate(discrete_jaccard_sim, db)
-counts = np.array([np.sum([bool(g.volume) for g in gtv]) for gtv in db.gtvs])
-ones = np.argwhere(counts == 1)
-twos = np.argwhere(counts == 2)
-threes = np.argwhere(counts == 3)
-mores = np.argwhere(counts > 3)
-print('ones', result[ones].mean())
-print('twos', result[twos].mean())
-print('threes', result[threes].mean())
-print('fours', result[mores].mean())
+
+result = TreeKnnEstimator().evaluate([discrete_jaccard_sim, total_dose_sim, vol_sim], db)
+print(result.mean())
+
+
+#model = threshold_grid_search(db, discrete_jaccard_sim, start_k = .85, n_itters = 7, get_model = True)
+#export(db, estimator = model, similarity = discrete_jaccard_sim, clusterer='default')
+#result = model.evaluate(discrete_jaccard_sim, db)
+#counts = np.array([np.sum([bool(g.volume) for g in gtv]) for gtv in db.gtvs])
+#ones = np.argwhere(counts == 1)
+#twos = np.argwhere(counts == 2)
+#threes = np.argwhere(counts == 3)
+#mores = np.argwhere(counts > 3)
+#print('ones', result[ones].mean())
+#print('twos', result[twos].mean())
+#print('threes', result[threes].mean())
+#print('fours', result[mores].mean())
 
 #from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
 #sims = [discrete_jaccard_sim, vol_sim, total_dose_sim, count_sim]
@@ -313,52 +316,4 @@ print('fours', result[mores].mean())
 #    else:
 #        argset = np.arange(db.get_num_patients())
 #    for p2 in argset:
-
-#db.change_classes()
-#augmented_class_similarity = augmented_sim(db.classes, lambda x,y: int(x == y))
-#unilateral_classes = sorted(np.argwhere(db.classes >= 3).ravel())
-#for c1 in unilateral_classes:
-#    unilateral_classes.remove(c1)
-#    for c2 in unilateral_classes:
-#        augmented_class_similarity[c1, c2 + db.get_num_patients()] = 0 if db.classes[c1] == db.classes[c2] else 1
-
-
-#export(db, similarity = discrete_jaccard_sim, clusterer = 'default')
-#print(KnnEstimator(match_type = 'clusters').evaluate(discrete_jaccard_sim, db).mean())
-#threshold_grid_search(db, discrete_jaccard_sim, n_itters = 10)
-
-#x = get_bayes_features(db)
-#classes, old_classes = classify_by_clusters(db, inplace = True)
-#bayes = ComplementNB(alpha = 100, ).fit(x, classes)
-#densities = np.array([len(np.argwhere(classes == c))/len(classes) for c in sorted(np.unique(classes))])
-#class_probs = bayes.predict_proba(x)
-#discrete_doses = KBinsDiscretizer(n_bins = 10, strategy = 'kmeans', encode = 'ordinal').fit_transform(db.doses)
-#fuzzy_clusters = ComplementNB().fit(discrete_doses, classes).predict_proba(discrete_doses)
-#weighted_probs = class_probs/densities
-#
-#cluster_centers = np.vstack([db.doses[np.argwhere(db.classes == c)].mean(axis = 0) for c in sorted(np.unique(db.classes))])
-#predicted_doses = np.zeros((db.get_num_patients(), Constants.num_organs))
-#for p in range(db.get_num_patients()):
-#    cluster_probs = weighted_probs[p]/np.sum(weighted_probs[p])
-#    weighted_centers = cluster_probs.reshape(-1,1)*cluster_centers
-#    predicted_doses[p] = weighted_centers.sum(axis = 0)
-#fuzzy_similarity = dose_similarity(predicted_doses)
-
-#t_o_vectors = get_tumor_organ_vectors(db)
-#adjacency = TsimModel().get_adjacency_lists(db.tumor_distances)
-#cosine_dist = lambda d,x,y: tumor_cosine_similarity(x,y, t_o_vectors, adjacency)
-#cosine_sim = get_sim(db, cosine_dist)
-#distance_sim = get_sim(db, lambda d,x,y: jaccard_distance(d.tumor_distances[x], d.tumor_distances[y]))
-#mean_distance_sim = distance_sim = get_sim(db, lambda d,x,y: jaccard_distance(d.mean_tumor_distances[x], d.mean_tumor_distances[y]))
-#vol_sim = dist_to_sim(get_sim(db, gtv_volume_dist))
-#total_dose_sim = dist_to_sim(get_sim(db, lambda d,x,y: np.abs(db.prescribed_doses[x] - db.prescribed_doses[y])))
-#
-#similarity_list = [cosine_sim, distance_sim, vol_sim, total_dose_sim]
-#fused_similarity = SimilarityBooster().get_similarity(db, similarity_list)
-#export(db, similarity = fused_similarity)
-#threshold_grid_search(db, fused_similarity, n_itters = 10)
-
-
-
-
 

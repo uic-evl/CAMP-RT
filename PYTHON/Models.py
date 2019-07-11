@@ -10,8 +10,10 @@ from ErrorChecker import ErrorChecker
 import Metrics
 from scipy.optimize import minimize
 from abc import ABC, abstractmethod
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, AgglomerativeClustering
 from copy import copy
+from scipy.stats import ttest_ind, f_oneway, kruskal
+from sklearn.preprocessing import OrdinalEncoder
 
 class Estimator(ABC):
     
@@ -262,28 +264,45 @@ class KnnEstimator(Estimator):
     
 class PSUpsampler():
     
-    def __init__(self, db):
-        unique_classes = np.unique(db.classes)
-        self.class_ratios = [len(np.argwhere(db.classes == c)) for c in sorted(np.unique(db.classes))]
-        self.offset = np.min(np.unique(classes))
-        self.single_tumor_positions = {}
-        pos = 0
-        for gtvset in db.gtvs:
-            self.single_tumor_positions[pos] = []
-            for gtv in gtvset:
-                if gtv.volume > 0:
-                    self.single_tumor_positions[pos].append(gtv.position)
-            self.single_tumor_positions[pos] = np.vstack(self.single_tumor_positions[pos])
-            pos += 1
+    def __init__(self, clusterer = None):
+        if clusterer is None:
+            self.clusterer = AgglomerativeClustering(n_clusters = 4)
+        else:
+            self.clusterer = clusterer
+            
+    def get_cluster_ratios(self, clusters):
+        max_cluster_count = np.max([len(np.argwhere(clusters == c)) for c in np.unique(clusters)])
+        class_offset ={c: max_cluster_count - len(np.argwhere(clusters == c)) for c in sorted(np.unique(clusters))}
+        return class_offset, max_cluster_count
         
+    def unsupervised_upsample(self, train_x, target_x):
+        clusters = self.clusterer.fit_predict(np.vstack(train_x, target_x))
+        target_class = clusters[-1]
+        train_y = clusters[: train_x.shape[0] ]
+        return self.upsample(train_x, train_y, target_class = target_class)
     
-    def upsample(self, x, y):
-        pass
-    
+    def upsample(self, x, y, target_class = None):
+        offsets, max_cluster_count = self.get_cluster_ratios(y)
+        if target_class is None:
+            target_class = np.unique(y)
+        upsampled_x = []
+        upsampled_y = []
+        for c, additional_samples in offsets.items():
+            if c not in target_class:
+                continue
+            class_args = np.argwhere(y == c).ravel()
+            for sample in range(additional_samples + 1):
+                sample_arg = np.random.choice(class_args)
+                upsampled_x.append(x[sample_arg])
+                upsampled_y.append(y[sample_arg])
+        upsampled_x = np.vstack(upsampled_x)
+        upsampled_y = np.vstack(upsampled_y)
+        return np.vstack([x,upsampled_x]), np.vstack([y.reshape(-1,1), upsampled_y]).ravel()
+            
     
 class TreeKnnEstimator(KnnEstimator, SupervisedModel):
     
-    def __init__(self, match_threshold = .9, 
+    def __init__(self, match_threshold = .99, 
                  match_type = 'threshold', 
                  min_matches = 7, min_true_matches = 2, 
                  match_model = None):
@@ -314,20 +333,14 @@ class TreeKnnEstimator(KnnEstimator, SupervisedModel):
                                          clusters, is_augmented)
         model = self.match_model(max_depth = features.shape[1], class_weight = 'balanced')
         for p in range(n_patients):
+            
             patient_positions = np.argwhere( np.any([p == positions, p + n_patients == positions], axis = 0) )[:,0]
             train_x = np.delete(features, patient_positions, axis = 0)
             train_labels = np.delete(labels, patient_positions, axis = 0)
-            model.fit(train_x, train_labels)
+            upsampled_x, upsampled_y = self.upsample_clusters(train_x, train_labels, clusters[p])
+            model.fit(upsampled_x, upsampled_y)
             patient_args = np.argwhere( p == positions[:,0] ).ravel()
-            
-#            scores = np.sum(features[patient_args]*model.feature_importances_, axis = 1)
-#            print(scores.shape)
-#            n_matches = len(np.argwhere(scores > self.match_threshold))
-#            n_matches = max([n_matches, self.min_matches])
-#            match_args = np.argsort(-scores)[:n_matches]
-#            predicted_doses[p,:] = self.get_individual_dose_prediction(dose_matrix, scores, match_args)
-#            print(np.sum(np.abs(predicted_doses[p,:] - dose_matrix[p,:]))/np.sum(dose_matrix[p,:]))
-            
+
             match_probs = model.predict_proba(features[patient_args])[:,1]
             match_probs = np.insert(match_probs, p, 0)
             if is_augmented:
@@ -342,6 +355,18 @@ class TreeKnnEstimator(KnnEstimator, SupervisedModel):
             print(model.feature_importances_)
             predicted_doses[p,:] = dose_prediction
         return predicted_doses
+    
+    def upsample_clusters(self, x, y, cluster, ratio = 1):
+        #specifically upsample the features in the same spaial group from the training class
+        canidates = np.argwhere(x[:, 0] == cluster).ravel()
+        count = ratio*(x.shape[0] - len(canidates) + 1)
+        upsampled_x = np.zeros((count, x.shape[1]))
+        upsampled_y = np.zeros((count,))
+        for s in range(count):
+            sample_arg = np.random.choice(canidates)
+            upsampled_x[s] = x[sample_arg]
+            upsampled_y[s] = y[sample_arg]
+        return np.vstack([x, upsampled_x]), np.hstack([y, upsampled_y])
     
     def get_individual_dose_prediction(self, doses, weights, args):
         match_doses = doses[args]
@@ -389,19 +414,7 @@ class TreeKnnEstimator(KnnEstimator, SupervisedModel):
                 num_matches += 1
             match_matrix[p,ranked_args[:num_matches]] = 1
         return match_matrix
-#        min_matches = self.min_true_matches
-#        dose_error = self.get_match_error(doses)
-#        match_matrix = np.zeros(dose_error.shape) + negative_class
-#        n_patients = doses.shape[0]
-#        for p in range(n_patients):
-#            max_error = error_threshold
-#            errors = dose_error[p, :]
-#            matches = []
-#            while len(matches) < min_matches:
-#                matches = np.where(errors < max_error)[0]
-#                max_error = max_error + .01
-#            match_matrix[p, matches] = 1
-#        return match_matrix.astype('int32')
+
         
     def extract_features(self, similarities, doses, clusters, is_augmented):
         true_similarity = self.get_true_matches(doses)
@@ -713,3 +726,46 @@ class SimilarityBooster(SimilarityFuser):
         error = self.get_match_error(data)
         sim = Metrics.dist_to_sim(error)
         return error
+    
+class ClusterStats():
+    
+    def __init__(self):
+        self.clusters = None
+        
+    def cluster_error(self, errors, clusters):
+        cs = np.unique(clusters)
+        cluster_errors = {}
+        def stats_dict(x):
+            return {'mean': x.mean(), 'std': x.std(), 'max': x.max(), 'min': x.min()}
+        for c in cs:
+            cluster_args = np.argwhere(clusters == c).ravel()
+            cluster_errors[c] = stats_dict(errors[cluster_args])
+        return cluster_errors
+    
+    def cluster_correlations(self, y, clusters, target_variable = None):
+        if isinstance(y.ravel()[0], str):
+            encoder = OrdinalEncoder()
+            y = encoder.fit_transform(y)
+            target_variable = encoder.transform(np.array(target_variable))[0]
+        group_args = [np.argwhere(clusters == c).ravel() for c in np.unique(clusters)]
+        correlations = []
+        if target_variable is not None: #if we only car about a single class
+            y = y==target_variable
+#        ys = [y[group] for group in group_args]
+#        return f_oneway(ys[0],ys[1], ys[2])
+        for group in group_args:
+            other_groups = np.delete(np.arange(len(clusters)), group)
+            p_val = kruskal(y[other_groups], y[group])[1]
+            correlations.append(p_val)
+        return correlations
+    
+    def similarity_cluster(self, similarity, clusterer = None, num_clusters = 4):
+        clusterer = AgglomerativeClustering(affinity = 'precomputed', linkage = 'complete', n_clusters = num_clusters) if clusterer is None else clusterer
+        dissimilarity = ((1 - similarity) + (1 - similarity).T)/2
+        clusters = clusterer.fit_predict( dissimilarity).ravel()
+        return clusters
+    
+    def similarity_correlations(self, similarity, y,num_clusters = 4, target_variable=None):
+        similarity = similarity[:len(y), :len(y)]
+        clusters = self.similarity_cluster(similarity, num_clusters = num_clusters)
+        return self.cluster_correlations(y, clusters, target_variable)
