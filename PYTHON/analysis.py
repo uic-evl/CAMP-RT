@@ -51,6 +51,7 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
         similarity = np.maximum(similarity[:n_patients, :n_patients], similarity[:n_patients, n_patients:])
     similar_patients = estimator.get_matches(similarity, data_set)
     dose_pca = pca(data_set.doses)
+    l,c,r = lcr_args()
     distance_tsne = TSNE(perplexity = 100, init = 'pca').fit_transform(data_set.tumor_distances[:,l+r]) 
     similarity_embedding = MDS(dissimilarity='precomputed', random_state = 1).fit_transform(disimilarity)
     if clusterer is not None:
@@ -265,8 +266,8 @@ def get_bayes_features(db, num_bins = 5):
     return(np.hstack(formated_features))
     
 
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                use_distances = False)
+db = PatientSet(root = 'data\\patients_v*\\',
+                use_distances = False)
 
 discretizer = KBinsDiscretizer(n_bins = 9 , encode = 'ordinal', strategy = 'kmeans')
 discrete_dists = discretizer.fit_transform(-db.tumor_distances)
@@ -279,6 +280,7 @@ count_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([bool(g
 total_dose_sim = dist_to_sim(augmented_sim(db.prescribed_doses, lambda x,y: np.abs(x - y)))
 
 model = threshold_grid_search(db, discrete_jaccard_sim, start_k = .85, n_itters = 7, get_model = True)
+export(db, estimator = model, similarity = discrete_jaccard_sim, clusterer='default')
 result = model.evaluate(discrete_jaccard_sim, db)
 counts = np.array([np.sum([bool(g.volume) for g in gtv]) for gtv in db.gtvs])
 ones = np.argwhere(counts == 1)

@@ -82,6 +82,7 @@ class Patient():
         self.gender = info['Gender']
         self.ajcc8 = Patient.ajcc8_map.get(info['AJCC 8th edition'], 0)
         self.therapy_type = info['Therapeutic combination']
+        self.feeding_tube = info['Feeding tube 6m']
         self.t_category = info['T-category']
         self.hpv = Patient.hpv_map.get(info['HPV/P16 status'], 0)
         centroid_data = self.get_doses_file_info(doses, distances)

@@ -52,7 +52,7 @@ class PatientSet():
         num_patients = len(ids)
         metadata = pd.read_csv(metadata_file,
                                index_col = 0, #index is the "Dummy ID"
-                               usecols = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,18,31]
+                               usecols = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,18,31,35]
                                ).loc[ids]
         print(metadata.columns)
         
@@ -82,6 +82,7 @@ class PatientSet():
         subsite_list = []
         gtv_list = []
         classes = np.zeros((num_patients,))
+        self.feeding_tubes = np.zeros((num_patients,)).astype('bool')
         
         self.mean_tumor_distances = np.copy(tumor_distance_matrix)
         self.max_tumor_distances = np.copy(tumor_distance_matrix)
@@ -135,6 +136,7 @@ class PatientSet():
             age_vector[patient_index] = new_patient.age
             self.ajcc8[patient_index] = new_patient.ajcc8
             self.hpv[patient_index] = new_patient.hpv
+            self.feeding_tubes[patient_index] = (new_patient.feeding_tube.lower() == 'y')
             
             self.max_tumor_distances[patient_index] = new_patient.max_tumor_distances
             self.mean_tumor_distances[patient_index] = new_patient.mean_tumor_distances
@@ -206,6 +208,7 @@ class PatientSet():
         self.ajcc8 = self.ajcc8[p]
         self.pathological_grades = self.pathological_grades[p]
         self.hpv = self.hpv[p]
+        self.feeding_tubes = self.feeding_tubes[p]
         
         self.mean_tumor_distances = self.mean_tumor_distances[p]
         self.max_tumor_distances = self.max_tumor_distances[p]
