@@ -266,21 +266,46 @@ def get_bayes_features(db, num_bins = 5):
 
 db = PatientSet(root = 'data\\patients_v*\\',
                 use_distances = False)
-
-discretizer = KBinsDiscretizer(n_bins = 9 , encode = 'ordinal', strategy = 'kmeans')
+export(db)
+discretizer = KBinsDiscretizer(n_bins =  9, encode = 'ordinal', strategy = 'uniform')
 discrete_dists = discretizer.fit_transform(-db.tumor_distances)
-discrete_jaccard= lambda d,x,y: jaccard_distance(discrete_dists[x], discrete_dists[y])
-discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
-normal_jaccard_sim = augmented_sim(db.tumor_distances, jaccard_distance)
-vol_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([g.volume for g in x]) - np.sum([t.volume for t in y])) ))
-boolean_vol_sim = augmented_sim(db.gtvs, lambda x,y: np.sum([bool(g.volume) for g in x]) == np.sum([bool(t.volume) for t in y]) )
-count_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([bool(g.volume) for g in x]) - np.sum([bool(t.volume) for t in y])) ))
-total_dose_sim = dist_to_sim(augmented_sim(db.prescribed_doses, lambda x,y: np.abs(x - y)))
+discrete_dist_pca = discretizer.fit_transform(pca(db.tumor_distances, 3))
 
+from sklearn.naive_bayes import ComplementNB
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.model_selection import train_test_split, LeaveOneOut
+bayes = ComplementNB()
+x = np.hstack([
+#        discrete_dists,
+        db.prescribed_doses.reshape(-1,1),
+        db.dose_fractions.reshape(-1,1),
+#        db.ages.reshape(-1,1),
+#        discrete_dist_pca,
+#        OneHotEncoder(sparse = False).fit_transform(db.subsites.reshape(-1,1))
+               ])
+y = db.feeding_tubes
+loo = LeaveOneOut()
+loo.get_n_splits(x)
+predicted_classes = np.zeros(db.classes.shape)
+threshold = .5
+for train_index, test_index in loo.split(x):
+    bayes.fit(x[train_index], y[train_index])
+    predicted_classes[test_index] = bayes.predict_proba(x[test_index])[:,1] > threshold
+db.classes = predicted_classes + 1
+c1 = db.feeding_tubes[np.argwhere(predicted_classes == 0)]
+c2 = db.feeding_tubes[np.argwhere(predicted_classes)]
+print(kruskal(c1,c2))
+print(f_oneway(c1,c2))
+#discrete_jaccard= lambda d,x,y: jaccard_distance(discrete_dists[x], discrete_dists[y])
+#discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
+#normal_jaccard_sim = augmented_sim(db.tumor_distances, jaccard_distance)
+#vol_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([g.volume for g in x]) - np.sum([t.volume for t in y])) ))
+#boolean_vol_sim = augmented_sim(db.gtvs, lambda x,y: np.sum([bool(g.volume) for g in x]) == np.sum([bool(t.volume) for t in y]) )
+#count_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([bool(g.volume) for g in x]) - np.sum([bool(t.volume) for t in y])) ))
+#total_dose_sim = dist_to_sim(augmented_sim(db.prescribed_doses, lambda x,y: np.abs(x - y)))
 
-result = TreeKnnEstimator().evaluate([discrete_jaccard_sim, total_dose_sim, vol_sim], db)
-print(result.mean())
-
+#result = TreeKnnEstimator().evaluate([discrete_jaccard_sim, total_dose_sim, vol_sim], db)
+#print(result.mean())
 
 #model = threshold_grid_search(db, discrete_jaccard_sim, start_k = .85, n_itters = 7, get_model = True)
 #export(db, estimator = model, similarity = discrete_jaccard_sim, clusterer='default')
