@@ -16,14 +16,14 @@ import pandas as pd
 from collections import OrderedDict
 from Constants import Constants
 from Patient import Patient
-from ErrorChecker import ErrorChecker 
+from ErrorChecker import ErrorChecker
 from preprocessing import Denoiser
 from cv2 import estimateAffine3D
 from Metrics import lcr_args, get_flip_args
 
 class PatientSet():
 
-    def __init__(self, outliers = [], root = 'data\\patients_v2*\\', 
+    def __init__(self, outliers = [], root = 'data\\patients_v2*\\',
                  use_distances = False, use_clean_subset = True, denoise = True):
         self.classes = None
         self.num_classes = 0
@@ -55,7 +55,7 @@ class PatientSet():
                                usecols = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,18,31,32,35]
                                ).loc[ids]
         print(metadata.columns)
-        
+
         #super inefficient way of reading in the data
         patients = OrderedDict()
         dose_matrix = np.zeros((num_patients, Constants.num_organs))
@@ -68,7 +68,7 @@ class PatientSet():
         organ_distance_matrix = np.zeros((Constants.num_organs, Constants.num_organs, num_patients))
         volume_matrix = np.zeros((num_patients,Constants.num_organs))
         node_matrix = np.zeros((num_patients, Constants.num_node_types))
-        
+
         pathological_grade_vector = np.zeros((num_patients,)).astype(str)
         therapy_type_vector = np.zeros((num_patients,)).astype(str)
         n_category_vector = np.zeros((num_patients,)).astype(str)
@@ -78,13 +78,14 @@ class PatientSet():
         self.ajcc8 = np.zeros((num_patients,))
         self.hpv = np.zeros((num_patients,))
         self.dose_fractions = np.zeros((num_patients,))
-        
+        self.has_gtvp = np.zeros((num_patients,))
+
         laterality_list = []
         subsite_list = []
         gtv_list = []
         classes = np.zeros((num_patients,))
         self.feeding_tubes = np.zeros((num_patients,)).astype('bool')
-        
+
         self.mean_tumor_distances = np.copy(tumor_distance_matrix)
         self.max_tumor_distances = np.copy(tumor_distance_matrix)
         #putting all the data into a patient object for further objectification
@@ -118,7 +119,7 @@ class PatientSet():
             laterality_list.append(new_patient.laterality)
             subsite_list.append(new_patient.tumor_subsite)
             gtv_list.append(new_patient.gtvs)
-            
+
             dose_matrix[patient_index, :] = new_patient.doses
             max_dose_matrix[patient_index, :] = new_patient.max_doses
             min_dose_matrix[patient_index, :] = new_patient.min_doses
@@ -128,7 +129,7 @@ class PatientSet():
             volume_matrix[patient_index, :] = new_patient.volumes
             centroid_matrix[patient_index, :, :] = new_patient.centroids
             node_matrix[patient_index, :] = new_patient.node_vector
-            
+
             pathological_grade_vector[patient_index] = new_patient.pathological_grade
             therapy_type_vector[patient_index] = new_patient.therapy_type
             n_category_vector[patient_index] = new_patient.n_stage
@@ -139,10 +140,12 @@ class PatientSet():
             self.hpv[patient_index] = new_patient.hpv
             self.feeding_tubes[patient_index] = (new_patient.feeding_tube.lower() == 'y')
             self.dose_fractions[patient_index] = new_patient.dose_fractions
-            
+
             self.max_tumor_distances[patient_index] = new_patient.max_tumor_distances
             self.mean_tumor_distances[patient_index] = new_patient.mean_tumor_distances
-            
+
+            self.has_gtvp[patient_index] = new_patient.gtvs[0].volume > 0
+
             if use_distances:
                 organ_distance_matrix[:, :, patient_index] = np.nan_to_num(new_patient.distances)
         self.doses = np.nan_to_num(dose_matrix)
@@ -152,7 +155,7 @@ class PatientSet():
         self.volumes = np.nan_to_num(volume_matrix)
         self.lymph_nodes = np.nan_to_num(node_matrix)
         self.classes = np.nan_to_num(classes)
-        
+
         self.pathological_grades = pathological_grade_vector
         self.therapy_type = therapy_type_vector
         self.n_categories = n_category_vector
@@ -161,7 +164,7 @@ class PatientSet():
         self.ages = np.nan_to_num(age_vector)
         self.dose_fractions = np.nan_to_num(self.dose_fractions)
 
-        
+
         if use_distances:
             self.all_organ_distances = np.nan_to_num(organ_distance_matrix)
             self.organ_distances = self.all_organ_distances.mean(axis = 2)
@@ -174,14 +177,14 @@ class PatientSet():
         self.subsites = np.array(subsite_list)
         self.ids = np.array(ids)
         self.gtvs = gtv_list
-        
+
     def clean_values(self):
         #subsets to the values approved by the error checker object
         error_checker = ErrorChecker()
         p = error_checker.get_clean_subset(self)
         p = sorted(p)
         self.subset(p)
-        
+
     def subset(self, p):
         #take of list of indices and just subsets all the data to match
         #used when getting the error checker output for cleaning
@@ -202,7 +205,7 @@ class PatientSet():
         for patient in p:
             new_gtvs.append(self.gtvs[patient])
         self.gtvs = new_gtvs
-        
+
         self.ages = self.ages[p]
         self.genders = self.genders[p]
         self.t_categories = self.t_categories[p]
@@ -213,15 +216,17 @@ class PatientSet():
         self.hpv = self.hpv[p]
         self.feeding_tubes = self.feeding_tubes[p]
         self.dose_fractions = self.dose_fractions[p]
-        
+
         self.mean_tumor_distances = self.mean_tumor_distances[p]
         self.max_tumor_distances = self.max_tumor_distances[p]
+
+        self.has_gtvp = self.has_gtvp[p]
         if self.all_organ_distances is not None:
             self.all_organ_distances = self.all_organ_distances[:,:,p]
-            
+
     def get_num_patients(self):
         return( self.doses.shape[0] )
-    
+
     def load_saved_distances(self, file = 'data/mean_organ_distances.csv'):
         try:
             distances = pd.read_csv(file, index_col = 0)
@@ -230,7 +235,7 @@ class PatientSet():
             print('error, no mean-organ distance file found')
             distances = np.zeros((Constants.num_organs, Constants.num_organs))
         return distances
-    
+
     def get_patient_class(self, patient_id, doses):
         #if a vector of classes is used
         group = self.get_default_class(patient_id, doses)
@@ -319,7 +324,7 @@ class PatientSet():
             classes.columns = classes.columns.str.strip()
             self.classes = classes[class_name].values.astype('int32')
             self.num_classes = len(self.classes)
-        else:   
+        else:
             for p in range(self.get_num_patients()):
                 self.classes[p] = self.get_default_class(self.ids[p], self.doses[p,:])
 
@@ -331,7 +336,7 @@ class PatientSet():
         else:
             organ_dist_df = pd.DataFrame(mean_dists, index = Constants.organ_list, columns = Constants.organ_list)
         organ_dist_df.to_csv(file)
-        
+
     def get_all_tumor_distances(self):
         distances = []
         for gtvset in self.gtvs:
@@ -339,9 +344,9 @@ class PatientSet():
                 distances.append(gtv.dists)
         distances = np.array(distances)
         return distances
-        
+
     def denoise_tumor_distances(self):
-        #passes tumors through a densoiing autoencoder.  
+        #passes tumors through a densoiing autoencoder.
         #will change self.tumor_distance but not self.gtvs
         distances = self.get_all_tumor_distances()
         distances = Denoiser(normalize = False, noise = .5).fit_transform(distances, lr = .0001)
@@ -361,7 +366,7 @@ class PatientSet():
             all_tumor_distances.append( np.vstack(p_dists))
         self.tumor_distances = new_tumor_distances
         self.stack_tumor_distances  = all_tumor_distances
-        
+
     def tumorcount_patients(self, min_tumors = 3):
         #gets all patients with more than a given number of tumors
         mtumors = []
@@ -374,9 +379,9 @@ class PatientSet():
             if n_tumors >= min_tumors:
                 mtumors.append(p)
         return mtumors
-        
+
     def get_transformed_centroids(self, reference_centroids = None):
-        
+
         def get_transformed_tumor_centroids(gtvs, transform):
         #finds the mean organ centroid locations and applies an affine transform
         #to each of the centroids in the current dataset
@@ -389,7 +394,7 @@ class PatientSet():
                 pos += 1
             new_centroids = np.dot(transform, t_centroids.T).T
             return new_centroids
-        
+
         if reference_centroids is None:
             reference_centroids = self.centroids.mean(axis = 0)
         transformed_tumor_centroids = []
@@ -403,4 +408,3 @@ class PatientSet():
             p_tumor_centroids = get_transformed_tumor_centroids(self.gtvs[p], transform)
             transformed_tumor_centroids.append(p_tumor_centroids)
         return transformed_organ_centroids, transformed_tumor_centroids
-        

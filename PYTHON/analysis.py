@@ -21,6 +21,7 @@ from copy import copy
 #import metric_learn
 from preprocessing import *
 from Metrics import *
+from NCA import NeighborhoodComponentsAnalysis
 import re
 from SyntheticDataGenerator import *
 from sklearn.manifold import TSNE, MDS
@@ -270,7 +271,7 @@ def get_bayes_features(db, num_bins = 5):
 
 db = PatientSet(root = 'data\\patients_v*\\',
                 use_distances = False)
-export(db)
+
 discretizer = KBinsDiscretizer(n_bins =  9, encode = 'ordinal', strategy = 'uniform')
 discrete_dists = discretizer.fit_transform(-db.tumor_distances)
 discrete_dist_pca = discretizer.fit_transform(pca(db.tumor_distances, 3))
@@ -290,16 +291,19 @@ x = np.hstack([
 y = db.feeding_tubes
 loo = LeaveOneOut()
 loo.get_n_splits(x)
-predicted_classes = np.zeros(db.classes.shape)
-threshold = .5
-for train_index, test_index in loo.split(x):
-    bayes.fit(x[train_index], y[train_index])
-    predicted_classes[test_index] = bayes.predict_proba(x[test_index])[:,1] > threshold
-db.classes = predicted_classes + 1
-c1 = db.feeding_tubes[np.argwhere(predicted_classes == 0)]
-c2 = db.feeding_tubes[np.argwhere(predicted_classes)]
-print(kruskal(c1,c2))
-print(f_oneway(c1,c2))
+nca = NeighborhoodComponentsAnalysis
+
+#predicted_classes = np.zeros(db.classes.shape)
+#threshold = .5
+#for train_index, test_index in loo.split(x):
+#    bayes.fit(x[train_index], y[train_index])
+#    predicted_classes[test_index] = bayes.predict_proba(x[test_index])[:,1] > threshold
+#db.classes = predicted_classes + 1
+#c1 = db.feeding_tubes[np.argwhere(predicted_classes == 0)]
+#c2 = db.feeding_tubes[np.argwhere(predicted_classes)]
+#print(kruskal(c1,c2))
+#print(f_oneway(c1,c2))
+
 #discrete_jaccard= lambda d,x,y: jaccard_distance(discrete_dists[x], discrete_dists[y])
 #discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
 

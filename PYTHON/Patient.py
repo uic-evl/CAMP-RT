@@ -52,7 +52,7 @@ class Patient():
       'L4': ['L4', 'L5B'],
       'L5A': ['L5B']
       }
-    
+
     ajcc8_map = {'I': 1,
                  'II': 2,
                  'III': 3,
@@ -82,8 +82,6 @@ class Patient():
         self.gender = info['Gender']
         self.dose_fractions = info['Total fractions']
         self.ajcc8 = Patient.ajcc8_map.get(info['AJCC 8th edition'], 0)
-        if self.ajcc8 == 0:
-            print(info['AJCC 8th edition'])
         self.therapy_type = info['Therapeutic combination']
         self.feeding_tube = info['Feeding tube 6m']
         self.t_category = info['T-category']
@@ -109,7 +107,7 @@ class Patient():
         #report if there is no primary tumor
         if self.tumor_volume == 0 or np.sum(self.tumor_distances) == 0:
             Constants.no_tumor.append(self.id)
-            
+
     def get_laterality(self, gtvs):
         sides = set([])
         for gtv in gtvs:
@@ -216,7 +214,7 @@ class Patient():
                 pass
                 #print('patient ', self.id, ' is missing organ ', organ, ' centroid data')
         return(centroid_matrix)
-        
+
     def merge_gtvns(self, gtvs, dists):
         #merges gtvs where there is overlap between them into a single gtv
         #calculates which gtvs overlap, and uses combine gtvs to get a single gtv
@@ -249,7 +247,7 @@ class Patient():
         if len(gtvs) > len(temp_gtvs):
             print(self.id, new_gtvs)
             self.gtvs = temp_gtvs
-    
+
     def combine_gtvs(self, gtvs, gtvset, name = None):
         #takes the set of gtvs from the data and indexes, merges the gtvs in gtvset
         gtvset = sorted(gtvset, key = lambda x: gtvs[x].name)
@@ -263,7 +261,7 @@ class Patient():
                 name = gtvs[0].name
             else:
                 name = gtvs[gtvset[0]].name
-        
+
         doses = weights[0]*gtvs[gtvset[0]].doses
         distances = weights[0]*gtvs[gtvset[0]].dists
         position = weights[0]*gtvs[gtvset[0]].position
@@ -276,7 +274,7 @@ class Patient():
         organ = Constants.organ_list[np.argmin(distances)]
         combined_gtv = GTV(name, total_volume, position, doses, distances, organ)
         return combined_gtv
-            
+
     def gtv_overlap(self, name1, name2, dists):
         try:
             distance = (dists.loc[name1, name2])['Eucledian Distance (mm)']
@@ -355,5 +353,5 @@ class Patient():
             mean_tumor_distances = np.zeros((Constants.num_organs,))
             max_tumor_distances = np.zeros((Constants.num_organs,))
             tumor_position = np.zeros((3,))
-        return(tumor_volume, min_tumor_distances, mean_tumor_distances, 
+        return(tumor_volume, min_tumor_distances, mean_tumor_distances,
                max_tumor_distances, tumor_position)
