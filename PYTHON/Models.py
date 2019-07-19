@@ -14,27 +14,28 @@ from sklearn.cluster import KMeans, AgglomerativeClustering
 from copy import copy
 from scipy.stats import ttest_ind, f_oneway, kruskal
 from sklearn.preprocessing import OrdinalEncoder
+from sklearn.tree import DecisionTreeClassifier
 
 class Estimator(ABC):
-    
+
     def __init__(self, match_threshold = .94, match_type = 'threshold', min_matches = 8):
         #match type is how the number of matches are selected
-        #give clusters to make it based on the class.  
+        #give clusters to make it based on the class.
         #threshold uses similarity score, uses max(min_matches, patients with score > match threshold)
         self.min_matches = min_matches
         #similarity needed to be a match
         self.match_threshold = match_threshold
         self.match_type = match_type
         return
-        
+
     @abstractmethod
     def predict_doses(self, similarity, data):
         pass
-    
+
     @abstractmethod
     def get_matches(self, similarity_matrix, data):
         pass
-    
+
     def get_error(self, predicted_doses, dose_matrix):
         differences = np.abs(predicted_doses - dose_matrix)
         percent_error = np.sum(differences, axis = 1)/np.sum(dose_matrix, axis = 1)
@@ -44,13 +45,13 @@ class Estimator(ABC):
         predicted_doses = self.predict_doses(similarity_matrix, data)
         percent_error = self.get_error(predicted_doses, data.doses)
         return(percent_error)
-        
+
 class SupervisedModel(ABC):
-    
+
     @abstractmethod
     def get_true_matches(self, data):
         pass
-    
+
     def get_match_error(self, data):
         #get error in between patient dose distrubtions
         #data can be the dose matrix or a patientset
@@ -66,16 +67,16 @@ class SupervisedModel(ABC):
                 error_matrix[p1, p2] = np.sum(dose_difference)/np.sum(doses[p1, :])
         error_matrix += error_matrix.transpose()
         return error_matrix
-        
+
 class SymmetryAugmentedModel(Estimator):
-    
+
     def __init__(self, match_threshold = .94, match_type = 'threshold', min_matches = 8):
         #match type is how the number of matches are selected
-        #give clusters to make it based on the class.  
+        #give clusters to make it based on the class.
         #threshold uses similarity score, uses max(min_matches, patients with score > match threshold)
         super().__init__(match_threshold, match_type, min_matches)
-        
-     
+
+
     def tsim(self, d1, d2, adjacency):
         scores = []
         if d2.sum() == np.inf:
@@ -83,23 +84,23 @@ class SymmetryAugmentedModel(Estimator):
         for organ_set in adjacency:
             scores.append(Metrics.jaccard_distance(d1[organ_set], d2[organ_set]))
         return np.mean(scores)
-    
+
     def predict_doses(self, similarity, data):
         flip_args = Metrics.get_flip_args()
-        adjacency = TJaccardModel().get_adjacency_lists(data.organ_distances, 
+        adjacency = TJaccardModel().get_adjacency_lists(data.organ_distances,
                                  np.arange(Constants.num_organs))
         normal_distances = data.tumor_distances
         flipped_distances = data.tumor_distances[:, flip_args]
         flipped_doses = data.doses[:, flip_args]
-        dose_predictions = np.zeros((data.get_num_patients(), 
+        dose_predictions = np.zeros((data.get_num_patients(),
                                      Constants.num_organs))
         for p1 in range(data.get_num_patients()):
             matches = []
             for p2 in range(0, data.get_num_patients()):
                 if p1 == p2:
                     continue
-                match = self.get_patient_similarity(p1, p2, 
-                                                 normal_distances, 
+                match = self.get_patient_similarity(p1, p2,
+                                                 normal_distances,
                                                  flipped_distances,
                                                  data.doses,
                                                  flipped_doses,
@@ -113,7 +114,7 @@ class SymmetryAugmentedModel(Estimator):
                 print(weights, p1, [x[0] for x in matches])
             dose_predictions[p1,:] = np.mean(prediction*weights, axis = 0)/np.mean(weights)
         return(dose_predictions)
-        
+
     def get_num_matches(self, p, matches, clusters):
         #for later better use probs
         if self.match_type == 'threshold':
@@ -125,10 +126,10 @@ class SymmetryAugmentedModel(Estimator):
         else:
             matches = self.min_matches
         return matches
-        
+
     def get_matches(self, similarity_matrix, data):
         flip_args = Metrics.get_flip_args()
-        adjacency = TJaccardModel().get_adjacency_lists(data.organ_distances, 
+        adjacency = TJaccardModel().get_adjacency_lists(data.organ_distances,
                                  np.arange(Constants.num_organs))
         normal_distances = data.tumor_distances
         flipped_distances = data.tumor_distances[:, flip_args]
@@ -137,21 +138,21 @@ class SymmetryAugmentedModel(Estimator):
         for p1 in range(data.get_num_patients()):
             matches = []
             for p2 in range(0, data.get_num_patients()):
-                match = self.get_patient_similarity(p1, p2, 
-                                                 normal_distances, 
+                match = self.get_patient_similarity(p1, p2,
+                                                 normal_distances,
                                                  flipped_distances,
                                                  data.doses,
                                                  flipped_doses,
                                                  adjacency)
-                matches.append(match) 
+                matches.append(match)
             n_matches = self.get_num_matches(p1, matches, data.classes)
             similarities = np.array([-m[0] for m in matches])#this is inverse because argsort is ascending
             match_args = (np.argsort(similarities))[:n_matches]
             all_matches.append(match_args)
         return all_matches
-    
-    def get_patient_similarity(self, p1, p2, 
-                            normal_distances, flipped_distances, 
+
+    def get_patient_similarity(self, p1, p2,
+                            normal_distances, flipped_distances,
                             doses, flipped_doses, adjacency):
         if p1 == p2:
             return (-np.inf, doses[p2])
@@ -162,14 +163,14 @@ class SymmetryAugmentedModel(Estimator):
         else:
             match = (flipped_similarity, flipped_doses[p2])
         return match
-        
+
 
 class KnnEstimator(Estimator):
     #class that works as a modified knn predictor for doses
     #mainn function is evaluate, which gives you the precent prediction error given a patientset and a similarity matrix
     def __init__(self, match_threshold = .94, match_type = 'threshold', min_matches = 8):
         #match type is how the number of matches are selected
-        #give clusters to make it based on the class.  
+        #give clusters to make it based on the class.
         #threshold uses similarity score, uses max(min_matches, patients with score > match threshold)
         super().__init__(match_threshold, match_type, min_matches)
 
@@ -191,10 +192,10 @@ class KnnEstimator(Estimator):
             num_matches = self.get_num_matches(p, scores, clusters)
             args = np.argsort(-scores)
             args = args[0 : num_matches]
-            
+
             predicted_doses[p, :] = self.get_prediction(dose_matrix, scores, args, p)
         return(predicted_doses)
-    
+
     def get_prediction(self, dose_matrix, scores, args, patient):
         #default, l is bascially a flag to do the version that attempts optimization
         matched_scores = scores[args].reshape(len(args), 1)
@@ -205,7 +206,7 @@ class KnnEstimator(Estimator):
 #            print(patient, 'doesnt have any matches')
             predicted_doses = dose_matrix.mean(axis=0) #return average if bad
         return predicted_doses
-        
+
     def get_prediction_with_optimization(self,data,scores,args,patient):
         #version of matching that attempts to change scoring so the mean matches distance matrix lines up better
         #shouldn't be used, but I took like 5 hours to get this to work so I don't want to delete it
@@ -241,7 +242,7 @@ class KnnEstimator(Estimator):
             patient_matches = self.get_patient_matches(p, similarity[p], data, outliers, clusters)
             matches.append(patient_matches)
         return(matches)
-        
+
     def get_patient_matches(self, p, scores, data, outliers, clusters):
         num_matches = self.get_num_matches(p, scores, clusters)
         if p not in outliers:
@@ -261,26 +262,26 @@ class KnnEstimator(Estimator):
         else:
             matches = self.min_matches
         return matches
-    
+
 class PSUpsampler():
-    
+
     def __init__(self, clusterer = None):
         if clusterer is None:
             self.clusterer = AgglomerativeClustering(n_clusters = 4)
         else:
             self.clusterer = clusterer
-            
+
     def get_cluster_ratios(self, clusters):
         max_cluster_count = np.max([len(np.argwhere(clusters == c)) for c in np.unique(clusters)])
         class_offset ={c: max_cluster_count - len(np.argwhere(clusters == c)) for c in sorted(np.unique(clusters))}
         return class_offset, max_cluster_count
-        
+
     def unsupervised_upsample(self, train_x, target_x):
         clusters = self.clusterer.fit_predict(np.vstack(train_x, target_x))
         target_class = clusters[-1]
         train_y = clusters[: train_x.shape[0] ]
         return self.upsample(train_x, train_y, target_class = target_class)
-    
+
     def upsample(self, x, y, target_class = None):
         offsets, max_cluster_count = self.get_cluster_ratios(y)
         if target_class is None:
@@ -298,25 +299,24 @@ class PSUpsampler():
         upsampled_x = np.vstack(upsampled_x)
         upsampled_y = np.vstack(upsampled_y)
         return np.vstack([x,upsampled_x]), np.vstack([y.reshape(-1,1), upsampled_y]).ravel()
-            
-    
+
+
 class TreeKnnEstimator(KnnEstimator, SupervisedModel):
-    
-    def __init__(self, match_threshold = .99, 
-                 match_type = 'threshold', 
-                 min_matches = 7, min_true_matches = 2, 
+
+    def __init__(self, match_threshold = .95,
+                 match_type = 'threshold',
+                 min_matches = 5, min_true_matches = 2,
                  match_model = None):
         #match type is how the number of matches are selected
-        #give clusters to make it based on the class.  
+        #give clusters to make it based on the class.
         #threshold uses similarity score, uses max(min_matches, patients with score > match threshold)
         super().__init__(match_threshold, match_type, min_matches)
         self.min_true_matches = min_true_matches
         if match_model is not None:
             self.match_model = match_model
         else:
-            from sklearn.tree import DecisionTreeClassifier
-            self.match_model = DecisionTreeClassifier
-            
+            self.match_model = DecisionTreeClassifier(max_depth = 4, class_weight = 'balanced')
+
     def predict_doses(self, similarity_list, data, weight_matrix_loc = None):
         from sklearn.preprocessing import quantile_transform
         similarity_list = [quantile_transform(s, axis = 1) for s in similarity_list]
@@ -329,19 +329,18 @@ class TreeKnnEstimator(KnnEstimator, SupervisedModel):
             outliers = outliers | set([o + n_patients for o in outliers])
         predicted_doses = np.zeros((n_patients, dose_matrix.shape[1]))
         clusters = self.get_feature_clusters(data)
-        features, labels, positions = self.extract_features(similarity_list, dose_matrix, 
+        features, labels, positions = self.extract_features(similarity_list, dose_matrix,
                                          clusters, is_augmented)
-        model = self.match_model(max_depth = features.shape[1], class_weight = 'balanced')
         for p in range(n_patients):
-            
+
             patient_positions = np.argwhere( np.any([p == positions, p + n_patients == positions], axis = 0) )[:,0]
             train_x = np.delete(features, patient_positions, axis = 0)
             train_labels = np.delete(labels, patient_positions, axis = 0)
             upsampled_x, upsampled_y = self.upsample_clusters(train_x, train_labels, clusters[p])
-            model.fit(upsampled_x, upsampled_y)
+            self.match_model.fit(upsampled_x, upsampled_y)
             patient_args = np.argwhere( p == positions[:,0] ).ravel()
 
-            match_probs = model.predict_proba(features[patient_args])[:,1]
+            match_probs = self.match_model.predict_proba(features[patient_args])[:,1]
             match_probs = np.insert(match_probs, p, 0)
             if is_augmented:
                 match_probs = np.insert(match_probs, p + n_patients, 0)
@@ -352,10 +351,10 @@ class TreeKnnEstimator(KnnEstimator, SupervisedModel):
                 match_weights = similarity_list[weight_matrix_loc][p, :]
             dose_prediction = self.get_individual_dose_prediction(dose_matrix, match_weights, match_args)
             print(np.sum(np.abs(dose_prediction - dose_matrix[p,:]))/np.sum(dose_matrix[p,:]))
-            print(model.feature_importances_)
+            print(self.match_model.feature_importances_)
             predicted_doses[p,:] = dose_prediction
         return predicted_doses
-    
+
     def upsample_clusters(self, x, y, cluster, ratio = 1):
         #specifically upsample the features in the same spaial group from the training class
         canidates = np.argwhere(x[:, 0] == cluster).ravel()
@@ -367,7 +366,7 @@ class TreeKnnEstimator(KnnEstimator, SupervisedModel):
             upsampled_x[s] = x[sample_arg]
             upsampled_y[s] = y[sample_arg]
         return np.vstack([x, upsampled_x]), np.hstack([y, upsampled_y])
-    
+
     def get_individual_dose_prediction(self, doses, weights, args):
         match_doses = doses[args]
         match_weights = weights[args].reshape(-1,1)
@@ -376,7 +375,7 @@ class TreeKnnEstimator(KnnEstimator, SupervisedModel):
         else:
             weighted_doses = np.mean(doses, axis = 0)
         return weighted_doses
-    
+
     def get_match_args(self, scores):
         threshold = copy(self.match_threshold)
         num_matches = 0
@@ -386,12 +385,12 @@ class TreeKnnEstimator(KnnEstimator, SupervisedModel):
         print(round(num_matches, 3))
         match_args = np.argsort(-scores)[:num_matches]
         return match_args
-        
+
     def get_feature_clusters(self, data):
         dose_pca = Metrics.pca(data.doses, n_components = 3)
-        clusters = KMeans(n_clusters = 4, random_state = 1).fit_predict(data.tumor_distances)
+        clusters = KMeans(n_clusters = 5, random_state = 1).fit_predict(data.tumor_distances)
         return clusters.ravel()
-        
+
     def get_true_matches(self, doses, negative_class = 0, error_threshold = .12):
         dose_error = self.get_match_error(doses)
         match_matrix = np.zeros(dose_error.shape).astype('int32') + negative_class
@@ -415,7 +414,7 @@ class TreeKnnEstimator(KnnEstimator, SupervisedModel):
             match_matrix[p,ranked_args[:num_matches]] = 1
         return match_matrix
 
-        
+
     def extract_features(self, similarities, doses, clusters, is_augmented):
         true_similarity = self.get_true_matches(doses)
         num_patients = int(doses.shape[0]/(is_augmented + 1))
@@ -436,10 +435,10 @@ class TreeKnnEstimator(KnnEstimator, SupervisedModel):
         y = np.array(y)
         positions = np.array(positions)
         return [x, y, positions]
-        
+
 class TsimModel():
-    #orginal-ish similarity model that gives a similarity matrix from get_simirity based on a spatial ssim 
-    def __init__(self, max_distance = 50, patients = None, organs = None, 
+    #orginal-ish similarity model that gives a similarity matrix from get_simirity based on a spatial ssim
+    def __init__(self, max_distance = 50, patients = None, organs = None,
                  similarity_function = None, use_classes = False):
         self.max_distance = max_distance
         #for subsetting the data later
@@ -494,7 +493,7 @@ class TsimModel():
             for patient2 in range(patient1 + 1, num_patients):
                 if (patient1 % num_original_patients) == (patient2 % num_original_patients):
                     continue
-                scores = self.pairwise_similarity(patient1, patient2, 
+                scores = self.pairwise_similarity(patient1, patient2,
                                                      distances, volumes,
                                                      clusters, adjacency)
                 score_matrix[patient1, patient2] = scores
@@ -548,10 +547,10 @@ class TsimModel():
         else:
             print('error, zero denomiator in ssim function')
             return 0
-        
+
 class TJaccardModel(TsimModel):
     #smalle variant of the tsim model that uses jaccard by default.  saves like two lines of work later
-    def __init__(self, max_distance = 50, patients = None, organs = None, 
+    def __init__(self, max_distance = 50, patients = None, organs = None,
                  similarity_function = None, use_classes = False):
         super(TJaccardModel, self).__init__(max_distance, patients, organs, similarity_function, use_classes)
         self.similarity_function = Metrics.jaccard_distance
@@ -576,7 +575,7 @@ class OsimModel(TsimModel):
         clusters = data.classes
         scores = self.similarity(adjacency, distances, volumes, clusters)
         return scores
-    
+
     def similarity(self, adjacency, distances, volumes, clusters, similarity_function = None):
         if similarity_function is None:
             similarity_function = self.local_ssim
@@ -603,7 +602,7 @@ class OsimModel(TsimModel):
 
 class SimilarityFuser(SupervisedModel):
     #class that uses (logistic regression) to map a list of similarity scores to a single score
-    #attempts to classify each vector as a neighbor (dose error < some number) 
+    #attempts to classify each vector as a neighbor (dose error < some number)
     #and the match probability is used as the similarity
     def __init__(self, model = None, min_matches = 4, max_error = .1):
         self.min_matches = min_matches
@@ -615,13 +614,13 @@ class SimilarityFuser(SupervisedModel):
                                        max_iter=500,
                                        random_state = 0)
         self.model = model
-        
+
     def get_similarity(self, db, similarity_matrices, classes = None):
         [x,y, positions] = self.extract_features(similarity_matrices, db.get_num_patients(), db, classes)
         final_similarity = np.zeros(similarity_matrices[0].shape)
         x = (x-x.min(axis=0))/(x.max(axis=0) - x.min(axis=0))
         for p in range(db.get_num_patients() - 1):
-            test_pairs = np.where(positions == p)[0] 
+            test_pairs = np.where(positions == p)[0]
             x_train = np.delete(x, test_pairs, axis = 0)
             y_train = np.delete(y, test_pairs, axis = 0)
             predict_pairs  = np.where(positions[:,0] == p)[0]
@@ -631,8 +630,8 @@ class SimilarityFuser(SupervisedModel):
             final_similarity[p, :] = np.insert(y_pred, p, 0)
 #        final_similarity += final_similarity.transpose()
         return(final_similarity)
-        
-        
+
+
     def extract_features(self, similarities, num_patients, data, classes):
         true_similarity = self.get_true_matches(data)
         if classes is not None:
@@ -657,7 +656,7 @@ class SimilarityFuser(SupervisedModel):
         y = np.array(y)
         positions = np.array(positions)
         return [x, y, positions]
-    
+
     def get_true_matches(self, data, negative_class = 0):
         min_matches = self.min_matches
         dose_error = self.get_match_error(data)
@@ -673,9 +672,9 @@ class SimilarityFuser(SupervisedModel):
                 max_error = max_error + .01
             match_matrix[p, matches] = 1
         return match_matrix.astype('int32')
-    
+
 class SimilarityBooster(SimilarityFuser):
-    
+
     def __init__(self, model = None):
         self.model = model
         if model is None:
@@ -683,13 +682,13 @@ class SimilarityBooster(SimilarityFuser):
             self.model = GradientBoostingRegressor(n_estimators = 20)
 #            from sklearn.ensemble import AdaBoostRegressor
 #            self.model = AdaBoostRegressor(learning_rate=.1, loss = 'square')
-    
+
     def get_similarity(self, db, similarity_matrices):
         [x,y, positions] = self.extract_features(similarity_matrices, db.get_num_patients(), db)
         final_similarity = np.zeros(similarity_matrices[0].shape)
         x = (x-x.min(axis=0))/(x.max(axis=0) - x.min(axis=0))
         for p in range(db.get_num_patients()):
-            test_pairs = np.where(positions == p)[0] 
+            test_pairs = np.where(positions == p)[0]
             x_train = np.delete(x, test_pairs, axis = 0)
             y_train = np.delete(y, test_pairs, axis = 0)
             predict_pairs  = np.where(positions[:,0] == p)[0]
@@ -700,8 +699,8 @@ class SimilarityBooster(SimilarityFuser):
             final_similarity[p, :] = np.insert(y_pred, p, 0)
 #        final_similarity += final_similarity.transpose()
         return Metrics.dist_to_sim(final_similarity)
-        
-        
+
+
     def extract_features(self, similarities, num_patients, data):
         true_similarity = (self.get_true_matches(data))
         x = []
@@ -721,17 +720,17 @@ class SimilarityBooster(SimilarityFuser):
         y = np.array(y)
         positions = np.array(positions)
         return [x, y, positions]
-    
+
     def get_true_matches(self, data):
         error = self.get_match_error(data)
         sim = Metrics.dist_to_sim(error)
         return error
-    
+
 class ClusterStats():
-    
+
     def __init__(self):
         self.clusters = None
-        
+
     def cluster_error(self, errors, clusters):
         cs = np.unique(clusters)
         cluster_errors = {}
@@ -741,7 +740,7 @@ class ClusterStats():
             cluster_args = np.argwhere(clusters == c).ravel()
             cluster_errors[c] = stats_dict(errors[cluster_args])
         return cluster_errors
-    
+
     def cluster_correlations(self, y, clusters, target_variable = None):
         if isinstance(y.ravel()[0], str):
             encoder = OrdinalEncoder()
@@ -751,20 +750,18 @@ class ClusterStats():
         correlations = []
         if target_variable is not None: #if we only car about a single class
             y = y==target_variable
-#        ys = [y[group] for group in group_args]
-#        return f_oneway(ys[0],ys[1], ys[2])
         for group in group_args:
             other_groups = np.delete(np.arange(len(clusters)), group)
             p_val = kruskal(y[other_groups], y[group])[1]
             correlations.append(p_val)
         return correlations
-    
+
     def similarity_cluster(self, similarity, clusterer = None, num_clusters = 4):
         clusterer = AgglomerativeClustering(affinity = 'precomputed', linkage = 'complete', n_clusters = num_clusters) if clusterer is None else clusterer
         dissimilarity = ((1 - similarity) + (1 - similarity).T)/2
         clusters = clusterer.fit_predict( dissimilarity).ravel()
         return clusters
-    
+
     def similarity_correlations(self, similarity, y,num_clusters = 4, target_variable=None):
         similarity = similarity[:len(y), :len(y)]
         clusters = self.similarity_cluster(similarity, num_clusters = num_clusters)

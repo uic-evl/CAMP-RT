@@ -40,20 +40,22 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
         predicted_doses = estimator.predict_doses(similarity, data_set)
     if clusterer == 'default':
         from sklearn.cluster import AgglomerativeClustering
-        clusterer = AgglomerativeClustering(n_clusters = 4)
+        clusterer = AgglomerativeClustering(affinity = 'precomputed', linkage = 'complete', n_clusters = 4)
     error = estimator.get_error(predicted_doses, data_set.doses) #a vector of errors
     n_patients = data_set.get_num_patients()
     disimilarity = 1- np.round(similarity[:n_patients, :n_patients], 3)
     disimilarity = (disimilarity + disimilarity.T)/2
+    flipped = np.ones(similarity.shape).astype('int32')
     if n_patients < similarity.shape[0]:
+        where_flipped = np.where(similarity[:n_patients, n_patients:] > similarity[:n_patients, :n_patients])
+        flipped[where_flipped] = -1
         similarity = np.maximum(similarity[:n_patients, :n_patients], similarity[:n_patients, n_patients:])
     similar_patients = estimator.get_matches(similarity, data_set)
     dose_pca = pca(data_set.doses)
-    l,c,r = lcr_args()
-    distance_tsne = TSNE(perplexity = 100, init = 'pca').fit_transform(data_set.tumor_distances[:,l+r]) 
+    distance_tsne = TSNE(perplexity = 60, init = 'pca').fit_transform(data_set.tumor_distances)
     similarity_embedding = MDS(dissimilarity='precomputed', random_state = 1).fit_transform(disimilarity)
     if clusterer is not None:
-        clusters = clusterer.fit_predict(similarity_embedding).ravel()
+        clusters = clusterer.fit_predict(disimilarity).ravel()
         clusters = (clusters - clusters.min() + 1).astype('int32')
     else:
         clusters = data_set.classes
@@ -63,8 +65,10 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
         entry['ID'] = data_set.ids[x]
         entry['ID_internal'] = x+1
         matches = similar_patients[x].tolist()
-        local_similarity = sorted( similarity[x, :], key = lambda x: -x)
-        entry['similarity_scores'] = local_similarity[:len(matches)]
+        simsort_args = np.argsort(-similarity[x,:]).ravel()
+        local_similarity = similarity[x, simsort_args]*flipped[x, simsort_args]
+        entry['similarity_scores'] = (local_similarity[:len(matches)]).tolist()
+        print(entry['similarity_scores'])
         entry['similar_patients'] = matches
         entry['mean_error'] = round(error[x], 4)
 
@@ -135,7 +139,7 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
         print('error saving ssim score matrix')
     return
 
-def threshold_grid_search(db, similarity, start_k = .4, max_matches = 20, 
+def threshold_grid_search(db, similarity, start_k = .4, max_matches = 20,
                           print_out = True, n_itters = 20, get_model = False):
     best_score = 100 #this is percent error at time of writing this
     best_threshold = 0
@@ -154,9 +158,9 @@ def threshold_grid_search(db, similarity, start_k = .4, max_matches = 20,
                             match_threshold = best_threshold,
                             min_matches = best_min_matches)
     else:
-        return((best_score, best_threshold, best_min_matches))       
+        return((best_score, best_threshold, best_min_matches))
 
-def organ_selection(organ_list, db, similarity_function = None, 
+def organ_selection(organ_list, db, similarity_function = None,
                     use_classes = False):
     def tsim(x):
         model = TsimModel(organs = [Constants.organ_list.index(o) for o in x],
@@ -185,8 +189,8 @@ def optimal_organ_search(db, similarity_function = None, use_classes = False):
     organ_set = Constants.organ_list
     best_score = None
     while True:
-        optimal_organs, best = organ_selection(organ_set, db, 
-                                               similarity_function = similarity_function, 
+        optimal_organs, best = organ_selection(organ_set, db,
+                                               similarity_function = similarity_function,
                                                use_classes = use_classes)
         if len(optimal_organs) == len(organ_set):
             break
@@ -207,7 +211,7 @@ def dose_similarity(dose_predictions, distance_metric = None):
     dists += dists.transpose()
     similarity = dist_to_sim(dists)
     return similarity
-    
+
 def get_tumor_organ_vectors(db):
     o_centroids, t_centroids = db.get_transformed_centroids()
     vectors = np.zeros((o_centroids.shape))
@@ -250,7 +254,7 @@ def get_bayes_features(db, num_bins = 5):
     features_to_use = [db.ajcc8, db.prescribed_doses, db.tumor_distances,
                        np.array([np.sum([g.volume for g in gtv]) for gtv in db.gtvs]),
                        db.volumes.sum(axis = 1)]
-    discretizer = KBinsDiscretizer(n_bins = num_bins, 
+    discretizer = KBinsDiscretizer(n_bins = num_bins,
                                    encode = 'ordinal',
                                    strategy = 'kmeans')
     formated_features = []
@@ -262,24 +266,38 @@ def get_bayes_features(db, num_bins = 5):
         feature = feature - feature.min()
         formated_features.append(feature)
     return(np.hstack(formated_features))
-    
 
-db = PatientSet(root = 'data\\patients_v*\\',
-                use_distances = False)
+
+#db = PatientSet(root = 'data\\patients_v*\\',
+#                use_distances = False)
 
 discretizer = KBinsDiscretizer(n_bins = 9 , encode = 'ordinal', strategy = 'kmeans')
 discrete_dists = discretizer.fit_transform(-db.tumor_distances)
 discrete_jaccard= lambda d,x,y: jaccard_distance(discrete_dists[x], discrete_dists[y])
 discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
-normal_jaccard_sim = augmented_sim(db.tumor_distances, jaccard_distance)
-vol_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([g.volume for g in x]) - np.sum([t.volume for t in y])) ))
-boolean_vol_sim = augmented_sim(db.gtvs, lambda x,y: np.sum([bool(g.volume) for g in x]) == np.sum([bool(t.volume) for t in y]) )
-count_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([bool(g.volume) for g in x]) - np.sum([bool(t.volume) for t in y])) ))
-total_dose_sim = dist_to_sim(augmented_sim(db.prescribed_doses, lambda x,y: np.abs(x - y)))
+export(db, similarity = discrete_jaccard_sim)
 
+#from sklearn.feature_selection import chi2, f_classif
+#f_vals, p_vals = f_classif(discrete_dists, db.feeding_tubes)
+#for threshold in np.linspace(.1,.9,10):
+#    print(threshold)
+#    cutoff = sorted(p_vals)[int(threshold*len(p_vals))]
+#    organ_list = np.array(Constants.organ_list)[np.argwhere(p_vals < cutoff)].ravel().tolist()
+#    organ_inds = [Constants.organ_list.index(o) for o in organ_list]
+#    discrete_jaccard_sim = augmented_sim(discrete_dists[:,organ_inds], jaccard_distance, organ_list = organ_list)
+#    if threshold == .1:
+#        export(db, similarity = discrete_jaccard_sim, clusterer = 'default')
+#    print(ClusterStats().similarity_correlations(discrete_jaccard_sim, db.feeding_tubes))
+#    threshold_grid_search(db, discrete_jaccard_sim, start_k = .9, print_out = True, n_itters = 3)
 
-result = TreeKnnEstimator().evaluate([discrete_jaccard_sim, total_dose_sim, vol_sim], db)
-print(result.mean())
+#normal_jaccard_sim = augmented_sim(db.tumor_distances, jaccard_distance)
+#vol_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([g.volume for g in x]) - np.sum([t.volume for t in y])) ))
+#boolean_vol_sim = augmented_sim(db.gtvs, lambda x,y: np.sum([bool(g.volume) for g in x]) == np.sum([bool(t.volume) for t in y]) )
+#count_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([bool(g.volume) for g in x]) - np.sum([bool(t.volume) for t in y])) ))
+#total_dose_sim = dist_to_sim(augmented_sim(db.prescribed_doses, lambda x,y: np.abs(x - y)))
+
+#result = TreeKnnEstimator().evaluate([discrete_jaccard_sim], db)
+#print(result.mean())
 
 
 #model = threshold_grid_search(db, discrete_jaccard_sim, start_k = .85, n_itters = 7, get_model = True)

@@ -212,6 +212,15 @@ var Data = function(patientData, oAtlas) {
 			return patient.similarity_scores;
 		},
 		
+		getFormatedSimilarityScore: function(id, match_arg){
+			var score = this.getPatient(id).similarity_scores[match_arg];
+			score = score.toFixed(4);
+			if(score < 0){
+				score = "! " + Math.abs(score);
+			}
+			return (score + '').replace(/0+./, '.');
+		},
+		
 		getSortedPatients: function(){
 			var sortedData = data.concat().sort(function(x,y){ return (+x.ID_internal) > (+y.ID_internal); });
 			return sortedData;

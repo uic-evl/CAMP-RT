@@ -833,7 +833,7 @@ function updateOrder(updatedPatient) {
 		//updates the similarity score for the second patient
         pScoreElement = second.querySelector(".pScore");
         // update patient score
-        pScoreElement.innerHTML = data.getPatientSimilarityScores(selectedPatient)[i+1].toFixed(5);
+        pScoreElement.innerHTML = data.getFormatedSimilarityScore(selectedPatient, i+1);
         // hide patients
         second.style.display = "none";
     }
@@ -841,7 +841,7 @@ function updateOrder(updatedPatient) {
 	if(scenes.length > 1){
 		first = document.getElementById(patientMatches[1]);
 		var pScoreElement = first.querySelector(".pScore");
-		pScoreElement.innerHTML = data.getPatientSimilarityScores(selectedPatient)[i+1].toFixed(5);
+		pScoreElement.innerHTML = data.getFormatedSimilarityScore(selectedPatient, i+1);
 		first.style.display = "none";
 	}
 	formatFirstPatient(updatedPatient);
