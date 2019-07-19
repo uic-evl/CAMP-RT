@@ -80,6 +80,7 @@ class Patient():
         self.age = info['Age at Diagnosis (Calculated)']
         self.pathological_grade = info['Pathological Grade']
         self.gender = info['Gender']
+        self.dose_fractions = info['Total fractions']
         self.ajcc8 = Patient.ajcc8_map.get(info['AJCC 8th edition'], 0)
         if self.ajcc8 == 0:
             print(info['AJCC 8th edition'])

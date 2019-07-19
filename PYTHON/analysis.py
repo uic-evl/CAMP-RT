@@ -268,27 +268,40 @@ def get_bayes_features(db, num_bins = 5):
     return(np.hstack(formated_features))
 
 
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                use_distances = False)
-
-discretizer = KBinsDiscretizer(n_bins = 9 , encode = 'ordinal', strategy = 'kmeans')
+db = PatientSet(root = 'data\\patients_v*\\',
+                use_distances = False)
+export(db)
+discretizer = KBinsDiscretizer(n_bins =  9, encode = 'ordinal', strategy = 'uniform')
 discrete_dists = discretizer.fit_transform(-db.tumor_distances)
-discrete_jaccard= lambda d,x,y: jaccard_distance(discrete_dists[x], discrete_dists[y])
-discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
-export(db, similarity = discrete_jaccard_sim)
+discrete_dist_pca = discretizer.fit_transform(pca(db.tumor_distances, 3))
 
-#from sklearn.feature_selection import chi2, f_classif
-#f_vals, p_vals = f_classif(discrete_dists, db.feeding_tubes)
-#for threshold in np.linspace(.1,.9,10):
-#    print(threshold)
-#    cutoff = sorted(p_vals)[int(threshold*len(p_vals))]
-#    organ_list = np.array(Constants.organ_list)[np.argwhere(p_vals < cutoff)].ravel().tolist()
-#    organ_inds = [Constants.organ_list.index(o) for o in organ_list]
-#    discrete_jaccard_sim = augmented_sim(discrete_dists[:,organ_inds], jaccard_distance, organ_list = organ_list)
-#    if threshold == .1:
-#        export(db, similarity = discrete_jaccard_sim, clusterer = 'default')
-#    print(ClusterStats().similarity_correlations(discrete_jaccard_sim, db.feeding_tubes))
-#    threshold_grid_search(db, discrete_jaccard_sim, start_k = .9, print_out = True, n_itters = 3)
+from sklearn.naive_bayes import ComplementNB
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.model_selection import train_test_split, LeaveOneOut
+bayes = ComplementNB()
+x = np.hstack([
+#        discrete_dists,
+        db.prescribed_doses.reshape(-1,1),
+        db.dose_fractions.reshape(-1,1),
+#        db.ages.reshape(-1,1),
+#        discrete_dist_pca,
+#        OneHotEncoder(sparse = False).fit_transform(db.subsites.reshape(-1,1))
+               ])
+y = db.feeding_tubes
+loo = LeaveOneOut()
+loo.get_n_splits(x)
+predicted_classes = np.zeros(db.classes.shape)
+threshold = .5
+for train_index, test_index in loo.split(x):
+    bayes.fit(x[train_index], y[train_index])
+    predicted_classes[test_index] = bayes.predict_proba(x[test_index])[:,1] > threshold
+db.classes = predicted_classes + 1
+c1 = db.feeding_tubes[np.argwhere(predicted_classes == 0)]
+c2 = db.feeding_tubes[np.argwhere(predicted_classes)]
+print(kruskal(c1,c2))
+print(f_oneway(c1,c2))
+#discrete_jaccard= lambda d,x,y: jaccard_distance(discrete_dists[x], discrete_dists[y])
+#discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
 
 #normal_jaccard_sim = augmented_sim(db.tumor_distances, jaccard_distance)
 #vol_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([g.volume for g in x]) - np.sum([t.volume for t in y])) ))
@@ -296,42 +309,8 @@ export(db, similarity = discrete_jaccard_sim)
 #count_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([bool(g.volume) for g in x]) - np.sum([bool(t.volume) for t in y])) ))
 #total_dose_sim = dist_to_sim(augmented_sim(db.prescribed_doses, lambda x,y: np.abs(x - y)))
 
-#result = TreeKnnEstimator().evaluate([discrete_jaccard_sim], db)
+#result = TreeKnnEstimator().evaluate([discrete_jaccard_sim, total_dose_sim, vol_sim], db)
 #print(result.mean())
 
 
-#model = threshold_grid_search(db, discrete_jaccard_sim, start_k = .85, n_itters = 7, get_model = True)
-#export(db, estimator = model, similarity = discrete_jaccard_sim, clusterer='default')
-#result = model.evaluate(discrete_jaccard_sim, db)
-#counts = np.array([np.sum([bool(g.volume) for g in gtv]) for gtv in db.gtvs])
-#ones = np.argwhere(counts == 1)
-#twos = np.argwhere(counts == 2)
-#threes = np.argwhere(counts == 3)
-#mores = np.argwhere(counts > 3)
-#print('ones', result[ones].mean())
-#print('twos', result[twos].mean())
-#print('threes', result[threes].mean())
-#print('fours', result[mores].mean())
-
-#from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
-#sims = [discrete_jaccard_sim, vol_sim, total_dose_sim, count_sim]
-#result = TreeKnnEstimator().evaluate(sims, db)
-#print(result.mean())
-
-#l,c,r = lcr_args()
-#left_distances = discrete_dists[l+c]
-#right_distances = discrete_dists[r+c]
-#
-#left_patients = np.argwhere(db.lateralities == 'L').ravel()
-#right_patients = np.argwhere(db.lateralities == 'R').ravel()
-#bilateral_patients = np.argwhere(db.lateralities == 'B').ravel()
-#sims = np.zeros((db.get_num_patients(), db.get_num_patients()))
-#for p in range(db.get_num_patients):
-#    if p in left_patients:
-#        argset = left_patients
-#    else if p in right_patients:
-#        argset = right_patients
-#    else:
-#        argset = np.arange(db.get_num_patients())
-#    for p2 in argset:
 
