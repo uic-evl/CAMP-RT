@@ -27,7 +27,7 @@ class ErrorChecker():
         self.eye_threshold = 14
         self.spine_threshold = 40
         self.brainstem_threshold = 40
-        
+
     def get_thresholds(self, db):
         #get an acceptable dose threshold for an organ, either preset or >10 above tumor dose
         thresholds = (db.prescribed_doses.max() + 10)*np.ones((Constants.num_organs,))
@@ -62,7 +62,7 @@ class ErrorChecker():
             organ = no_volume[1][missing_organ]
             if organ not in self.eyes:
                 bad_patients.add(patient)
-                
+
         no_dose = np.where(db.doses <= 0.00001)
         for missing_organ in range(len(no_dose[0])):
             patient = no_dose[0][missing_organ]
@@ -82,10 +82,21 @@ class ErrorChecker():
             tumor_volume = np.sum([gtv.volume for gtv in gtv_set])
             if tumor_volume <= .00001:
                 bad_patients.add(patient)
-        
+
 #        bad_patients = bad_patients | self.get_data_outliers(db.doses)
+        bad_patients = bad_patients | self.get_missing_gtvp(db)
         return bad_patients
-    
+
+    def get_missing_gtvp(self, db):
+        no_gtvp_args = np.argwhere(db.has_gtvp == 0).ravel()
+        pset = set([])
+        for p in no_gtvp_args:
+            unilateral = db.get_default_class(db.ids[p], db.doses[p]) > 2
+            if not unilateral:
+                pset.add(p)
+        print(pset)
+        return pset
+
     def get_data_outliers(self, doses, dose_match_threshold = .2, min_matches = 1):
         outliers = set([])
         n_patients = doses.shape[0]
@@ -101,7 +112,7 @@ class ErrorChecker():
                 outliers.add(p1)
 #        print('outliers', outliers)
         return outliers
-    
+
     def get_clean_subset(self, db):
         #takes a patientset and returns a sorted list of indices of all the patients
         #that pass all tests
@@ -110,4 +121,3 @@ class ErrorChecker():
         good_patients = all_patients - bad_patients
         print(bad_patients)
         return sorted(good_patients)
-        

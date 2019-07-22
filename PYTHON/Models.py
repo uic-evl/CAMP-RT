@@ -15,6 +15,9 @@ from copy import copy
 from scipy.stats import ttest_ind, f_oneway, kruskal
 from sklearn.preprocessing import OrdinalEncoder
 from sklearn.tree import DecisionTreeClassifier
+import rpy2.robjects.numpy2ri
+from rpy2.robjects.packages import importr
+rpy2.robjects.numpy2ri.activate()
 
 class Estimator(ABC):
 
@@ -755,6 +758,16 @@ class ClusterStats():
             p_val = kruskal(y[other_groups], y[group])[1]
             correlations.append(p_val)
         return correlations
+
+    def cluster_exact_test(self, c_labels, y):
+        assert(len(set(y)) == 2)
+        clusters = [y[np.argwhere(c_labels == c).ravel()] for c in np.unique(c_labels)]
+        contingency = self.get_contigency_table(c_labels, y)
+        stats = importr('stats')
+        return stats.fisher_test(contingency)
+
+    def get_contigency_table(self, labels, y):
+        return np.random.random((len(set(labels)), len(set(y))))
 
     def similarity_cluster(self, similarity, clusterer = None, num_clusters = 4):
         clusterer = AgglomerativeClustering(affinity = 'precomputed', linkage = 'complete', n_clusters = num_clusters) if clusterer is None else clusterer

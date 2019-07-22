@@ -28,6 +28,15 @@ from sklearn.manifold import TSNE, MDS
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import KBinsDiscretizer
 
+from sklearn.naive_bayes import ComplementNB
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import OneHotEncoder, quantile_transform
+from sklearn.model_selection import cross_validate, cross_val_predict
+from sklearn.metrics import accuracy_score, recall_score, roc_auc_score, roc_curve
+from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import LogisticRegression
+
 
 def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_file = 'scores.csv',
            model = None, estimator = None, similarity = None, predicted_doses = None, clusterer=None):
@@ -40,14 +49,15 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
     if predicted_doses is None:
         predicted_doses = estimator.predict_doses(similarity, data_set)
     if clusterer == 'default':
-        from sklearn.cluster import AgglomerativeClustering
-        clusterer = AgglomerativeClustering(affinity = 'precomputed', linkage = 'complete', n_clusters = 4)
+        from sklearn.cluster import KMeans
+        clusterer = KMeans(n_clusters = 3)
     error = estimator.get_error(predicted_doses, data_set.doses) #a vector of errors
     n_patients = data_set.get_num_patients()
     disimilarity = 1- np.round(similarity[:n_patients, :n_patients], 3)
     disimilarity = (disimilarity + disimilarity.T)/2
     flipped = np.ones(similarity.shape).astype('int32')
     if n_patients < similarity.shape[0]:
+        print('using augmented similarities')
         where_flipped = np.where(similarity[:n_patients, n_patients:] > similarity[:n_patients, :n_patients])
         flipped[where_flipped] = -1
         similarity = np.maximum(similarity[:n_patients, :n_patients], similarity[:n_patients, n_patients:])
@@ -69,7 +79,6 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
         simsort_args = np.argsort(-similarity[x,:]).ravel()
         local_similarity = similarity[x, simsort_args]*flipped[x, simsort_args]
         entry['similarity_scores'] = (local_similarity[:len(matches)]).tolist()
-        print(entry['similarity_scores'])
         entry['similar_patients'] = matches
         entry['mean_error'] = round(error[x], 4)
 
@@ -98,10 +107,11 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
             organ_data[organ_name] = organ_entry
 
         tumors = data_set.gtvs[x]
-        entry['tumorVolume'] = np.sum([tumor.volume for tumor in tumors])
+        tvols = [tumor.volume for tumor in tumors]
+        entry['tumorVolume'] = np.sum(tvols)
         entry['gtvp_volume'] = tumors[0].volume
         if len(tumors) > 1:
-            entry['gtvn_volume'] = tumors[1].volume
+            entry['gtvn_volume'] = np.sum(tvols[1:])
         else:
             entry['gtvn_volume'] = 0
         for tumor_idx in range(len(tumors)):
@@ -268,30 +278,80 @@ def get_bayes_features(db, num_bins = 5):
         formated_features.append(feature)
     return(np.hstack(formated_features))
 
+def recall_based_model(x, y, model, score_threshold = .99):
+    loo = LeaveOneOut()
+    loo.get_n_splits(x)
+    y_out = np.zeros(y.shape)
+    for train_index, test_index in loo.split(x):
+        model.fit(x[train_index], y[train_index])
+        yfit_pred = model.predict_proba(x[train_index])
+        sorted_scores = sorted(yfit_pred[:, 1], key = lambda x: -x)
+        threshold_i = 0
+        y_pred = yfit_pred[:,1] >= sorted_scores[threshold_i]
+        while recall_score(y[train_index], y_pred) < score_threshold:
+            threshold_i = threshold_i + 1
+            y_pred = yfit_pred[:,1] >= sorted_scores[threshold_i]
+        y_out[test_index] = model.predict_proba(x[test_index])[:,1] >= sorted_scores[threshold_i]
+    return y_out
 
-db = PatientSet(root = 'data\\patients_v*\\',
-                use_distances = False)
+def nca_cv(x, y, n_components = 15, quantile = False):
+    nca = NeighborhoodComponentsAnalysis(n_components = n_components, max_iter= 300)
+    loo = LeaveOneOut()
+    loo.get_n_splits(x)
+    nca_dist = np.zeros((len(y), len(y)))
+    for train_index, test_index in loo.split(x):
+        nca.fit(x[train_index], y[train_index])
+        xfit = nca.transform(x)
+        for p in range(len(y)):
+            nca_dist[test_index, p] = np.linalg.norm(xfit[test_index] - xfit[p])
+    nca_sim = dist_to_sim(nca_dist)
+    if quantile:
+        nca_sim = quantile_transform(nca_sim, axis = 1)
+    return nca_sim
 
-discretizer = KBinsDiscretizer(n_bins =  9, encode = 'ordinal', strategy = 'uniform')
+def get_model_auc(x, y, model):
+    ypred = cross_val_predict(model, x, y, cv = LeaveOneOut(), method = 'predict_proba')
+    ypred = ypred[:,1]
+    roc_score = roc_auc_score(y, ypred)
+    fpr, tpr, thresholds = roc_curve(y, ypred)
+    print(roc_score, thresholds[np.argmax(np.nan_to_num(tpr/fpr))], thresholds[-1])
+    plt.plot(fpr, tpr)
+    return fpr, tpr, thresholds, roc_score
+
+#db = PatientSet(root = 'data\\patients_v*\\',
+#                use_distances = False)
+
+
+
+discretizer = KBinsDiscretizer(n_bins =  9, encode = 'ordinal', strategy = 'kmeans')
 discrete_dists = discretizer.fit_transform(-db.tumor_distances)
-discrete_dist_pca = discretizer.fit_transform(pca(db.tumor_distances, 3))
+discrete_dist_pca = discretizer.fit_transform(pca(db.tumor_distances, 5))
 
-from sklearn.naive_bayes import ComplementNB
-from sklearn.preprocessing import OneHotEncoder
+
 from sklearn.model_selection import train_test_split, LeaveOneOut
-bayes = ComplementNB()
 x = np.hstack([
 #        discrete_dists,
+#        db.tumor_distances,
+#        np.vstack([g[0].dists for g in db.gtvs]),
+#        np.vstack([g[1].dists for g in db.gtvs]),
         db.prescribed_doses.reshape(-1,1),
         db.dose_fractions.reshape(-1,1),
+#        db.has_gtvp.reshape(-1,1),
+        np.array([np.sum([g.volume for g in gtv]) for gtv in db.gtvs]).reshape(-1,1),
+#        np.array([np.sum([g.volume > 0 for g in gtv]) for gtv in db.gtvs]).reshape(-1,1),
 #        db.ages.reshape(-1,1),
-#        discrete_dist_pca,
-#        OneHotEncoder(sparse = False).fit_transform(db.subsites.reshape(-1,1))
+        discrete_dist_pca,
+        OneHotEncoder(sparse = False).fit_transform(db.subsites.reshape(-1,1)),
+#        OneHotEncoder(sparse = False).fit_transform(db.lateralities.reshape(-1,1)),
                ])
-y = db.feeding_tubes
-loo = LeaveOneOut()
-loo.get_n_splits(x)
-nca = NeighborhoodComponentsAnalysis
+#nca_sim = nca_cv(x, db.feeding_tubes, quantile = True)
+
+#db.change_classes()
+#fpr, tpr, thresholds, roc_scores = get_model_auc(x, db.feeding_tubes,
+#                                                 ComplementNB())
+
+#model = threshold_grid_search(db, nca_sim ,start_k = .6, n_itters = 5, get_model = True)
+#export(db, similarity = nca_sim, clusterer = 'default', estimator = model)
 
 #predicted_classes = np.zeros(db.classes.shape)
 #threshold = .5
@@ -306,13 +366,13 @@ nca = NeighborhoodComponentsAnalysis
 
 #discrete_jaccard= lambda d,x,y: jaccard_distance(discrete_dists[x], discrete_dists[y])
 #discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
-
+#
 #normal_jaccard_sim = augmented_sim(db.tumor_distances, jaccard_distance)
 #vol_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([g.volume for g in x]) - np.sum([t.volume for t in y])) ))
 #boolean_vol_sim = augmented_sim(db.gtvs, lambda x,y: np.sum([bool(g.volume) for g in x]) == np.sum([bool(t.volume) for t in y]) )
 #count_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([bool(g.volume) for g in x]) - np.sum([bool(t.volume) for t in y])) ))
 #total_dose_sim = dist_to_sim(augmented_sim(db.prescribed_doses, lambda x,y: np.abs(x - y)))
-
+#
 #result = TreeKnnEstimator().evaluate([discrete_jaccard_sim, total_dose_sim, vol_sim], db)
 #print(result.mean())
 

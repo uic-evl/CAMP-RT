@@ -52,7 +52,8 @@ class PatientSet():
         num_patients = len(ids)
         metadata = pd.read_csv(metadata_file,
                                index_col = 0, #index is the "Dummy ID"
-                               usecols = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,18,31,32,35]
+                               usecols = [0,1,2,3,4,5,6,7,8,9,10,11,12,
+                                          13,14,15,18,31,32,35,36,37,38]
                                ).loc[ids]
         print(metadata.columns)
 
@@ -79,6 +80,9 @@ class PatientSet():
         self.hpv = np.zeros((num_patients,))
         self.dose_fractions = np.zeros((num_patients,))
         self.has_gtvp = np.zeros((num_patients,))
+
+        self.aspiration = np.zeros((num_patients,))
+        self.aspiration_change = np.zeros((num_patients,))
 
         laterality_list = []
         subsite_list = []
@@ -140,6 +144,9 @@ class PatientSet():
             self.hpv[patient_index] = new_patient.hpv
             self.feeding_tubes[patient_index] = (new_patient.feeding_tube.lower() == 'y')
             self.dose_fractions[patient_index] = new_patient.dose_fractions
+
+            self.aspiration = new_patient.aspiration
+            self.aspiration_rate = new_patient.aspiration_change
 
             self.max_tumor_distances[patient_index] = new_patient.max_tumor_distances
             self.mean_tumor_distances[patient_index] = new_patient.mean_tumor_distances
@@ -216,6 +223,8 @@ class PatientSet():
         self.hpv = self.hpv[p]
         self.feeding_tubes = self.feeding_tubes[p]
         self.dose_fractions = self.dose_fractions[p]
+        self.aspiration = self.aspiration[p]
+        self.aspiration_change = self.aspiration_change[p]
 
         self.mean_tumor_distances = self.mean_tumor_distances[p]
         self.max_tumor_distances = self.max_tumor_distances[p]
