@@ -31,7 +31,7 @@ from sklearn.preprocessing import KBinsDiscretizer
 from sklearn.naive_bayes import ComplementNB
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import OneHotEncoder, quantile_transform
-from sklearn.model_selection import cross_validate, cross_val_predict
+from sklearn.model_selection import cross_validate, cross_val_predict, LeaveOneOut
 from sklearn.metrics import accuracy_score, recall_score, roc_auc_score, roc_curve
 from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
@@ -305,51 +305,53 @@ def get_model_auc(x, y, model):
     plt.plot(fpr, tpr)
     return fpr, tpr, thresholds, roc_score
 
-db = PatientSet(root = 'data\\patients_v*\\',
-                use_distances = False)
+#db = PatientSet(root = 'data\\patients_v*\\',
+#                use_distances = False)
 #db.change_classes()
 
 discretizer = KBinsDiscretizer(n_bins =  9, encode = 'ordinal', strategy = 'kmeans')
 discrete_dists = discretizer.fit_transform(-db.tumor_distances)
-
-#x = np.hstack([
+l,c,r = lcr_args()
+x = np.hstack([
 #        discrete_dists,
+        pca(discrete_dists, 4) - min(pca(discrete_dists, 4).ravel()),
 #        db.tumor_distances,
 #        np.vstack([g[0].dists for g in db.gtvs]),
 #        np.vstack([g[1].dists for g in db.gtvs]),
-#        db.prescribed_doses.reshape(-1,1),
-#        db.dose_fractions.reshape(-1,1),
+        db.prescribed_doses.reshape(-1,1),
+        db.dose_fractions.reshape(-1,1),
 #        db.has_gtvp.reshape(-1,1),
 #        np.array([np.sum([g.volume for g in gtv]) for gtv in db.gtvs]).reshape(-1,1),
 #        np.array([np.sum([g.volume > 0 for g in gtv]) for gtv in db.gtvs]).reshape(-1,1),
 #        db.ages.reshape(-1,1),
 #        OneHotEncoder(sparse = False).fit_transform(db.subsites.reshape(-1,1)),
 #        OneHotEncoder(sparse = False).fit_transform(db.lateralities.reshape(-1,1)),
-#               ])
+               ])
 
 #nca_sim = nca_cv(x, db.feeding_tubes, quantile = True)
-#fpr, tpr, thresholds, roc_scores = get_model_auc(x, db.feeding_tubes,
-#                                                 ComplementNB())
+estimator = ComplementNB()
+labels = recall_based_model(x, db.feeding_tubes, estimator)
 #model = threshold_grid_search(db, nca_sim ,start_k = .6, n_itters = 5, get_model = True)
 #export(db, similarity = nca_sim, clusterer = 'default', estimator = model)
+
 
 discrete_dist_pca = discretizer.fit_transform(pca(db.tumor_distances, 5))
 discrete_jaccard= lambda d,x,y: jaccard_distance(discrete_dists[x], discrete_dists[y])
 discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
 
-l,c,r = lcr_args()
+
 center_jaccard_sim = augmented_sim(discrete_dists[:, c], jaccard_distance)
 side_jaccard_sim = augmented_sim(discrete_dists[:, l+r], jaccard_distance)
 has_gtvp_sim = augmented_sim(db.has_gtvp, lambda x,y : x==y)
 normal_jaccard_sim = augmented_sim(db.tumor_distances, jaccard_distance)
-
 total_dose_sim = dist_to_sim(augmented_sim(db.prescribed_doses, lambda x,y: np.abs(x - y)))
 
-predicted_doses = TreeKnnEstimator().predict_doses([discrete_jaccard_sim, has_gtvp_sim], db)
+predicted_doses = TreeKnnEstimator().predict_doses([discrete_jaccard_sim], db)
 #predicted_doses = KnnEstimator().predict_doses(normal_jaccard_sim, db)
-cluster_results = ClusterStats().get_optimal_clustering(db, predicted_doses)
-print(cluster_results['feeding_tube'][1])
-db.classes = cluster_results['feeding_tube'][0] + 1
+cluster_results = ClusterStats().get_optimal_clustering(predicted_doses, db.feeding_tubes,
+                              patient_subset = np.argwhere(labels).ravel())
+print(cluster_results[1])
+db.classes = cluster_results[0] + 1
 export(db, similarity = discrete_jaccard_sim)
 print(KnnEstimator().get_error(predicted_doses, db.doses).mean())
 print(KnnEstimator().get_error(predicted_doses[:,c], db.doses[:,c]).mean())

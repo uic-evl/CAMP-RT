@@ -24,7 +24,7 @@ import rpy2.robjects.numpy2ri
 from rpy2.robjects.packages import importr
 rpy2.robjects.numpy2ri.activate()
 
-cluster_result = namedtuple('cluster_result', ['outcome', 'method', 'cluster', 'correlation', 'model'])
+cluster_result = namedtuple('cluster_result', ['method', 'cluster', 'correlation', 'model'])
 
 class Estimator(ABC):
 
@@ -771,27 +771,23 @@ class ClusterStats():
                 tabel[row_index, col_index] = len(rowset & colset)
         return tabel
 
-    def analyze_clusters(self, db, name, clusterer, doses, subset):
+    def analyze_clusters(self, target_var, name, clusterer, doses, subset):
         result = []
-        for outcome, target_var in [('feeding_tube',db.feeding_tubes),
-                                    ('aspiration_rate', db.aspiration)]:
-            distance = self.get_dose_embedding(doses, target_var, subset)
-            clusters = clusterer.fit_predict(distance).ravel()
-            n_clusters = len(set(clusters))
-            method = name + str(n_clusters)
+        distance = self.get_dose_embedding(doses, target_var, subset)
+        clusters = clusterer.fit_predict(distance).ravel()
+        n_clusters = len(set(clusters))
+        method = name + str(n_clusters)
 
-            overall_correlation = self.fisher_exact_test(clusters, target_var)
-            result.append( cluster_result(outcome, method, 'all',
-                                          overall_correlation,
-                                          clusterer))
-            print(method, overall_correlation, outcome)
+        overall_correlation = self.fisher_exact_test(clusters, target_var)
+        result.append( cluster_result(method, 'all',
+                                      overall_correlation,
+                                      clusterer))
+        print(method, overall_correlation)
 
-            for c in np.unique(clusters):
-                correlation = self.fisher_exact_test(clusters == c, target_var)
-                result.append( cluster_result(outcome, method,
-                                              str(c+1), correlation,
-                                              clusterer))
-
+        for c in np.unique(clusters):
+            correlation = self.fisher_exact_test(clusters == c, target_var)
+            result.append( cluster_result(method, str(c+1),
+                                          correlation, clusterer))
         return result
 
     def get_dose_embedding(self, features, outcome, subset = True):
@@ -801,28 +797,31 @@ class ClusterStats():
         embedding = self.mds.fit_transform(similarity)
         return embedding
 
-    def cluster_by_dose(self, db, doses, args = None, subset = True):
+    def cluster_by_dose(self, target_var, doses, args = None, subset = True):
         if args is not None:
             assert( isinstance(args, list) )
             doses = doses[:, args]
         results = []
         for cname, clusterers in self.clusterers.items():
             for clusterer in clusterers:
-                results.extend(self.analyze_clusters(db, cname, clusterer, doses, subset))
+                results.extend(self.analyze_clusters(target_var, cname, clusterer, doses, subset))
         results = sorted(results, key = lambda x: x.correlation)
         return results
 
-    def get_optimal_clustering(self, db, doses, args = None, subset = True):
-        result = self.cluster_by_dose(db, doses, args, subset)
+    def get_optimal_clustering(self, doses, target_var, args = None,
+                               subset = True, patient_subset = None):
+        clusters = np.zeros(target_var.shape)
+        if patient_subset is not None:
+            target = target_var[patient_subset]
+            doses = doses[patient_subset,:]
+        result = self.cluster_by_dose(target, doses,
+                                      args, subset)
         result = [r for r in result if r.cluster is 'all']
         if args is not None:
             doses = doses[:, args]
-        optimal = {}
-
-        for outcome in ['feeding_tube', 'aspiration_rate']:
-            candidates = [r for r in result if r.outcome == outcome]
-            clusters = candidates[0].model.fit_predict(doses).ravel()
-            optimal[outcome] = (clusters, candidates[0])
+        clusters[patient_subset] = result[0].model.fit_predict(doses).ravel() + 1
+        pval = self.fisher_exact_test(clusters, target_var)
+        optimal = (clusters, pval)
         return optimal
 
     def subset_features(self, x, y):
