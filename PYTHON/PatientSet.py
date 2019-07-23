@@ -145,8 +145,8 @@ class PatientSet():
             self.feeding_tubes[patient_index] = (new_patient.feeding_tube.lower() == 'y')
             self.dose_fractions[patient_index] = new_patient.dose_fractions
 
-            self.aspiration = new_patient.aspiration
-            self.aspiration_rate = new_patient.aspiration_change
+            self.aspiration[patient_index] = new_patient.aspiration
+            self.aspiration_change[patient_index] = new_patient.aspiration_change
 
             self.max_tumor_distances[patient_index] = new_patient.max_tumor_distances
             self.mean_tumor_distances[patient_index] = new_patient.mean_tumor_distances

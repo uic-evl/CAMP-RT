@@ -761,13 +761,24 @@ class ClusterStats():
 
     def cluster_exact_test(self, c_labels, y):
         assert(len(set(y)) == 2)
+        #call fishers test from r 
         clusters = [y[np.argwhere(c_labels == c).ravel()] for c in np.unique(c_labels)]
-        contingency = self.get_contigency_table(c_labels, y)
+        contingency = self.get_contingency_table(c_labels, y)
         stats = importr('stats')
-        return stats.fisher_test(contingency)
+        return stats.fisher_test(contingency)[0][0]
 
-    def get_contigency_table(self, labels, y):
-        return np.random.random((len(set(labels)), len(set(y))))
+    def get_contingency_table(self, x, y):
+        #assumes x and y are two equal length vectors, creates a mxn contigency table from them
+        cols = list(set(y))
+        rows = list(set(x))
+        tabel = np.zeros((len(rows), len(cols)))
+        for row_index in range(len(rows)):
+            row_var = rows[row_index]
+            for col_index in range(len(cols)):
+                rowset = set(np.argwhere(x == row_var).ravel())
+                colset = set(np.argwhere(y == cols[col_index]).ravel())
+                tabel[row_index, col_index] = len(rowset & colset)
+        return tabel
 
     def similarity_cluster(self, similarity, clusterer = None, num_clusters = 4):
         clusterer = AgglomerativeClustering(affinity = 'precomputed', linkage = 'complete', n_clusters = num_clusters) if clusterer is None else clusterer

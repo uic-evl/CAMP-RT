@@ -318,20 +318,15 @@ def get_model_auc(x, y, model):
     plt.plot(fpr, tpr)
     return fpr, tpr, thresholds, roc_score
 
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                use_distances = False)
-
-
+db = PatientSet(root = 'data\\patients_v*\\',
+                use_distances = False)
 
 discretizer = KBinsDiscretizer(n_bins =  9, encode = 'ordinal', strategy = 'kmeans')
 discrete_dists = discretizer.fit_transform(-db.tumor_distances)
-discrete_dist_pca = discretizer.fit_transform(pca(db.tumor_distances, 5))
 
-
-from sklearn.model_selection import train_test_split, LeaveOneOut
 x = np.hstack([
 #        discrete_dists,
-#        db.tumor_distances,
+        db.tumor_distances,
 #        np.vstack([g[0].dists for g in db.gtvs]),
 #        np.vstack([g[1].dists for g in db.gtvs]),
         db.prescribed_doses.reshape(-1,1),
@@ -340,30 +335,21 @@ x = np.hstack([
         np.array([np.sum([g.volume for g in gtv]) for gtv in db.gtvs]).reshape(-1,1),
 #        np.array([np.sum([g.volume > 0 for g in gtv]) for gtv in db.gtvs]).reshape(-1,1),
 #        db.ages.reshape(-1,1),
-        discrete_dist_pca,
         OneHotEncoder(sparse = False).fit_transform(db.subsites.reshape(-1,1)),
 #        OneHotEncoder(sparse = False).fit_transform(db.lateralities.reshape(-1,1)),
                ])
 #nca_sim = nca_cv(x, db.feeding_tubes, quantile = True)
 
-#db.change_classes()
+db.change_classes()
 #fpr, tpr, thresholds, roc_scores = get_model_auc(x, db.feeding_tubes,
 #                                                 ComplementNB())
-
+test = ClusterStats().cluster_exact_test(db.classes, db.feeding_tubes)
 #model = threshold_grid_search(db, nca_sim ,start_k = .6, n_itters = 5, get_model = True)
 #export(db, similarity = nca_sim, clusterer = 'default', estimator = model)
 
-#predicted_classes = np.zeros(db.classes.shape)
-#threshold = .5
-#for train_index, test_index in loo.split(x):
-#    bayes.fit(x[train_index], y[train_index])
-#    predicted_classes[test_index] = bayes.predict_proba(x[test_index])[:,1] > threshold
-#db.classes = predicted_classes + 1
-#c1 = db.feeding_tubes[np.argwhere(predicted_classes == 0)]
-#c2 = db.feeding_tubes[np.argwhere(predicted_classes)]
-#print(kruskal(c1,c2))
-#print(f_oneway(c1,c2))
 
+
+#discrete_dist_pca = discretizer.fit_transform(pca(db.tumor_distances, 5))
 #discrete_jaccard= lambda d,x,y: jaccard_distance(discrete_dists[x], discrete_dists[y])
 #discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
 #
