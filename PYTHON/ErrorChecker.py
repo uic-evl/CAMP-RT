@@ -84,7 +84,7 @@ class ErrorChecker():
                 bad_patients.add(patient)
 
 #        bad_patients = bad_patients | self.get_data_outliers(db.doses)
-        bad_patients = bad_patients | self.get_missing_gtvp(db)
+#        bad_patients = bad_patients | self.get_missing_gtvp(db)
         return bad_patients
 
     def get_missing_gtvp(self, db):

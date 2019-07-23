@@ -4,9 +4,12 @@ Created on Fri Apr 12 10:15:21 2019
 
 @author: Andrew
 """
+from numpy.random import seed
+seed(1)
 import numpy as np
 from Constants import Constants
 from ErrorChecker import ErrorChecker
+from collections import namedtuple
 import Metrics
 from scipy.optimize import minimize
 from abc import ABC, abstractmethod
@@ -14,10 +17,14 @@ from sklearn.cluster import KMeans, AgglomerativeClustering
 from copy import copy
 from scipy.stats import ttest_ind, f_oneway, kruskal
 from sklearn.preprocessing import OrdinalEncoder
+from sklearn.manifold import MDS
+from sklearn.feature_selection import mutual_info_classif
 from sklearn.tree import DecisionTreeClassifier
 import rpy2.robjects.numpy2ri
 from rpy2.robjects.packages import importr
 rpy2.robjects.numpy2ri.activate()
+
+cluster_result = namedtuple('cluster_result', ['outcome', 'method', 'cluster', 'correlation', 'model'])
 
 class Estimator(ABC):
 
@@ -204,7 +211,7 @@ class KnnEstimator(Estimator):
         matched_scores = scores[args].reshape(len(args), 1)
         matched_doses = dose_matrix[args, :]
         if matched_scores.mean() > 0:
-                predicted_doses = np.mean(matched_scores*matched_doses, axis = 0)/matched_scores.mean()
+            predicted_doses = np.mean(matched_scores*matched_doses, axis = 0)/matched_scores.mean()
         else:
 #            print(patient, 'doesnt have any matches')
             predicted_doses = dose_matrix.mean(axis=0) #return average if bad
@@ -318,11 +325,14 @@ class TreeKnnEstimator(KnnEstimator, SupervisedModel):
         if match_model is not None:
             self.match_model = match_model
         else:
-            self.match_model = DecisionTreeClassifier(max_depth = 4, class_weight = 'balanced')
+            self.match_model = DecisionTreeClassifier(max_depth = 3,
+                                                      class_weight = 'balanced',
+                                                      random_state=1)
 
     def predict_doses(self, similarity_list, data, weight_matrix_loc = None):
         from sklearn.preprocessing import quantile_transform
-        similarity_list = [quantile_transform(s, axis = 1) for s in similarity_list]
+        qunatile = lambda x: quantile_transform(x, axis = 1, copy = True, n_quantiles = 20)
+        similarity_list = [qunatile(s) for s in similarity_list]
         n_patients = data.get_num_patients()
         dose_matrix = data.doses
         outliers = ErrorChecker().get_data_outliers(data.doses)
@@ -353,12 +363,10 @@ class TreeKnnEstimator(KnnEstimator, SupervisedModel):
             else:
                 match_weights = similarity_list[weight_matrix_loc][p, :]
             dose_prediction = self.get_individual_dose_prediction(dose_matrix, match_weights, match_args)
-            print(np.sum(np.abs(dose_prediction - dose_matrix[p,:]))/np.sum(dose_matrix[p,:]))
-            print(self.match_model.feature_importances_)
             predicted_doses[p,:] = dose_prediction
         return predicted_doses
 
-    def upsample_clusters(self, x, y, cluster, ratio = 1):
+    def upsample_clusters(self, x, y, cluster, ratio = 2):
         #specifically upsample the features in the same spaial group from the training class
         canidates = np.argwhere(x[:, 0] == cluster).ravel()
         count = ratio*(x.shape[0] - len(canidates) + 1)
@@ -385,7 +393,6 @@ class TreeKnnEstimator(KnnEstimator, SupervisedModel):
         while num_matches < self.min_matches:
             num_matches = len(np.argwhere(scores > threshold))
             threshold = threshold - .01
-        print(round(num_matches, 3))
         match_args = np.argsort(-scores)[:num_matches]
         return match_args
 
@@ -394,7 +401,7 @@ class TreeKnnEstimator(KnnEstimator, SupervisedModel):
         clusters = KMeans(n_clusters = 5, random_state = 1).fit_predict(data.tumor_distances)
         return clusters.ravel()
 
-    def get_true_matches(self, doses, negative_class = 0, error_threshold = .12):
+    def get_true_matches(self, doses, negative_class = 0, error_threshold = .1):
         dose_error = self.get_match_error(doses)
         match_matrix = np.zeros(dose_error.shape).astype('int32') + negative_class
         n_patients = doses.shape[0]
@@ -731,41 +738,25 @@ class SimilarityBooster(SimilarityFuser):
 
 class ClusterStats():
 
-    def __init__(self):
-        self.clusters = None
+    def __init__(self, clusterers = None):
+        self.clusterers = clusterers
+        self.mds = MDS(n_components = 30,
+                             dissimilarity = 'precomputed')
+        if clusterers is None:
+            c_range = range(2,6)
+            self.clusterers = {}
+            self.clusterers['Kmeans'] = [KMeans(n_clusters = i) for i in c_range]
+            self.clusterers['Agglomerative_ward'] = [AgglomerativeClustering(n_clusters = i) for i in c_range]
+            self.clusterers['Agglomerative_complete'] = [AgglomerativeClustering(n_clusters = i, linkage = 'complete') for i in c_range]
 
-    def cluster_error(self, errors, clusters):
-        cs = np.unique(clusters)
-        cluster_errors = {}
-        def stats_dict(x):
-            return {'mean': x.mean(), 'std': x.std(), 'max': x.max(), 'min': x.min()}
-        for c in cs:
-            cluster_args = np.argwhere(clusters == c).ravel()
-            cluster_errors[c] = stats_dict(errors[cluster_args])
-        return cluster_errors
-
-    def cluster_correlations(self, y, clusters, target_variable = None):
-        if isinstance(y.ravel()[0], str):
-            encoder = OrdinalEncoder()
-            y = encoder.fit_transform(y)
-            target_variable = encoder.transform(np.array(target_variable))[0]
-        group_args = [np.argwhere(clusters == c).ravel() for c in np.unique(clusters)]
-        correlations = []
-        if target_variable is not None: #if we only car about a single class
-            y = y==target_variable
-        for group in group_args:
-            other_groups = np.delete(np.arange(len(clusters)), group)
-            p_val = kruskal(y[other_groups], y[group])[1]
-            correlations.append(p_val)
-        return correlations
-
-    def cluster_exact_test(self, c_labels, y):
+    def fisher_exact_test(self, c_labels, y):
         assert(len(set(y)) == 2)
-        #call fishers test from r 
+        #call fishers test from r
         clusters = [y[np.argwhere(c_labels == c).ravel()] for c in np.unique(c_labels)]
         contingency = self.get_contingency_table(c_labels, y)
         stats = importr('stats')
-        return stats.fisher_test(contingency)[0][0]
+        pval = stats.fisher_test(contingency)[0][0]
+        return pval
 
     def get_contingency_table(self, x, y):
         #assumes x and y are two equal length vectors, creates a mxn contigency table from them
@@ -780,13 +771,61 @@ class ClusterStats():
                 tabel[row_index, col_index] = len(rowset & colset)
         return tabel
 
-    def similarity_cluster(self, similarity, clusterer = None, num_clusters = 4):
-        clusterer = AgglomerativeClustering(affinity = 'precomputed', linkage = 'complete', n_clusters = num_clusters) if clusterer is None else clusterer
-        dissimilarity = ((1 - similarity) + (1 - similarity).T)/2
-        clusters = clusterer.fit_predict( dissimilarity).ravel()
-        return clusters
+    def analyze_clusters(self, db, name, clusterer, doses, subset):
+        result = []
+        for outcome, target_var in [('feeding_tube',db.feeding_tubes),
+                                    ('aspiration_rate', db.aspiration)]:
+            distance = self.get_dose_embedding(doses, target_var, subset)
+            clusters = clusterer.fit_predict(distance).ravel()
+            n_clusters = len(set(clusters))
+            method = name + str(n_clusters)
 
-    def similarity_correlations(self, similarity, y,num_clusters = 4, target_variable=None):
-        similarity = similarity[:len(y), :len(y)]
-        clusters = self.similarity_cluster(similarity, num_clusters = num_clusters)
-        return self.cluster_correlations(y, clusters, target_variable)
+            overall_correlation = self.fisher_exact_test(clusters, target_var)
+            result.append( cluster_result(outcome, method, 'all',
+                                          overall_correlation,
+                                          clusterer))
+            print(method, overall_correlation, outcome)
+
+            for c in np.unique(clusters):
+                correlation = self.fisher_exact_test(clusters == c, target_var)
+                result.append( cluster_result(outcome, method,
+                                              str(c+1), correlation,
+                                              clusterer))
+
+        return result
+
+    def get_dose_embedding(self, features, outcome, subset = True):
+        if subset:
+            features = self.subset_features(features, outcome)
+        similarity = Metrics.dose_similarity(features, similarity = False)
+        embedding = self.mds.fit_transform(similarity)
+        return embedding
+
+    def cluster_by_dose(self, db, doses, args = None, subset = True):
+        if args is not None:
+            assert( isinstance(args, list) )
+            doses = doses[:, args]
+        results = []
+        for cname, clusterers in self.clusterers.items():
+            for clusterer in clusterers:
+                results.extend(self.analyze_clusters(db, cname, clusterer, doses, subset))
+        results = sorted(results, key = lambda x: x.correlation)
+        return results
+
+    def get_optimal_clustering(self, db, doses, args = None, subset = True):
+        result = self.cluster_by_dose(db, doses, args, subset)
+        result = [r for r in result if r.cluster is 'all']
+        if args is not None:
+            doses = doses[:, args]
+        optimal = {}
+
+        for outcome in ['feeding_tube', 'aspiration_rate']:
+            candidates = [r for r in result if r.outcome == outcome]
+            clusters = candidates[0].model.fit_predict(doses).ravel()
+            optimal[outcome] = (clusters, candidates[0])
+        return optimal
+
+    def subset_features(self, x, y):
+        mutual_info = mutual_info_classif(x, y)
+        good_features = np.argwhere(mutual_info > 0).ravel()
+        return x[:, good_features]

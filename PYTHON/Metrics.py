@@ -25,7 +25,7 @@ def pca(points, n_components = 2):
     eig = eig[:, args[0:n_components]]
     principle_components = np.dot(points, eig)
     return(principle_components)
-    
+
 def dist_to_sim(distance):
     #converts a distance matrix to a similarity matrix with 0 in the diagonal
     distance = np.copy(distance)
@@ -41,7 +41,7 @@ def minmax_scale(matrix):
     return m/m.max()
 
 def get_flip_args(organ_list = None):
-    #get arguments from an organ list that will swap left and right oriented organs 
+    #get arguments from an organ list that will swap left and right oriented organs
     #assumes naming conventions Rt_ and Lt_ for right and left
     if organ_list is None:
         organ_list = Constants.organ_list
@@ -93,7 +93,7 @@ def augment_mirrored(matrix, organ_list = None):
         return np.hstack([matrix,matrix])
 
 #full similarity measures
-    
+
 def get_sim(db, similarity_function):
     #takes a function and the database and returns a similarity or distance matrix
     #assumes it's symmetric, so it only compares once
@@ -122,7 +122,7 @@ def augmented_sim(feature, similarity_function, organ_list = None):
     for p in range(n_patients):
         similarity_matrix[p,p] = 0
     return similarity_matrix
-    
+
 
 def lymph_similarity(db, file = 'data/spatial_lymph_scores.csv'):
     #loads in lymph similarity from the lymnph node project data into a matrix
@@ -173,13 +173,13 @@ def local_ssim(x,y,v = None, w = None):
     else:
         print('error, zero denomiator in ssim function')
         return 0
-    
+
 def harmonic_sum(values):
     return 1/np.sum([1/v for v in values])
 
 def tumor_emd(db, p1, p2, centroids):
     #calculates an emd between tumors
-    #should be passed as a lambda function to getsim with centroids as a 
+    #should be passed as a lambda function to getsim with centroids as a
     #normalized list of tumor centroid value
     def weighted_point(p):
         #currently set to give the largest tumor a weight of 3 and everything else 1
@@ -270,7 +270,7 @@ def gtv_organ_sim(db,p1,p2):
         return v
     v1 = vectorify(p1)
     v2 = vectorify(p2)
-    return jaccard_distance(v1,v2) #1 if np.linalg.norm(v1 - v2) == 0 else 0 
+    return jaccard_distance(v1,v2) #1 if np.linalg.norm(v1 - v2) == 0 else 0
 
 def gtv_count_sim(db,p1,p2):
     #similarity based one the difference between number of organs
@@ -321,7 +321,7 @@ def single_convex_hull_projection(point_cloud, centroids, cuttoff = 15):
                 min_dist = distance
                 projections[idx,:] = projection
     return projections
-    
+
 def convex_hull_projection(point_cloud, centroids):
     #looks at every plane in the convex hull and finds the projection
     #of the closest tumor?
@@ -350,7 +350,7 @@ def get_lr_tumors(db):
         gtvs = db.gtvs[p]
         left = np.inf*np.ones((Constants.num_organs,))
         right = copy.copy(left)
-        #position[0] > 0 is left side 
+        #position[0] > 0 is left side
         for gtv in gtvs:
             if gtv.position[0] > 0:
                 left = np.minimum(left, gtv.dists)
@@ -381,7 +381,7 @@ def get_gtv_vectors(db):
 
 def get_max_tumor_ssim(patient1, patient2):
     #todo: remember what his does exactly
-    
+
     options = set()
     scores = -np.ones((len(patient1),))
     similarities = []
@@ -400,3 +400,20 @@ def get_max_tumor_ssim(patient1, patient2):
     t_volumes = np.array([t.volume for t in patient1])
     max_similarity = np.mean((scores*t_volumes)/t_volumes.sum())
     return max_similarity
+
+def dose_similarity(dose_predictions, distance_metric = None, similarity = True):
+    if distance_metric is None:
+        distance_metric = mse
+    n_patients = dose_predictions.shape[0]
+    dists = np.zeros((n_patients, n_patients))
+    for p1 in range(n_patients):
+        d1 = dose_predictions[p1]
+        for p2 in range(p1+1, n_patients):
+            d2 = dose_predictions[p2]
+            dists[p1,p2] = distance_metric(d1, d2)
+    dists += dists.transpose()
+    if similarity:
+        similarity = dist_to_sim(dists)
+        return similarity
+    else:
+        return dists

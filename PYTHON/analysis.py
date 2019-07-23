@@ -70,6 +70,7 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
         clusters = (clusters - clusters.min() + 1).astype('int32')
     else:
         clusters = data_set.classes
+    clusters = clusters.astype('int32')
     export_data = []
     for x in range(data_set.get_num_patients()):
         entry = OrderedDict()
@@ -209,20 +210,6 @@ def optimal_organ_search(db, similarity_function = None, use_classes = False):
         best_score = best
     return optimal_organs, best_score
 
-def dose_similarity(dose_predictions, distance_metric = None):
-    if distance_metric is None:
-        distance_metric = mse
-    n_patients = dose_predictions.shape[0]
-    dists = np.zeros((n_patients, n_patients))
-    for p1 in range(n_patients):
-        d1 = dose_predictions[p1]
-        for p2 in range(p1+1, n_patients):
-            d2 = dose_predictions[p2]
-            dists[p1,p2] = distance_metric(d1, d2)
-    dists += dists.transpose()
-    similarity = dist_to_sim(dists)
-    return similarity
-
 def get_tumor_organ_vectors(db):
     o_centroids, t_centroids = db.get_transformed_centroids()
     vectors = np.zeros((o_centroids.shape))
@@ -320,44 +307,53 @@ def get_model_auc(x, y, model):
 
 db = PatientSet(root = 'data\\patients_v*\\',
                 use_distances = False)
+#db.change_classes()
 
 discretizer = KBinsDiscretizer(n_bins =  9, encode = 'ordinal', strategy = 'kmeans')
 discrete_dists = discretizer.fit_transform(-db.tumor_distances)
 
-x = np.hstack([
+#x = np.hstack([
 #        discrete_dists,
-        db.tumor_distances,
+#        db.tumor_distances,
 #        np.vstack([g[0].dists for g in db.gtvs]),
 #        np.vstack([g[1].dists for g in db.gtvs]),
-        db.prescribed_doses.reshape(-1,1),
-        db.dose_fractions.reshape(-1,1),
+#        db.prescribed_doses.reshape(-1,1),
+#        db.dose_fractions.reshape(-1,1),
 #        db.has_gtvp.reshape(-1,1),
-        np.array([np.sum([g.volume for g in gtv]) for gtv in db.gtvs]).reshape(-1,1),
+#        np.array([np.sum([g.volume for g in gtv]) for gtv in db.gtvs]).reshape(-1,1),
 #        np.array([np.sum([g.volume > 0 for g in gtv]) for gtv in db.gtvs]).reshape(-1,1),
 #        db.ages.reshape(-1,1),
-        OneHotEncoder(sparse = False).fit_transform(db.subsites.reshape(-1,1)),
+#        OneHotEncoder(sparse = False).fit_transform(db.subsites.reshape(-1,1)),
 #        OneHotEncoder(sparse = False).fit_transform(db.lateralities.reshape(-1,1)),
-               ])
-#nca_sim = nca_cv(x, db.feeding_tubes, quantile = True)
+#               ])
 
-db.change_classes()
+#nca_sim = nca_cv(x, db.feeding_tubes, quantile = True)
 #fpr, tpr, thresholds, roc_scores = get_model_auc(x, db.feeding_tubes,
 #                                                 ComplementNB())
-test = ClusterStats().cluster_exact_test(db.classes, db.feeding_tubes)
 #model = threshold_grid_search(db, nca_sim ,start_k = .6, n_itters = 5, get_model = True)
 #export(db, similarity = nca_sim, clusterer = 'default', estimator = model)
 
+discrete_dist_pca = discretizer.fit_transform(pca(db.tumor_distances, 5))
+discrete_jaccard= lambda d,x,y: jaccard_distance(discrete_dists[x], discrete_dists[y])
+discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
 
+l,c,r = lcr_args()
+center_jaccard_sim = augmented_sim(discrete_dists[:, c], jaccard_distance)
+side_jaccard_sim = augmented_sim(discrete_dists[:, l+r], jaccard_distance)
+has_gtvp_sim = augmented_sim(db.has_gtvp, lambda x,y : x==y)
+normal_jaccard_sim = augmented_sim(db.tumor_distances, jaccard_distance)
 
-#discrete_dist_pca = discretizer.fit_transform(pca(db.tumor_distances, 5))
-#discrete_jaccard= lambda d,x,y: jaccard_distance(discrete_dists[x], discrete_dists[y])
-#discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
-#
-#normal_jaccard_sim = augmented_sim(db.tumor_distances, jaccard_distance)
-#vol_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([g.volume for g in x]) - np.sum([t.volume for t in y])) ))
-#boolean_vol_sim = augmented_sim(db.gtvs, lambda x,y: np.sum([bool(g.volume) for g in x]) == np.sum([bool(t.volume) for t in y]) )
-#count_sim = dist_to_sim(augmented_sim(db.gtvs, lambda x,y: np.abs(np.sum([bool(g.volume) for g in x]) - np.sum([bool(t.volume) for t in y])) ))
-#total_dose_sim = dist_to_sim(augmented_sim(db.prescribed_doses, lambda x,y: np.abs(x - y)))
+total_dose_sim = dist_to_sim(augmented_sim(db.prescribed_doses, lambda x,y: np.abs(x - y)))
+
+predicted_doses = TreeKnnEstimator().predict_doses([discrete_jaccard_sim, has_gtvp_sim], db)
+#predicted_doses = KnnEstimator().predict_doses(normal_jaccard_sim, db)
+cluster_results = ClusterStats().get_optimal_clustering(db, predicted_doses)
+print(cluster_results['feeding_tube'][1])
+db.classes = cluster_results['feeding_tube'][0] + 1
+export(db, similarity = discrete_jaccard_sim)
+print(KnnEstimator().get_error(predicted_doses, db.doses).mean())
+print(KnnEstimator().get_error(predicted_doses[:,c], db.doses[:,c]).mean())
+
 #
 #result = TreeKnnEstimator().evaluate([discrete_jaccard_sim, total_dose_sim, vol_sim], db)
 #print(result.mean())
