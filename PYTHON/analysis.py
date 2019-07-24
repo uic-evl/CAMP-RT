@@ -28,7 +28,7 @@ from sklearn.manifold import TSNE, MDS
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import KBinsDiscretizer
 
-from sklearn.naive_bayes import ComplementNB
+from sklearn.naive_bayes import ComplementNB, BernoulliNB, GaussianNB
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import OneHotEncoder, quantile_transform
 from sklearn.model_selection import cross_validate, cross_val_predict, LeaveOneOut
@@ -281,6 +281,12 @@ def recall_based_model(x, y, model, score_threshold = .99):
         y_out[test_index] = model.predict_proba(x[test_index])[:,1] >= sorted_scores[threshold_i]
     return y_out
 
+def ensemble_recall_based_model(x, y, model_list, score_threshold = 1):
+    labels = np.zeros(y.shape)
+    for model in model_list:
+        labels = labels + recall_based_model(x, y, model, score_threshold)
+    return labels == len(model_list)
+
 def nca_cv(x, y, n_components = 15, quantile = False):
     nca = NeighborhoodComponentsAnalysis(n_components = n_components, max_iter= 300)
     loo = LeaveOneOut()
@@ -301,64 +307,71 @@ def get_model_auc(x, y, model):
     ypred = ypred[:,1]
     roc_score = roc_auc_score(y, ypred)
     fpr, tpr, thresholds = roc_curve(y, ypred)
-    print(roc_score, thresholds[np.argmax(np.nan_to_num(tpr/fpr))], thresholds[-1])
     plt.plot(fpr, tpr)
     return fpr, tpr, thresholds, roc_score
 
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                use_distances = False)
-#db.change_classes()
+def cv_feature_weights(x, y, scale = 1):
+    n_patients = len(y)
+    weights = np.zeros(x.shape)
+    for p in range(n_patients):
+        xtrain = np.delete(x, p, axis = 0)
+        ytrain = np.delete(y, p, axis = 0)
+        weights[p,:] = mutual_info_classif(xtrain, ytrain)
+        weights[p,:] = minmax_scale(weights[p,:]**scale)
+    return weights
 
-discretizer = KBinsDiscretizer(n_bins =  9, encode = 'ordinal', strategy = 'kmeans')
-discrete_dists = discretizer.fit_transform(-db.tumor_distances)
-l,c,r = lcr_args()
-x = np.hstack([
-#        discrete_dists,
-        pca(discrete_dists, 4) - min(pca(discrete_dists, 4).ravel()),
-#        db.tumor_distances,
-#        np.vstack([g[0].dists for g in db.gtvs]),
-#        np.vstack([g[1].dists for g in db.gtvs]),
+def feature_matrix(db):
+    discrete_dists = discretize(-db.tumor_distances)
+    x = np.hstack([
+        discrete_dists,
         db.prescribed_doses.reshape(-1,1),
         db.dose_fractions.reshape(-1,1),
-#        db.has_gtvp.reshape(-1,1),
-#        np.array([np.sum([g.volume for g in gtv]) for gtv in db.gtvs]).reshape(-1,1),
-#        np.array([np.sum([g.volume > 0 for g in gtv]) for gtv in db.gtvs]).reshape(-1,1),
-#        db.ages.reshape(-1,1),
-#        OneHotEncoder(sparse = False).fit_transform(db.subsites.reshape(-1,1)),
-#        OneHotEncoder(sparse = False).fit_transform(db.lateralities.reshape(-1,1)),
+        db.has_gtvp.reshape(-1,1),
+        OneHotEncoder(sparse = False).fit_transform(db.lateralities.reshape(-1,1)),
                ])
+    return x
 
-#nca_sim = nca_cv(x, db.feeding_tubes, quantile = True)
-estimator = ComplementNB()
-labels = recall_based_model(x, db.feeding_tubes, estimator)
-#model = threshold_grid_search(db, nca_sim ,start_k = .6, n_itters = 5, get_model = True)
-#export(db, similarity = nca_sim, clusterer = 'default', estimator = model)
+def discretize(x, n_bins = 9, encode = 'ordinal', strategy = 'kmeans'):
+    discretizer = KBinsDiscretizer(n_bins = n_bins,
+                                   encode = encode,
+                                   strategy = strategy)
+    return discretizer.fit_transform(x)
 
+def cluster_with_model(db, toxicity, model = None):
+    if model is None:
+        model = ComplementNB()
+    cluster_stats = ClusterStats()
+    features = feature_matrix(db)
+    if isinstance(model, list):
+        labels = ensemble_recall_based_model(features, toxicity, model)
+        print(recall_score(toxicity, labels))
+    else:
+        labels = recall_based_model(features, toxicity, model)
+        print(get_model_auc(features, toxicity, model)[-1])
+    print(cluster_stats.get_contingency_table(labels, toxicity))
+    print(cluster_stats.fisher_exact_test(labels, toxicity))
 
-discrete_dist_pca = discretizer.fit_transform(pca(db.tumor_distances, 5))
-discrete_jaccard= lambda d,x,y: jaccard_distance(discrete_dists[x], discrete_dists[y])
+    discrete_dists = discretize(-db.tumor_distances)
+    discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
+    predicted_doses = TreeKnnEstimator().predict_doses([discrete_jaccard_sim], db)
+    cluster_results = cluster_stats.get_optimal_clustering(predicted_doses, toxicity,
+                              patient_subset = np.argwhere(labels).ravel(), subset = True)
+    print(cluster_results[1])
+    print(KnnEstimator().get_error(predicted_doses, db.doses).mean())
+    print(cluster_stats.get_contingency_table(cluster_results[0], toxicity))
+
+    return cluster_results[0]
+
+#db = PatientSet(root = 'data\\patients_v*\\',
+#                use_distances = False)
+toxicity = db.feeding_tubes#.astype('bool') | db.aspiration.astype('bool')
+labelers = [ComplementNB(), BernoulliNB(), GaussianNB()]
+discrete_dists = discretize(-db.tumor_distances)
 discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
-
-
-center_jaccard_sim = augmented_sim(discrete_dists[:, c], jaccard_distance)
-side_jaccard_sim = augmented_sim(discrete_dists[:, l+r], jaccard_distance)
-has_gtvp_sim = augmented_sim(db.has_gtvp, lambda x,y : x==y)
-normal_jaccard_sim = augmented_sim(db.tumor_distances, jaccard_distance)
-total_dose_sim = dist_to_sim(augmented_sim(db.prescribed_doses, lambda x,y: np.abs(x - y)))
-
-predicted_doses = TreeKnnEstimator().predict_doses([discrete_jaccard_sim], db)
-#predicted_doses = KnnEstimator().predict_doses(normal_jaccard_sim, db)
-cluster_results = ClusterStats().get_optimal_clustering(predicted_doses, db.feeding_tubes,
-                              patient_subset = np.argwhere(labels).ravel())
-print(cluster_results[1])
-db.classes = cluster_results[0] + 1
+db.classes = cluster_with_model(db, toxicity, labelers) + 1
 export(db, similarity = discrete_jaccard_sim)
-print(KnnEstimator().get_error(predicted_doses, db.doses).mean())
-print(KnnEstimator().get_error(predicted_doses[:,c], db.doses[:,c]).mean())
 
-#
-#result = TreeKnnEstimator().evaluate([discrete_jaccard_sim, total_dose_sim, vol_sim], db)
-#print(result.mean())
+
 
 
 

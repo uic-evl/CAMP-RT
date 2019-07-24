@@ -24,7 +24,6 @@ import rpy2.robjects.numpy2ri
 from rpy2.robjects.packages import importr
 rpy2.robjects.numpy2ri.activate()
 
-cluster_result = namedtuple('cluster_result', ['method', 'cluster', 'correlation', 'model'])
 
 class Estimator(ABC):
 
@@ -736,6 +735,9 @@ class SimilarityBooster(SimilarityFuser):
         sim = Metrics.dist_to_sim(error)
         return error
 
+
+cluster_result = namedtuple('cluster_result', ['method', 'cluster', 'correlation', 'model'])
+
 class ClusterStats():
 
     def __init__(self, clusterers = None):
@@ -743,7 +745,7 @@ class ClusterStats():
         self.mds = MDS(n_components = 30,
                              dissimilarity = 'precomputed')
         if clusterers is None:
-            c_range = range(2,6)
+            c_range = range(2,4)
             self.clusterers = {}
             self.clusterers['Kmeans'] = [KMeans(n_clusters = i) for i in c_range]
             self.clusterers['Agglomerative_ward'] = [AgglomerativeClustering(n_clusters = i) for i in c_range]
@@ -782,7 +784,7 @@ class ClusterStats():
         result.append( cluster_result(method, 'all',
                                       overall_correlation,
                                       clusterer))
-        print(method, overall_correlation)
+#        print(method, overall_correlation)
 
         for c in np.unique(clusters):
             correlation = self.fisher_exact_test(clusters == c, target_var)
@@ -821,7 +823,11 @@ class ClusterStats():
             doses = doses[:, args]
         clusters[patient_subset] = result[0].model.fit_predict(doses).ravel() + 1
         pval = self.fisher_exact_test(clusters, target_var)
-        optimal = (clusters, pval)
+        clusterer_data = cluster_result(method = result[0].method,
+                                        cluster = result[0].cluster,
+                                        correlation = pval,
+                                        model = result[0].model)
+        optimal = (clusters, clusterer_data)
         return optimal
 
     def subset_features(self, x, y):
