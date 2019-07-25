@@ -752,6 +752,9 @@ class ClusterStats():
             self.clusterers['Agglomerative_complete'] = [AgglomerativeClustering(n_clusters = i, linkage = 'complete') for i in c_range]
 
     def fisher_exact_test(self, c_labels, y):
+        if len(set(y)) == 1:
+            print('fisher test run with no positive class')
+            return 0
         assert(len(set(y)) == 2)
         #call fishers test from r
         clusters = [y[np.argwhere(c_labels == c).ravel()] for c in np.unique(c_labels)]
@@ -762,8 +765,8 @@ class ClusterStats():
 
     def get_contingency_table(self, x, y):
         #assumes x and y are two equal length vectors, creates a mxn contigency table from them
-        cols = list(set(y))
-        rows = list(set(x))
+        cols = sorted(list(np.unique(y)))
+        rows = sorted(list(np.unique(x)))
         tabel = np.zeros((len(rows), len(cols)))
         for row_index in range(len(rows)):
             row_var = rows[row_index]
