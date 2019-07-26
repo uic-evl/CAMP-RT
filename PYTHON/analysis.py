@@ -33,22 +33,27 @@ from sklearn.cluster import KMeans
 from sklearn.preprocessing import OneHotEncoder, quantile_transform
 from sklearn.model_selection import cross_validate, cross_val_predict, LeaveOneOut
 from sklearn.metrics import accuracy_score, recall_score, roc_auc_score, roc_curve
-from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
+from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier, VotingClassifier
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.feature_selection import SelectPercentile, SelectFdr, SelectFpr, SelectFwe
+from sklearn.feature_selection import mutual_info_classif, f_classif, SelectKBest
 from sklearn.linear_model import LogisticRegression
-
+from sklearn.svm import SVC
 
 def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_file = 'scores.csv',
            model = None, estimator = None, similarity = None, predicted_doses = None, clusterer=None):
     if model is None:
         model = TJaccardModel()
-    if estimator is None:
-        estimator = KnnEstimator(match_type = 'clusters')
     if similarity is None:
         similarity = model.get_similarity(data_set) #similarity scores
+    if estimator is None:
+        if isinstance(similarity, list):
+            estimator = TreeKnnEstimator()
+        else:
+            estimator = KnnEstimator(match_type = 'clusters')
     if predicted_doses is None:
         predicted_doses = estimator.predict_doses(similarity, data_set)
+        if isinstance(similarity, list):
+            similarity = dose_similarity(predicted_doses)
     if clusterer == 'default':
         from sklearn.cluster import KMeans
         clusterer = KMeans(n_clusters = 3)
@@ -266,6 +271,28 @@ def get_bayes_features(db, num_bins = 5):
         formated_features.append(feature)
     return(np.hstack(formated_features))
 
+def select_by_info(xtrain, ytrain, xtest, threshold = 0):
+    mutual_info = mutual_info_classif(xtrain, ytrain)
+    good_features = np.argwhere(mutual_info > threshold).ravel()
+    if xtest.ndim >1:
+        xout = xtest[:,good_features]
+    else:
+        xout = xtest[good_features]
+    return xtrain[:,good_features], xout
+
+def select_by_fscore(xtrain, ytrain, xtest, threshold = .33):
+    if threshold >= 1:
+        return xtrain, xtest
+    pvals = f_classif(xtrain, ytrain)[1]
+    good_features = np.argwhere(pvals < threshold).ravel()
+    if len(good_features) <= 1:
+        return select_by_fscore(xtrain, ytrain, xtest, threshold + .1)
+    if xtest.ndim >1:
+        xout = xtest[:,good_features]
+    else:
+        xout = xtest[good_features]
+    return xtrain[:,good_features], xout
+
 def recall_based_model(x, y, model, score_threshold = .99, selector = None):
     loo = LeaveOneOut()
     loo.get_n_splits(x)
@@ -279,8 +306,16 @@ def recall_based_model(x, y, model, score_threshold = .99, selector = None):
             continue
         xtest = x[test_index]
         if selector is not None:
-            xtrain = selector.fit_transform(xtrain, ytrain)
-            xtest = selector.transform(xtest)
+            if selector == 'info':
+                xtrain, xtest = select_by_info(xtrain, ytrain, xtest)
+            elif selector == 'correlation':
+                xtrain, xtest = select_by_fscore(xtrain, ytrain, xtest)
+                print(xtest.shape)
+            else:
+                fitted = selector.fit_transform(xtrain, ytrain)
+                if fitted.ndim > 1 and fitted.shape[1] > 1:
+                    xtrain = fitted
+                    xtest = selector.transform(xtest)
         model.fit(xtrain, ytrain)
         yfit_pred = model.predict_proba(xtrain)
         sorted_scores = sorted(yfit_pred[:, 1], key = lambda x: -x)
@@ -335,12 +370,12 @@ def cv_feature_weights(x, y, scale = 1):
         weights[p,:] = minmax_scale(weights[p,:]**scale)
     return weights
 
-def cv_feature_selection(x, y, percentile = 80):
-    if percentile == 100:
-        return x
+def cv_feature_selection(x, y, percentile = 80, k = 40):
     n_patients = len(y)
     x_out = []
-    selector = SelectPercentile(percentile = percentile)
+    k = np.min([int(np.ceil(percentile*x.shape[1]/100)), k])
+    print(k)
+    selector = SelectKBest(k = k)
     for p in range(n_patients):
         xtrain = np.delete(x, p, axis = 0)
         ytrain = np.delete(y, p, axis = 0)
@@ -356,11 +391,11 @@ def feature_matrix(db):
     x = np.hstack([
         discrete_dists,
         discrete_volumes,
-#        db.prescribed_doses.reshape(-1,1),
-#        db.dose_fractions.reshape(-1,1),
-#        db.has_gtvp.reshape(-1,1),
-#        OneHotEncoder(sparse = False).fit_transform(db.lateralities.reshape(-1,1)),
-#        OneHotEncoder(sparse = False).fit_transform(db.subsites.reshape(-1,1)),
+        db.prescribed_doses.reshape(-1,1),
+        db.dose_fractions.reshape(-1,1),
+        db.has_gtvp.reshape(-1,1),
+        OneHotEncoder(sparse = False).fit_transform(db.lateralities.reshape(-1,1)),
+        OneHotEncoder(sparse = False).fit_transform(db.subsites.reshape(-1,1)),
                ])
     return x
 
@@ -392,12 +427,10 @@ def cluster_with_model(db, similarity, toxicity, model, selector = None):
 
     return cluster_results[0], labels
 
-def get_labels(x, y, models,
-               depth,
+def get_labels(x, y, models,depth,
                selector = None,
-               min_size = 80,
-               min_ratio = .3):
-    threshold = max([min_size, min_ratio*len(y)])
+               min_size = 10,
+               min_ratio = .1):
     x_subset = cv_feature_selection(x, y)
     labels = ensemble_recall_based_model(x_subset, y,
                                          models,
@@ -405,49 +438,74 @@ def get_labels(x, y, models,
     positives = np.argwhere(labels > 0).ravel()
     negatives = np.argwhere(labels < .0001).ravel()
     n_pos, n_neg = len(positives), len(negatives)
-    if depth < 5:
-        if n_pos > threshold:
+    if depth < 4 and min([n_pos, n_neg]) > min_ratio * len(y):
+        if n_pos > min_size:
             labels[positives] += get_labels(x[positives], y[positives],
                   models, depth+1, selector, min_size).astype('int32')
-        if n_neg > threshold:
+        if n_neg > min_size:
             labels[negatives] += get_labels(x[negatives], y[negatives],
                   models, depth+1, selector, min_size).astype('int32')
     print(labels)
     return labels
 
+def get_rankings(x, y, tiers, models):
+    if isinstance(models, list):
+        estimators = [('estimator' + str(k), models[k]) for k in range(len(models))]
+        models = VotingClassifier(estimators, voting = 'soft')
+    classes = np.unique(tiers)
+    loo = LeaveOneOut()
+    x = cv_feature_selection(x, y)
+    scores = cross_val_predict(models, x, y, cv = loo, method='predict_proba')[:,1]
+    for c in classes:
+        class_args = np.argwhere(tiers == c).ravel()
+        scores[class_args] += c
+    return minmax_scale(scores)
+
 def tiered_model(db, toxicity, models, selector = None):
     cluster_stats = ClusterStats()
     features = feature_matrix(db)
-#    features = cv_feature_selection(features, toxicity)
-    new_classes = get_labels(x, toxicity, models, 0,
+    new_classes = get_labels(features, toxicity, models, 0,
                              selector = selector)
+
+    new_classes = discretize(new_classes.reshape(-1,1),
+                             n_bins = len(set(new_classes)),
+                             strategy = 'uniform').ravel()
+    rankings = get_rankings(features, toxicity, new_classes, models)
     print(cluster_stats.get_contingency_table(new_classes, toxicity))
     print(cluster_stats.fisher_exact_test(new_classes, toxicity))
-    return new_classes
+    print(roc_auc_score(toxicity, rankings))
+    return new_classes, rankings
 
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                use_distances = False)
-from sklearn.ensemble import VotingClassifier
-toxicity = db.feeding_tubes.astype('bool') | db.aspiration.astype('bool')
-labelers = [
-        ComplementNB(),
-        BernoulliNB(),
-#        GaussianNB(),
-        LogisticRegression(solver='lbfgs', max_iter=2000)
-        ]
+
+db = PatientSet(root = 'data\\patients_v*\\',
+                use_distances = False)
+
 discrete_dists = discretize(-db.tumor_distances)
 discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
+features = feature_matrix(db)
+toxicity = db.feeding_tubes.astype('bool') | db.aspiration.astype('bool')
+toxicity = db.aspiration
+tox_name = 'Aspirtion Rate'
+labelers = [
+#        ComplementNB(),
+        BernoulliNB(),
+#        GaussianNB(),
+        LogisticRegression(solver = 'lbfgs', max_iter = 2000),
+        ]
 
-new_classes = tiered_model(db, toxicity, labelers)
-db.classes = KBinsDiscretizer(encode = 'ordinal',
-        n_bins = len(set(new_classes)),
-        strategy = 'uniform').fit_transform(new_classes.reshape(-1,1)).ravel() + 1
-#new_classes, labels = cluster_with_model(db, discrete_jaccard_sim,
-#                                         toxicity, labelers)
-#db.classes = new_classes + 1
-#label_sim = augmented_sim(labels, lambda x,y: x == y)
 
-export(db, similarity = discrete_jaccard_sim*label_sim)
+new_classes, rankings = tiered_model(db, toxicity, labelers)
+
+fpr, tpr, thresholds = roc_curve(toxicity, rankings)
+plt.plot(fpr, tpr)
+plt.title(tox_name + ' Toxicity ROC Curve')
+plt.ylabel('True Positive Rate')
+plt.xlabel('False Positve Rate')
+
+db.classes = new_classes + 1
+label_sim = augmented_sim(new_classes, lambda x,y: x == y)
+
+export(db, similarity = [discrete_jaccard_sim,label_sim])
 
 
 
