@@ -5,7 +5,7 @@ var Data = function(patientData, oAtlas) {
 	var oAtlas = oAtlas;
 	var public = {};
 	var patientCount = data.length;
-	var clusterColors = ['#ffffb3', '#8dd3c7', '#fb8072', '#464168', 'blue', '#80b1d3', 'purple', 'green', 'goldenrod', 'steelblue', 'brown', 'silver', 'burlywood', 'greenyellow', 'darkslategray']
+	var clusterColors = ['#ffec78', '#464168', '#8dd3c7', '#e78ac3', 'blue', '#80b1d3', 'purple', 'green', 'goldenrod', 'steelblue', 'brown', 'silver', 'burlywood', 'greenyellow', 'darkslategray']
 	var functions = {
 		
 		getMeanDoseExtents: function(){
