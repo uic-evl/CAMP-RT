@@ -46,7 +46,7 @@ DoseScatterPlot.prototype.draw = function(target, selectedPerson = null){
 	this.drawClusterCircles(this.clusterMargin);
 	this.setupTooltip(selectedPerson);
 	this.setupSwitchButtons();
-	this.drawAxisLabels('Tumor-Organ Distance TSNE 1', 'Tumor-Organ Distance TSNE 2');
+	this.drawAxisLabels('Tumor-Organ Distance PCA1', 'Tumor-Organ Distance PCA 2');
 }
 
 DoseScatterPlot.prototype.setupSwitchButtons = function(){
@@ -59,8 +59,7 @@ DoseScatterPlot.prototype.setupSwitchButtons = function(){
 	var doseButton = document.getElementById('doseScatterButton');
 	var distanceButton = document.getElementById('distanceScatterButton');
 	var stagingButton = document.getElementById('stagingScatterButton');
-	var similarityButton = document.getElementById('similarityScatterButton');
-	allButtons = [doseButton, distanceButton, stagingButton, similarityButton];
+	allButtons = [doseButton, distanceButton, stagingButton];
 	var self = this;
 	var onScatterButtonClick = function(btn, axisVariable){
 		if(btn.style.opacity ==1)
@@ -76,7 +75,6 @@ DoseScatterPlot.prototype.setupSwitchButtons = function(){
 	setSelected(distanceButton);
 	setUnselected(doseButton);
 	setUnselected(stagingButton);
-	setUnselected(similarityButton);
 	doseButton.addEventListener('click', function(){
 		onScatterButtonClick(this, 'dose');
 	});
@@ -85,9 +83,6 @@ DoseScatterPlot.prototype.setupSwitchButtons = function(){
 	});
 	stagingButton.addEventListener('click', function(){
 		onScatterButtonClick(this, 'staging');
-	});
-	similarityButton.addEventListener('click', function(){
-		onScatterButtonClick(this, 'similarity');
 	});
 }
 
@@ -370,11 +365,9 @@ DoseScatterPlot.prototype.switchAxisFunction = function(type){
 DoseScatterPlot.prototype.switchAxisVariable = function(type){
 	this.switchAxisFunction(type);
 	if(type == 'distance'){
-		this.renameAxis('Tumor-Organ Distance TSNE 1', 'Tumor-Organ Distance TNSE 2');
+		this.renameAxis('Tumor-Organ Distance PCA 1', 'Tumor-Organ Distance PCA 2');
 	} else if(type == 'staging'){
 		this.renameAxis('GTVp Volume', 'GTVn Volume');
-	} else if(type == 'similarity'){
-		this.renameAxis('2D Similarity Based Embedding', '');
 	}
 	else{
 		this.renameAxis('Dose PC 1', 'Dose PC 2');
