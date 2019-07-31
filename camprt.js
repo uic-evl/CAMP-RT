@@ -69,7 +69,7 @@ var scatter;
 var bubbleChart;
 var data;
 var meshes;
-var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset.json"];
+var files = ["data/organAtlas.json", "PYTHON/data/patient_dataset_rtward3Only2.json"];
 var promises = [];
 
 files.forEach(function (url) {
@@ -617,7 +617,7 @@ function showPatient(materialArray, id, parentDivId, camera = null){
 			gtvs.push(organSphere);
 			nodeColor = 'black';
 			//using real scaling doesn't seem to really work so it's just porportional now
-			outlineMesh.scale.multiplyScalar( Math.pow(organSphere.userData.volume, .333));
+			//outlineMesh.scale.multiplyScalar( Math.pow(organSphere.userData.volume, .333));
 			let tumorOutline = Controller.getDoseColor(organSphere.userData.meanDose);
 			outlineMesh.material.color.set( tumorOutline );
 			outlineMesh.material.transparent = true;

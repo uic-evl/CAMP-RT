@@ -478,34 +478,11 @@ def tiered_model(db, toxicity, models, selector = None):
 
 
 db = PatientSet(root = 'data\\patients_v*\\',
-                use_distances = False)
+                use_distances = False, use_clean_subset=False,
+                denoise = False, outliers = Constants.all_bad_entries)
 
-discrete_dists = discretize(-db.tumor_distances)
-discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
-features = feature_matrix(db)
-toxicity = db.feeding_tubes.astype('bool') | db.aspiration.astype('bool')
-toxicity = db.aspiration
-tox_name = 'Aspirtion Rate'
-labelers = [
-#        ComplementNB(),
-        BernoulliNB(),
-#        GaussianNB(),
-        LogisticRegression(solver = 'lbfgs', max_iter = 2000),
-        ]
-
-
-new_classes, rankings = tiered_model(db, toxicity, labelers)
-
-fpr, tpr, thresholds = roc_curve(toxicity, rankings)
-plt.plot(fpr, tpr)
-plt.title(tox_name + ' Toxicity ROC Curve')
-plt.ylabel('True Positive Rate')
-plt.xlabel('False Positve Rate')
-
-db.classes = new_classes + 1
-label_sim = augmented_sim(new_classes, lambda x,y: x == y)
-
-export(db, similarity = [discrete_jaccard_sim,label_sim])
+dists = TsimModel(use_classes = True).get_similarity(db)
+export(db, similarity = dists, estimator = KnnEstimator(match_type = 'clusters'), patient_data_file = 'paper_data_file_165.json')
 
 
 
