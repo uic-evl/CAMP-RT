@@ -310,7 +310,6 @@ def recall_based_model(x, y, model, score_threshold = .99, selector = None):
                 xtrain, xtest = select_by_info(xtrain, ytrain, xtest)
             elif selector == 'correlation':
                 xtrain, xtest = select_by_fscore(xtrain, ytrain, xtest)
-                print(xtest.shape)
             else:
                 fitted = selector.fit_transform(xtrain, ytrain)
                 if fitted.ndim > 1 and fitted.shape[1] > 1:
@@ -374,7 +373,6 @@ def cv_feature_selection(x, y, percentile = 80, k = 40):
     n_patients = len(y)
     x_out = []
     k = np.min([int(np.ceil(percentile*x.shape[1]/100)), k])
-    print(k)
     selector = SelectKBest(k = k)
     for p in range(n_patients):
         xtrain = np.delete(x, p, axis = 0)
@@ -405,22 +403,25 @@ def discretize(x, n_bins = 9, encode = 'ordinal', strategy = 'kmeans'):
                                    strategy = strategy)
     return discretizer.fit_transform(x)
 
-def cluster_with_model(db, similarity, toxicity, model, selector = None):
+def cluster_with_model(db, similarity, toxicity, model = None, selector = None):
     cluster_stats = ClusterStats()
     features = feature_matrix(db)
     features = cv_feature_selection(features, toxicity)
-    labels = ensemble_recall_based_model(features, toxicity,
-                                         model, selector = selector)
-    if isinstance(model, list):
-        print(recall_score(toxicity, labels))
-    else:
-        print(get_model_auc(features, toxicity, model)[-1])
-    print(cluster_stats.get_contingency_table(labels, toxicity))
-    print(cluster_stats.fisher_exact_test(labels, toxicity))
-
     predicted_doses = TreeKnnEstimator().predict_doses([similarity], db)
+
+    if model is not None:
+        labels = ensemble_recall_based_model(features, toxicity,
+                                             model, selector = selector)
+        if isinstance(model, list):
+            print(recall_score(toxicity, labels))
+        else:
+            print(get_model_auc(features, toxicity, model)[-1])
+        print(cluster_stats.get_contingency_table(labels, toxicity))
+        print(cluster_stats.fisher_exact_test(labels, toxicity))
+    else:
+        labels = np.ones(toxicity.shape)
     cluster_results = cluster_stats.get_optimal_clustering(predicted_doses, toxicity,
-                              patient_subset = np.argwhere(labels).ravel(), subset = True)
+                              patient_subset = np.argwhere(labels).ravel())
     print(cluster_results[1])
     print(KnnEstimator().get_error(predicted_doses, db.doses).mean())
     print(cluster_stats.get_contingency_table(cluster_results[0], toxicity))
@@ -430,7 +431,7 @@ def cluster_with_model(db, similarity, toxicity, model, selector = None):
 def get_labels(x, y, models,depth,
                selector = None,
                min_size = 10,
-               min_ratio = .1):
+               min_ratio = 0):
     x_subset = cv_feature_selection(x, y)
     labels = ensemble_recall_based_model(x_subset, y,
                                          models,
@@ -445,7 +446,6 @@ def get_labels(x, y, models,depth,
         if n_neg > min_size:
             labels[negatives] += get_labels(x[negatives], y[negatives],
                   models, depth+1, selector, min_size).astype('int32')
-    print(labels)
     return labels
 
 def get_rankings(x, y, tiers, models):
@@ -476,16 +476,24 @@ def tiered_model(db, toxicity, models, selector = None):
     print(roc_auc_score(toxicity, rankings))
     return new_classes, rankings
 
+def subset_distances(dists, doses, selector):
+    l,c,r = lcr_args()
+#    dose_pca = pca(doses[:,c], 1).ravel()
+    dose_pca = doses[:,c].sum(axis = 1).ravel()
+    return selector.fit_transform(dists,dose_pca)
 
-db = PatientSet(root = 'data\\patients_v*\\',
-                use_distances = False)
+#db = PatientSet(root = 'data\\patients_v*\\',
+#                use_distances = False)
+
 
 discrete_dists = discretize(-db.tumor_distances)
-discrete_jaccard_sim = augmented_sim(discrete_dists, jaccard_distance)
+discrete_sim = augmented_sim(discrete_dists, jaccard_distance)
+
+toxicity = db.feeding_tubes + 2*db.aspiration
+
 features = feature_matrix(db)
-toxicity = db.feeding_tubes.astype('bool') | db.aspiration.astype('bool')
-toxicity = db.aspiration
-tox_name = 'Aspirtion Rate'
+
+
 labelers = [
 #        ComplementNB(),
         BernoulliNB(),
@@ -494,18 +502,25 @@ labelers = [
         ]
 
 
-new_classes, rankings = tiered_model(db, toxicity, labelers)
+ft_classes, ft_rankings = tiered_model(db, db.feeding_tubes, labelers)
+a_classes, a_rankings = tiered_model(db, db.aspiration, labelers)
 
-fpr, tpr, thresholds = roc_curve(toxicity, rankings)
-plt.plot(fpr, tpr)
-plt.title(tox_name + ' Toxicity ROC Curve')
-plt.ylabel('True Positive Rate')
-plt.xlabel('False Positve Rate')
+new_classes = 2*(a_classes > a_classes.min()) + (ft_classes > ft_classes.min())
+print(ClusterStats().get_contingency_table(new_classes, toxicity))
+print(ClusterStats().fisher_exact_test(new_classes, toxicity))
+print(f1_score(toxicity, new_classes, average = 'micro'), f1_score(toxicity, new_classes, average = 'macro'))
+
+#tox_name = 'Aspirtion Rate'
+#fpr, tpr, thresholds = roc_curve(toxicity, rankings)
+#plt.plot(fpr, tpr)
+#plt.title(tox_name + ' Toxicity ROC Curve')
+#plt.ylabel('True Positive Rate')
+#plt.xlabel('False Positve Rate')
 
 db.classes = new_classes + 1
 label_sim = augmented_sim(new_classes, lambda x,y: x == y)
 
-export(db, similarity = [discrete_jaccard_sim,label_sim])
+export(db, similarity = [modified_sim,label_sim])
 
 
 

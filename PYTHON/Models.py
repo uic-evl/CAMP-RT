@@ -745,7 +745,7 @@ class ClusterStats():
         self.mds = MDS(n_components = 30,
                              dissimilarity = 'precomputed')
         if clusterers is None:
-            c_range = range(2,4)
+            c_range = range(2,5)
             self.clusterers = {}
             self.clusterers['Kmeans'] = [KMeans(n_clusters = i) for i in c_range]
             self.clusterers['Agglomerative_ward'] = [AgglomerativeClustering(n_clusters = i) for i in c_range]
@@ -755,7 +755,7 @@ class ClusterStats():
         if len(set(y)) == 1:
             print('fisher test run with no positive class')
             return 0
-        assert(len(set(y)) == 2)
+#        assert(len(set(y)) == 2)
         #call fishers test from r
         clusters = [y[np.argwhere(c_labels == c).ravel()] for c in np.unique(c_labels)]
         contingency = self.get_contingency_table(c_labels, y)
@@ -814,7 +814,7 @@ class ClusterStats():
         return results
 
     def get_optimal_clustering(self, doses, target_var, args = None,
-                               subset = True, patient_subset = None):
+                               subset = False, patient_subset = None):
         clusters = np.zeros(target_var.shape)
         if patient_subset is not None:
             target = target_var[patient_subset]

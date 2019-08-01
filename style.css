@@ -168,8 +168,8 @@ option:hover {
 }
 
 .scatterButton {
-  background: hsl(200, 50%, 50%) !important;
-  opacity: .4;
+  background: hsl(00, 100%, 0%) !important;
+  opacity: .65;
   position: relative;
   margin: .1em;
   margin-top: .05em;
@@ -500,8 +500,8 @@ option:hover {
 	color: white;
 	text-align: center;
 	height:inherit;
-	background-color: hsl(200, 30%, 50%);
-	opacity: .4;
+	background-color: hsl(0, 100%, 0%);
+	opacity: .65;
 	margin: .05em;
 	display: inline-block;
 	border-radius: 8px 8px 0px 0px;
