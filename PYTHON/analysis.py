@@ -96,7 +96,7 @@ def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_fil
         entry['dose_pca'] = dose_pca[x, :].tolist()
         entry['distance_pca'] = distance_tsne[x, :].tolist()
         entry['similarity_embedding'] = similarity_embedding[x,:].tolist()
-
+        entry['toxicity'] = 1 if (data_set.feeding_tubes[x] + data_set.aspiration[x]) > 0 else 0
         organ_data = OrderedDict()
         organ_centroids = data_set.centroids[x, :, :]
         for idx in range(Constants.num_organs):
@@ -336,7 +336,7 @@ def ensemble_recall_based_model(x, y, model_list, score_threshold = 1, selector 
                                              selector = selector)
     return labels == len(model_list)
 
-def nca_cv(x, y, n_components = 15, quantile = False):
+def nca_cv_sim(x, y, n_components = 15):
     nca = NeighborhoodComponentsAnalysis(n_components = n_components, max_iter= 300)
     loo = LeaveOneOut()
     loo.get_n_splits(x)
@@ -346,6 +346,10 @@ def nca_cv(x, y, n_components = 15, quantile = False):
         xfit = nca.transform(x)
         for p in range(len(y)):
             nca_dist[test_index, p] = np.linalg.norm(xfit[test_index] - xfit[p])
+    return nca_dist
+
+def nca_cv(x, y, n_components = 15, quantile = False):
+    nca_dist = nca_cv_dist(x, y, n_components)
     nca_sim = dist_to_sim(nca_dist)
     if quantile:
         nca_sim = quantile_transform(nca_sim, axis = 1)
@@ -389,8 +393,8 @@ def feature_matrix(db):
     x = np.hstack([
         discrete_dists,
         discrete_volumes,
-        db.prescribed_doses.reshape(-1,1),
-        db.dose_fractions.reshape(-1,1),
+#        db.prescribed_doses.reshape(-1,1),
+#        db.dose_fractions.reshape(-1,1),
         db.has_gtvp.reshape(-1,1),
         OneHotEncoder(sparse = False).fit_transform(db.lateralities.reshape(-1,1)),
         OneHotEncoder(sparse = False).fit_transform(db.subsites.reshape(-1,1)),
@@ -484,31 +488,106 @@ def subset_distances(dists, doses, selector):
 
 #db = PatientSet(root = 'data\\patients_v*\\',
 #                use_distances = False)
+#
+#
 
+#discrete_dists = discretize(-db.tumor_distances)
+#discrete_sim = augmented_sim(discrete_dists, jaccard_distance)
+#
+#
+#predicted_doses = TreeKnnEstimator().predict_doses([discrete_sim], db)
+#
+#l,c,r = lcr_args()
+#center_sim = augmented_sim(discrete_dists[:,c], jaccard_distance)
+#center_predicted_doses = TreeKnnEstimator().predict_doses([center_sim], db)[:,c]
+#
+#from sklearn.utils import resample
+#toxicity = (db.feeding_tubes + db.aspiration) > 0
+#
+#features = feature_matrix(db)
+export(db)
 
-discrete_dists = discretize(-db.tumor_distances)
-discrete_sim = augmented_sim(discrete_dists, jaccard_distance)
+def regularize(x1, x2 = None):
+    scale = lambda x: (x - x1.min(axis = 0))/(x1.max(axis = 0) - x1.min(axis = 0))
+    if x2 is not None:
+        return scale(x1), scale(x2)
+    return scale(x1)
 
-toxicity = db.feeding_tubes + 2*db.aspiration
+def add_features(doses):
+    f = np.hstack([features, doses])
+    return doses #f
 
-features = feature_matrix(db)
+def nca_boostrap_fit(xtrain, ytrain, nca, xtest, n_samples = 100):
+    transform = np.zeros((nca.n_components, xtrain.shape[1]))
+    if n_samples == 0:
+        nca.fit(xtrain, ytrain)
+        return nca.transform(xtest).ravel()
+    for n in range(n_samples):
+        xnew, ynew = resample(xtrain, ytrain, stratify = ytrain)
+        nca.fit(xnew, ynew)
+        transform += nca.components_/n_samples
+    return np.dot(xtest, transform.T).ravel()
 
+def mutual_info_fit(xtrain, ytrain, xtest, n_samples = 0, pow_scale= 1/2):
+    if n_samples == 0:
+        info = mutual_info_classif(xtrain, ytrain)
+        return xtest*(info**pow_scale)
+    info = np.zeros(xtest.shape)
+    for n in range(n_samples):
+        xnew, ynew = resample(xtrain, ytrain, stratify = ytrain)
+        info += mutual_info_classif(xnew, ynew)/n_samples
+    return xtest*(info**pow_scale)
 
-labelers = [
-#        ComplementNB(),
-        BernoulliNB(),
-#        GaussianNB(),
-        LogisticRegression(solver = 'lbfgs', max_iter = 2000),
-        ]
+def downsample(x,y,target, ratio):
+    to_downsample = np.argwhere(y == target).ravel()
+    n_keep = int(ratio*len(to_downsample))
+    choices = np.random.choice(to_downsample, (n_keep,), replace = False)
+    return x[choices], y[choices]
 
+true_doses = db.doses[:, c]
+est_doses = center_predicted_doses
+remove_outliers = True
 
-ft_classes, ft_rankings = tiered_model(db, db.feeding_tubes, labelers)
-a_classes, a_rankings = tiered_model(db, db.aspiration, labelers)
+outliers = list(ErrorChecker().get_data_outliers(db.doses))
+known = add_features(true_doses)
+guessed = add_features(est_doses)
+nca = NeighborhoodComponentsAnalysis(5, max_iter=1000)
 
-new_classes = 2*(a_classes > a_classes.min()) + (ft_classes > ft_classes.min())
-print(ClusterStats().get_contingency_table(new_classes, toxicity))
-print(ClusterStats().fisher_exact_test(new_classes, toxicity))
-print(f1_score(toxicity, new_classes, average = 'micro'), f1_score(toxicity, new_classes, average = 'macro'))
+transformed_predicted = []
+for p in range(db.get_num_patients()):
+    to_delete = p
+    if remove_outliers:
+        to_delete = outliers[:]
+        to_delete.append(p)
+    xtrain = np.delete(known, to_delete, axis = 0)
+    ytrain = np.delete(toxicity, to_delete, axis = 0)
+    xtest = guessed[p].reshape(1,-1)
+    xtrain, xtest = regularize(xtrain, xtest)
+    transformed = mutual_info_fit(xtrain, ytrain, xtest, 100, 1/2)
+#    transformed = nca_boostrap_fit(xtrain, ytrain, nca, xtest, 50)
+    transformed_predicted.append(transformed)
+transformed_predicted = np.vstack(transformed_predicted)
+
+clustering = ClusterStats().get_optimal_clustering(transformed_predicted, toxicity)
+print('\n', n_features)
+print(clustering[1].correlation)
+print(ClusterStats().get_contingency_table(clustering[0], toxicity))
+
+#labelers = [
+##        ComplementNB(),
+#        BernoulliNB(),
+##        GaussianNB(),
+#        LogisticRegression(solver = 'lbfgs', max_iter = 2000),
+#        ]
+#
+#
+#ft_classes, ft_rankings = tiered_model(db, db.feeding_tubes, labelers)
+#a_classes, a_rankings = tiered_model(db, db.aspiration, labelers)
+#
+#new_classes = 2*(a_classes > a_classes.min()) + (ft_classes > ft_classes.min())
+#print(ClusterStats().get_contingency_table(new_classes, toxicity))
+#print(ClusterStats().fisher_exact_test(new_classes, toxicity))
+#print(f1_score(toxicity, new_classes, average = 'micro'), f1_score(toxicity, new_classes, average = 'macro'))
 
 #tox_name = 'Aspirtion Rate'
 #fpr, tpr, thresholds = roc_curve(toxicity, rankings)
@@ -517,10 +596,10 @@ print(f1_score(toxicity, new_classes, average = 'micro'), f1_score(toxicity, new
 #plt.ylabel('True Positive Rate')
 #plt.xlabel('False Positve Rate')
 
-db.classes = new_classes + 1
-label_sim = augmented_sim(new_classes, lambda x,y: x == y)
-
-export(db, similarity = [modified_sim,label_sim])
+#db.classes = new_classes + 1
+#label_sim = augmented_sim(new_classes, lambda x,y: x == y)
+#
+#export(db, similarity = [modified_sim,label_sim])
 
 
 

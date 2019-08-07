@@ -11,6 +11,7 @@ var Controller = (function(){
 		.domain([0, 20])
 		.range(['#999999','#3d32ff']);
 	var currentCamera = null;
+	var currentScene = 'real';
 
 	return {
 		
@@ -54,9 +55,15 @@ var Controller = (function(){
 			brushedOrgans = [];
 		},
 		
+		loadSavedState: function(scenes){
+			this.syncAllCameras(scenes);
+			this.switchScene(scenes[0], currentScene, data);
+		},
+		
 		switchScene: function(scene, type, data){
 			//changes color scheme of main patient to predicted, actual dose or dose error
 			var id = scene.userData.element.parentElement.id;
+			currentScene = type;
 			var gtvRegex = RegExp('GTV*');
 			scene.children.forEach(function(d){
 				//if not real dose, make the gtv outline translucent

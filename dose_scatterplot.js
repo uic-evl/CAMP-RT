@@ -138,28 +138,18 @@ DoseScatterPlot.prototype.getFeatureScales = function(){
 	return sizeScale;
 }
 
-DoseScatterPlot.prototype.getColorMap = function(){
-	//get a cluster value based color map.  assumes clusters index 1-n_clusters
-	//fir
-	var data = this.data;
+
+DoseScatterPlot.prototype.getShape = function(sizeScale){
 	var self = this;
-	//make this better somehow
-	var classColors = ['orange', 'cyan', 'magenta', 'blue', 'deeppink', 'purple', 'green', 'goldenrod', 'steelblue', 'brown', 'silver', 'burlywood', 'greenyellow', 'darkslategray']
-	//scale luminosity based on best score?
-	var luminosityScale = d3.scaleLinear()
-		.domain(d3.extent(this.ids, function(d){ return self.data.getPatientSimilarityScores(d)[1]; }))
-		.range([.4, .6]);
-	var colorMap = function(dataPoint, id_input = true){
-		var cluster = self.data.getCluster(dataPoint);
-		if(cluster >= classColors.length){
-			var color = 'black';
+	return d3.symbol().type(function(d){
+		if(d == selectedPatient){
+			return d3.symbolCross;
 		}
-		else{
-			var color = classColors[cluster-1];
-		}
-		return color;
-	}
-	return colorMap;
+		let shape = (data.hasToxicity(d) == 1)? d3.symbolDiamond: d3.symbolCircle;
+		return shape
+	}).size(function(d){
+		return sizeScale(self.data.getPatientMeanError(d));
+	});
 }
 
 DoseScatterPlot.prototype.drawCircles = function(selectedPatient){
@@ -167,11 +157,9 @@ DoseScatterPlot.prototype.drawCircles = function(selectedPatient){
 	var [xScale, yScale] = this.getAxisScales();
 	var sizeScale = this.getFeatureScales();
 	var getColor = this.getColor;
-	var getShape = d3.symbol().type(function(d){
-		return (d == selectedPatient)? d3.symbolCross:d3.symbolCircle;
-	}).size(function(d){
-		return sizeScale(self.data.getPatientMeanError(d));
-	});
+	
+	var getShape = self.getShape(sizeScale) 
+	
 	var triangle = d3.symbol().type(d3.symbolCross);
 	d3.selectAll('.point').remove();
 	this.circles = this.svg.selectAll('.point')
@@ -382,17 +370,15 @@ DoseScatterPlot.prototype.switchAxisVariable = function(type){
 	this.animateAxisChange();
 }
 
+
 DoseScatterPlot.prototype.highlightSelectedPatients = function(selectedPerson){
 	//recolor everything first
 	var getColor = this.getColor;
 	var self = this;
 	
 	var sizeScale = this.getFeatureScales();
-	var getShape = d3.symbol().type(function(d){
-			return (d == selectedPerson)? d3.symbolCross:d3.symbolCircle;
-		}).size(function(d){
-			return sizeScale(self.data.getPatientMeanError(d));
-		});
+	
+	var getShape = self.getShape(sizeScale)
 		
 	this.circles
 		.attr('d', getShape)

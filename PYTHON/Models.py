@@ -16,7 +16,7 @@ from abc import ABC, abstractmethod
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from copy import copy
 from scipy.stats import ttest_ind, f_oneway, kruskal
-from sklearn.preprocessing import OrdinalEncoder
+from sklearn.preprocessing import OrdinalEncoder, quantile_transform
 from sklearn.manifold import MDS
 from sklearn.feature_selection import mutual_info_classif
 from sklearn.tree import DecisionTreeClassifier
@@ -329,7 +329,6 @@ class TreeKnnEstimator(KnnEstimator, SupervisedModel):
                                                       random_state=1)
 
     def predict_doses(self, similarity_list, data, weight_matrix_loc = None):
-        from sklearn.preprocessing import quantile_transform
         qunatile = lambda x: quantile_transform(x, axis = 1, copy = True, n_quantiles = 20)
         similarity_list = [qunatile(s) for s in similarity_list]
         n_patients = data.get_num_patients()
@@ -819,6 +818,8 @@ class ClusterStats():
         if patient_subset is not None:
             target = target_var[patient_subset]
             doses = doses[patient_subset,:]
+        else:
+            target = target_var
         result = self.cluster_by_dose(target, doses,
                                       args, subset)
         result = [r for r in result if r.cluster is 'all']

@@ -770,7 +770,7 @@ function switchPatient(updatedPatient){
 		scatter.highlightSelectedPatients(updatedPatient); 
 		Controller.setup();
 		Controller.toggleBrush(true);
-		Controller.syncAllCameras(scenes);
+		Controller.loadSavedState(scenes, data);
 	});
 }
 
