@@ -11,7 +11,7 @@ var Controller = (function(){
 		.domain([0, 20])
 		.range(['#999999','#3d32ff']);
 	var currentCamera = null;
-	var currentScene = 'real';
+	var currentScene = 'Real';
 
 	return {
 		
@@ -56,8 +56,15 @@ var Controller = (function(){
 		},
 		
 		loadSavedState: function(scenes){
+			//load previous camera view
 			this.syncAllCameras(scenes);
+			//keep if they were looking at actual vs predicted vs dose error
 			this.switchScene(scenes[0], currentScene, data);
+			//switch active scene button
+			var buttons = document.getElementsByClassName('sceneToggleButton');
+			Array.prototype.forEach.call(buttons, function(e){
+				e.style.opacity = (e.innerHTML.toLowerCase() == currentScene.toLowerCase())? 1:'';
+			});
 		},
 		
 		switchScene: function(scene, type, data){
