@@ -14,6 +14,9 @@ import cv2
 from skimage.measure import compare_mse
 import pandas as pd
 from re import match, sub, search
+from NCA import NeighborhoodComponentsAnalysis
+from sklearn.preprocessing import KBinsDiscretizer
+from sklearn.model_selection import LeaveOneOut
 
 #misc functions?
 def pca(points, n_components = 2):
@@ -25,6 +28,12 @@ def pca(points, n_components = 2):
     eig = eig[:, args[0:n_components]]
     principle_components = np.dot(points, eig)
     return(principle_components)
+
+def discretize(x, n_bins = 9, encode = 'ordinal', strategy = 'kmeans'):
+    discretizer = KBinsDiscretizer(n_bins = n_bins,
+                                   encode = encode,
+                                   strategy = strategy)
+    return discretizer.fit_transform(x)
 
 def dist_to_sim(distance):
     #converts a distance matrix to a similarity matrix with 0 in the diagonal
@@ -89,6 +98,8 @@ def augment_mirrored(matrix, organ_list = None):
     if len(matrix.shape) > 1 and matrix.shape[1] == len(organ_list):
         flip_args = get_flip_args(organ_list)
         return np.vstack([matrix, matrix[:, flip_args]])
+    elif matrix.ndim > 1:
+        return np.vstack([matrix, matrix])
     else:
         return np.hstack([matrix,matrix])
 
@@ -109,8 +120,9 @@ def augmented_sim(feature, similarity_function, organ_list = None):
     #like get sim but needs to explicity give the data matrix (e.g. tumor distances)
     #so it can augment the data with mirrored things
     augmented_features = augment_mirrored(feature, organ_list)
-    n_patients = augmented_features.shape[0]
-    similarity_matrix = np.zeros((n_patients, n_patients))
+    n_patients = feature.shape[0]
+    n_features = augmented_features.shape[0]
+    similarity_matrix = np.zeros((n_features, n_features))
     for p1 in range(similarity_matrix.shape[0]):
         data1 = augmented_features[p1]
         for p2 in range(similarity_matrix.shape[1]):
@@ -123,6 +135,15 @@ def augmented_sim(feature, similarity_function, organ_list = None):
         similarity_matrix[p,p] = 0
     return similarity_matrix
 
+def reduced_augmented_sim(features, similarity_function, organ_list = None, distance = False):
+    big_sim = augmented_sim(features, similarity_function, organ_list)
+    n_patients = features.shape[0]
+    merge_func = np.minimum if distance else np.maximum
+    reduced = merge_func(big_sim[0:n_patients, 0:n_patients], big_sim[0:n_patients, n_patients:])
+    axis = np.arange(n_patients)
+#    if distance is False:
+#        reduced[axis, axis] = 0
+    return reduced
 
 def lymph_similarity(db, file = 'data/spatial_lymph_scores.csv'):
     #loads in lymph similarity from the lymnph node project data into a matrix
@@ -417,3 +438,54 @@ def dose_similarity(dose_predictions, distance_metric = None, similarity = True)
         return similarity
     else:
         return dists
+
+def gtv_overlap_vectors(db, use_nonempty = False):
+    gtvs = db.gtvs
+    vects = np.zeros((db.get_num_patients(), Constants.num_organs))
+    for row in range(vects.shape[0]):
+        gtvset = gtvs[row]
+        for gtv in gtvset:
+            if gtv.volume <= 0:
+                continue
+            valid_overlap = (gtv.dists <= .0001) & (db.volumes[row] > 0)
+            overlap_args = np.argwhere(valid_overlap).ravel()
+            vects[row, overlap_args] = 1
+    if use_nonempty:
+        nonempty = np.argwhere(vects.sum(axis = 0) > 0).ravel()
+        vects = vects[:, nonempty]
+    return vects
+
+def tumor_cosine_similarity(p1, p2, t_o_vectors, adjacency):
+    vects1 = t_o_vectors[p1]
+    vects2 = t_o_vectors[p2]
+    dist = []
+    for organ in range(t_o_vectors.shape[1]):
+        overlap = np.linalg.norm(np.dot(vects1[organ], vects2[organ]))
+        dist.append(overlap)
+    return np.mean(dist)
+
+
+def nca_cv_dist(x, y, n_components = 15):
+    nca = NeighborhoodComponentsAnalysis(n_components = n_components, max_iter= 300)
+    loo = LeaveOneOut()
+    loo.get_n_splits(x)
+    nca_dist = np.zeros((len(y), len(y)))
+    for train_index, test_index in loo.split(x):
+        nca.fit(x[train_index], y[train_index])
+        xfit = nca.transform(x)
+        for p in range(len(y)):
+            nca_dist[test_index, p] = np.linalg.norm(xfit[test_index] - xfit[p])
+    return nca_dist
+
+def nca_cv_sim(x, y, n_components = 15, quantile = False):
+    nca_dist = nca_cv_dist(x, y, n_components)
+    nca_sim = dist_to_sim(nca_dist)
+    if quantile:
+        nca_sim = quantile_transform(nca_sim, axis = 1)
+    return nca_sim
+
+def downsample(x,y,target, ratio):
+    to_downsample = np.argwhere(y == target).ravel()
+    n_keep = int(ratio*len(to_downsample))
+    choices = np.random.choice(to_downsample, (n_keep,), replace = False)
+    return x[choices], y[choices]

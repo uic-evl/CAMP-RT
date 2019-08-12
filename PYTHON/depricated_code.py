@@ -37,13 +37,13 @@ class NodeSimilarityModel():
         if numerator == 0 or denominator == 0:
             return 0
         return numerator/denominator
-    
+
 class TreeEstimator():
     subsite_map = {'BOT': 0, 'GPS': 1, 'NOS': 2, 'Soft palate': 3, 'Tonsil': 4}
     laterality_map = {'B': 0, 'L': 1, 'R': 2}
     def __init__(self, num_pca_components = 10, n_estimators =10, min_samples_split = 4, max_depth = None):
         from sklearn.ensemble import RandomForestRegressor
-        self.model = RandomForestRegressor(min_samples_split = min_samples_split, 
+        self.model = RandomForestRegressor(min_samples_split = min_samples_split,
                                            n_estimators = n_estimators,
                                            max_depth = max_depth)
         self.num_pca_components = num_pca_components
@@ -64,17 +64,17 @@ class TreeEstimator():
             error = self.get_error(y_predict, y_test)
             errors.append(error)
         return np.mean(errors, axis = 0)
-        
+
     def predict_doses(self, x_train, y_train, x_test, y_test):
         self.model.fit(x_train, y_train)
         y_predict = self.model.predict(x_test)
         return y_predict
-        
+
     def get_error(self, predicted_doses, dose_matrix):
         differences = np.abs(predicted_doses - dose_matrix)
         percent_error = np.sum(differences, axis = 1)/np.sum(dose_matrix, axis = 1)
         return percent_error
-    
+
     def get_input_features(self, data):
         num_patients = data.get_num_patients()
         pca = lambda x: Metrics.pca(x, self.num_pca_components)
@@ -96,22 +96,22 @@ class TreeEstimator():
         clusters = data.classes.reshape(num_patients, 1)
         features = np.hstack([distances, lymph_nodes, tumor_volumes, total_doses, subsites, laterality])
         return features
-            
+
 class MLPEstimator(TreeEstimator):
-    
+
     def __init__(self, num_pca_components = 10, n_estimators =10, min_samples_split = 4, max_depth = None):
         from sklearn.neural_network import MLPRegressor
         self.model = MLPRegressor(hidden_layer_sizes=(100,100,100), solver = 'lbfgs', alpha = .01)
         self.num_pca_components = num_pca_components
-        
+
 class KnnTreeEstimator(KnnEstimator):
-    
+
     def __init__(self, num_pca_components = 10, n_estimators = 50, min_samples_split = 4, max_depth = None):
         from sklearn.ensemble import RandomForestRegressor
         self.model = RandomForestRegressor(n_estimators = n_estimators)
         self.num_pca_components = num_pca_components
-        
-    
+
+
     def get_prediction(self, data, scores, args, p):
         dose_matrix = data.doses
 #        matched_scores = scores[args].reshape(len(args), 1
@@ -119,7 +119,7 @@ class KnnTreeEstimator(KnnEstimator):
         features = self.get_features(data)
         self.model.fit(features[args], matched_doses)
         return self.model.predict(features[p, :].reshape(1, features.shape[1]))
-        
+
     def get_features(self, data):
         num_patients = data.get_num_patients()
         pca = lambda x: Metrics.pca(x, self.num_pca_components)
@@ -140,25 +140,25 @@ class KnnTreeEstimator(KnnEstimator):
         total_doses = data.prescribed_doses.reshape(num_patients, 1)
         features = np.hstack([distances, lymph_nodes, tumor_volumes, total_doses, laterality, subsites])
         return features
-    
+
     def get_num_matches(self, p, similarity, clusters):
         #for later better use probs
         num_cluster_values = len(np.where(clusters == clusters[p])[0])
         num_matches = np.max(np.sqrt([2*num_cluster_values, 3]))
         return int(num_matches)
-        
+
 class TreeSimilarity():
-    
+
     subsite_map = {'BOT': 0, 'GPS': 1, 'NOS': 2, 'Soft palate': 3, 'Tonsil': 4}
     laterality_map = {'Bilateral': 0, 'L': 1, 'R': 2}
-    
+
     def __init__(self, num_pca_components = 10, n_estimators =10, min_samples_split = 4, max_depth = None):
         from sklearn.ensemble import RandomForestRegressor
-        self.model = RandomForestRegressor(min_samples_split = min_samples_split, 
+        self.model = RandomForestRegressor(min_samples_split = min_samples_split,
                                            n_estimators = n_estimators,
                                            max_depth = max_depth)
         self.num_pca_components = num_pca_components
-        
+
     def get_similarity(self, data):
         true_similarity = self.get_true_similarity(data)
         similarity = np.zeros(true_similarity.shape)
@@ -170,8 +170,8 @@ class TreeSimilarity():
             similarity[p, :] = self.model.predict(x[p])
             similarity[p, p] = 0
         return similarity
-            
-    
+
+
     def get_true_similarity(self, data):
         n_patients = data.get_num_patients()
         doses = data.doses
@@ -183,7 +183,7 @@ class TreeSimilarity():
         similarity_matrix = 1 - (error_matrix - error_matrix.max())/(error_matrix.max() - error_matrix.min())
         similarity_matrix += similarity_matrix.transpose()
         return similarity_matrix
-    
+
     def get_input_features(self, data):
         num_patients = data.get_num_patients()
         pca = lambda x: Metrics.pca(x, self.num_pca_components)
@@ -205,10 +205,10 @@ class TreeSimilarity():
         clusters = data.classes.reshape(num_patients, 1)
         features = np.hstack([distances, lymph_nodes, tumor_volumes, total_doses, laterality, subsites, clusters])
         return features
-    
-    
+
+
 class DiscreteClassifierSimilarity(ClassifierSimilarity):
-    
+
     def __init__(self, model = None, num_pca_components = 6, max_error = 3, min_matches = 3):
         from sklearn.multiclass import OneVsRestClassifier
         if model is None:
@@ -218,7 +218,7 @@ class DiscreteClassifierSimilarity(ClassifierSimilarity):
         self.num_pca_components = num_pca_components
         self.max_error = max_error
         self.min_matches = min_matches
-        
+
     def get_similarity(self, data, similarity = None):
         features = self.get_input_features(data)
         true_matches = self.get_true_matches(data)
@@ -232,7 +232,7 @@ class DiscreteClassifierSimilarity(ClassifierSimilarity):
             predicted_matches[p, p] = 0
             print(len(np.where(predicted_matches[p,:] > .4)[0]))
         return predicted_matches
-    
+
     def get_input_features(self, data):
         num_patients = data.get_num_patients()
         pca = lambda x: Metrics.pca(x, self.num_pca_components)
@@ -254,7 +254,7 @@ class DiscreteClassifierSimilarity(ClassifierSimilarity):
         return features
 
 class ClassifierSimilarity():
-    
+
     def __init__(self, model = None, num_pca_components = 6, max_error = 3, min_matches = 3):
         from sklearn.multiclass import OneVsRestClassifier
         if model is None:
@@ -264,7 +264,7 @@ class ClassifierSimilarity():
         self.num_pca_components = num_pca_components
         self.max_error = max_error
         self.min_matches = min_matches
-        
+
     def get_similarity(self, data, similarity = None):
         features = self.get_input_features(data)
         features = (features - features.mean(axis=0))/features.std(axis=0)
@@ -289,7 +289,7 @@ class ClassifierSimilarity():
 #            predicted_matches[p, p] = 0
             print(len(np.where(predicted_matches[p,:] > .4)[0]))
         return predicted_matches
-        
+
     def get_true_matches(self, data):
         dose_error = self.get_match_error(data)
         match_matrix = np.zeros(dose_error.shape)
@@ -303,7 +303,7 @@ class ClassifierSimilarity():
                 max_error = max_error + .2
             match_matrix[p, matches] = 1
         return match_matrix
-        
+
     def get_match_error(self, data):
         n_patients = data.get_num_patients()
         doses = data.doses
@@ -314,7 +314,7 @@ class ClassifierSimilarity():
                 error_matrix[p1, p2] = np.mean(dose_difference)
         error_matrix += error_matrix.transpose()
         return error_matrix
-    
+
     def get_input_features(self, data):
         num_patients = data.get_num_patients()
         pca = lambda x: Metrics.pca(x, self.num_pca_components)
@@ -346,7 +346,7 @@ class ClassifierSimilarity():
             Dense(100, activation = 'relu'),
             Dense(100, activation = 'relu'),
             ])(input_x)
-        
+
     decoder = Sequential([
             Dense(100,input_dim = 4, activation = 'relu',
                   activity_regularizer = regularizers.l2(.01)),
@@ -356,10 +356,10 @@ class ClassifierSimilarity():
     encoder_model= Model(input_x, encoder)
 #    optimizer = optimizers.SGD(lr = .01, decay = 1e-12, momentum = .1)
     optimizer = optimizers.Adam()
-    model.compile(loss = losses.mean_absolute_error, 
+    model.compile(loss = losses.mean_absolute_error,
                   optimizer = optimizer)
     return(model, encoder_model)
-    
+
 def get_regression_model(features, activation = 'relu', lr = .01):
     model = Sequential([
             Dense(45, input_dim=features.shape[1], activation = activation),
@@ -368,7 +368,7 @@ def get_regression_model(features, activation = 'relu', lr = .01):
             Dense(45, activation = activation)
             ])
     optimizer = optimizers.SGD(lr = lr, decay = 1e-4, momentum = 0.05)
-    model.compile(loss = losses.mean_absolute_error, 
+    model.compile(loss = losses.mean_absolute_error,
                   optimizer = optimizer)
     return(model)
 
@@ -381,7 +381,7 @@ def run_autoencoder(db):
     features = (features - features.mean(axis = 0))/features.std(axis = 0)
     clusters = db.classes.astype('int32')
     doses = db.doses
-    
+
     loo = LeaveOneOut()
     loo.get_n_splits(features)
     regression_errors = []
@@ -397,7 +397,7 @@ def run_autoencoder(db):
         regression_error = model.evaluate(x_test, y_test)
         regression_errors.append(regression_error)
         print(regression_error)
-        
+
         x_embedding = encoder_model.predict(features)
         for p2 in range(db.get_num_patients()):
             if p1 == p2:
@@ -406,9 +406,9 @@ def run_autoencoder(db):
         p1 += 1
     print(np.mean(regression_errors))
     nn_sim = (nn_sim - nn_sim.min(axis = 0))/(nn_sim.max(axis = 0) - nn_sim.min(axis = 0))
-    
+
     threshold_grid_search(db, nn_sim)
-    
+
 def get_features(db, holdout = set([]) ):
     n_patients = db.get_num_patients()
     x = get_input_distance_features(db)
@@ -441,10 +441,10 @@ def get_features(db, holdout = set([]) ):
     a_validate = np.array(a_validate)
     b_validate = np.array(b_validate)
     y_validate = np.array(y_validate)
-    
+
     args = np.arange(len(y))
     np.random.shuffle(args)
-    
+
     return (a[args], b[args], y[args], a_validate, b_validate, y_validate, val_pairs)
 
 def get_similarity_model(n_features, encoding_size = 25, reg = .000001):
@@ -467,7 +467,7 @@ def get_similarity_model(n_features, encoding_size = 25, reg = .000001):
     optimizer = optimizers.Adam()
     model.compile(optimizer = optimizer, loss = losses.mean_absolute_error)
     return(model)
-    
+
 def get_distance_model(n_features, encoding_size = 25, reg = 0.000001):
     patient_a = layers.Input(shape = (n_features,))
     patient_b = layers.Input(shape = (n_features,))
@@ -490,10 +490,10 @@ def get_distance_model(n_features, encoding_size = 25, reg = 0.000001):
     optimizer = optimizers.Adam(lr = .001, decay = 1e-8)
 #    optimizer = optimizers.Adadelta()
 #    optimizer = optimizers.RMSprop()
-    model.compile(optimizer = optimizer, 
+    model.compile(optimizer = optimizer,
                   loss = losses.mean_squared_error)
     return(model, distance_model)
-    
+
 ### stuff with meetric learning?
 def get_all_features(data, num_pca_components = 10):
     num_patients = data.get_num_patients()
@@ -534,7 +534,7 @@ def get_input_tumor_features(data, num_pca_components = 10):
     subsites = data.subsites.reshape(num_patients, 1)
     subsites = np.vectorize(Constants.subsite_map.__getitem__)(subsites)
     total_doses = data.prescribed_doses.reshape(num_patients, 1)
-    features = np.hstack([tumor_volumes, total_doses, 
+    features = np.hstack([tumor_volumes, total_doses,
                           subsites, tumor_count,
                           data.ajcc8.reshape(-1,1)])
     return copy.copy(features)
@@ -558,9 +558,9 @@ def get_input_distance_features(data, num_pca_components = 10):
     subsites = data.subsites.reshape(num_patients, 1)
     subsites = np.vectorize(Constants.subsite_map.__getitem__)(subsites)
     total_doses = data.prescribed_doses.reshape(num_patients, 1)
-    features = np.hstack([tumor_volumes, 
-                          total_doses, 
-                          tumor_count, 
+    features = np.hstack([tumor_volumes,
+                          total_doses,
+                          tumor_count,
                           laterality,
                           data.ajcc8.reshape(-1,1),
                           data.tumor_distances])
@@ -630,12 +630,12 @@ def get_nca_similarity(db, feature_type = 'tumors', min_nca_components = 4, lmnn
         input_features = get_input_lymph_features(db)
     elif feature_type in ['organ', 'organs']:
         input_features = get_input_organ_features(db)
-    nca_features = get_nca_features(input_features, doses, 
+    nca_features = get_nca_features(input_features, doses,
                                     min_components = min_nca_components,
                                     lmnn = lmnn, k = k, reg = reg)
     similarity = np.zeros((n_patients, n_patients))
     max_similarities = set([])
-    mixed_laterality = set(['R','L']) 
+    mixed_laterality = set(['R','L'])
     for p1 in range(n_patients):
         x1 = nca_features[p1, :]
         for p2 in range(p1+1, n_patients):
@@ -651,7 +651,7 @@ def get_nca_similarity(db, feature_type = 'tumors', min_nca_components = 4, lmnn
     for pair in max_similarities:
         similarity[pair[0], pair[1]] = 1
     for i in range(n_patients):
-        similarity[i,i] = 0 
+        similarity[i,i] = 0
     return similarity
 
 def get_test_tumor_similarity(db):
@@ -679,3 +679,57 @@ def centroid_based_tumor_organ_pairs(db):
                     min_dist = dist
                     organ = Constants.organ_list[o]
             gtv[t_ind] = GTV(t.name, t.volume, t.position, t.doses, t.dists, organ)
+
+def organ_selection(organ_list, db, similarity_function = None,
+                    use_classes = False):
+    def tsim(x):
+        model = TsimModel(organs = [Constants.organ_list.index(o) for o in x],
+                                   similarity_function = similarity_function,
+                                   use_classes = use_classes)
+        return model.get_similarity(db)
+    distance_similarity = tsim(organ_list)
+    baseline = threshold_grid_search(db, distance_similarity)[0]
+    optimal = (organ_list, baseline)
+    bad_organs = []
+    best_score = 100
+    for organ in organ_list:
+        organ_subset = copy(organ_list)
+        organ_subset.remove(organ)
+        distance_subset_sim = tsim(organ_subset)
+        best_score, best_threshold, best_min_matches = threshold_grid_search(db, distance_subset_sim, print_out = False)
+        if best_score < baseline:
+            bad_organs.append((organ, best_score, best_threshold, best_min_matches))
+            if best_score < optimal[1]:
+                optimal = (organ_subset, best_score)
+                print(set(Constants.organ_list) - set(optimal[0]), best_score)
+    return optimal
+
+def optimal_organ_search(db, similarity_function = None, use_classes = False):
+    optimal_organs = []
+    organ_set = Constants.organ_list
+    best_score = None
+    while True:
+        optimal_organs, best = organ_selection(organ_set, db,
+                                               similarity_function = similarity_function,
+                                               use_classes = use_classes)
+        if len(optimal_organs) == len(organ_set):
+            break
+        organ_set = optimal_organs
+        best_score = best
+    return optimal_organs, best_score
+
+def get_tumor_organ_vectors(db):
+    o_centroids, t_centroids = db.get_transformed_centroids()
+    vectors = np.zeros((o_centroids.shape))
+    for p in range(db.get_num_patients()):
+        o_centers = o_centroids[p]
+        t_centers = t_centroids[p]
+        distances = np.stack([g.dists for g in db.gtvs[p] if g.volume > 0], axis = 1)
+        new_vectors = np.zeros(o_centers.shape)
+        for organ in range(new_vectors.shape[0]):
+            nearest_tumor_arg = np.argmin(distances[organ])
+            nearest_tumor = t_centers[nearest_tumor_arg]
+            organ_tumor_vector = nearest_tumor - o_centers[organ]
+            new_vectors[organ] = organ_tumor_vector/np.linalg.norm(organ_tumor_vector)
+        vectors[p] = new_vectors
+    return vectors

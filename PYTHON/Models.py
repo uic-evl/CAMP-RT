@@ -9,20 +9,14 @@ seed(1)
 import numpy as np
 from Constants import Constants
 from ErrorChecker import ErrorChecker
-from collections import namedtuple
 import Metrics
 from scipy.optimize import minimize
 from abc import ABC, abstractmethod
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from copy import copy
-from scipy.stats import ttest_ind, f_oneway, kruskal
-from sklearn.preprocessing import OrdinalEncoder, quantile_transform
-from sklearn.manifold import MDS
-from sklearn.feature_selection import mutual_info_classif
+from sklearn.preprocessing import quantile_transform
 from sklearn.tree import DecisionTreeClassifier
-import rpy2.robjects.numpy2ri
-from rpy2.robjects.packages import importr
-rpy2.robjects.numpy2ri.activate()
+
 
 
 class Estimator(ABC):
@@ -733,108 +727,3 @@ class SimilarityBooster(SimilarityFuser):
         error = self.get_match_error(data)
         sim = Metrics.dist_to_sim(error)
         return error
-
-
-cluster_result = namedtuple('cluster_result', ['method', 'cluster', 'correlation', 'model'])
-
-class ClusterStats():
-
-    def __init__(self, clusterers = None):
-        self.clusterers = clusterers
-        self.mds = MDS(n_components = 30,
-                             dissimilarity = 'precomputed')
-        if clusterers is None:
-            c_range = range(2,5)
-            self.clusterers = {}
-            self.clusterers['Kmeans'] = [KMeans(n_clusters = i) for i in c_range]
-            self.clusterers['Agglomerative_ward'] = [AgglomerativeClustering(n_clusters = i) for i in c_range]
-            self.clusterers['Agglomerative_complete'] = [AgglomerativeClustering(n_clusters = i, linkage = 'complete') for i in c_range]
-
-    def fisher_exact_test(self, c_labels, y):
-        if len(set(y)) == 1:
-            print('fisher test run with no positive class')
-            return 0
-#        assert(len(set(y)) == 2)
-        #call fishers test from r
-        clusters = [y[np.argwhere(c_labels == c).ravel()] for c in np.unique(c_labels)]
-        contingency = self.get_contingency_table(c_labels, y)
-        stats = importr('stats')
-        pval = stats.fisher_test(contingency)[0][0]
-        return pval
-
-    def get_contingency_table(self, x, y):
-        #assumes x and y are two equal length vectors, creates a mxn contigency table from them
-        cols = sorted(list(np.unique(y)))
-        rows = sorted(list(np.unique(x)))
-        tabel = np.zeros((len(rows), len(cols)))
-        for row_index in range(len(rows)):
-            row_var = rows[row_index]
-            for col_index in range(len(cols)):
-                rowset = set(np.argwhere(x == row_var).ravel())
-                colset = set(np.argwhere(y == cols[col_index]).ravel())
-                tabel[row_index, col_index] = len(rowset & colset)
-        return tabel
-
-    def analyze_clusters(self, target_var, name, clusterer, doses, subset):
-        result = []
-        distance = self.get_dose_embedding(doses, target_var, subset)
-        clusters = clusterer.fit_predict(distance).ravel()
-        n_clusters = len(set(clusters))
-        method = name + str(n_clusters)
-
-        overall_correlation = self.fisher_exact_test(clusters, target_var)
-        result.append( cluster_result(method, 'all',
-                                      overall_correlation,
-                                      clusterer))
-#        print(method, overall_correlation)
-
-        for c in np.unique(clusters):
-            correlation = self.fisher_exact_test(clusters == c, target_var)
-            result.append( cluster_result(method, str(c+1),
-                                          correlation, clusterer))
-        return result
-
-    def get_dose_embedding(self, features, outcome, subset = True):
-        if subset:
-            features = self.subset_features(features, outcome)
-        similarity = Metrics.dose_similarity(features, similarity = False)
-        embedding = self.mds.fit_transform(similarity)
-        return embedding
-
-    def cluster_by_dose(self, target_var, doses, args = None, subset = True):
-        if args is not None:
-            assert( isinstance(args, list) )
-            doses = doses[:, args]
-        results = []
-        for cname, clusterers in self.clusterers.items():
-            for clusterer in clusterers:
-                results.extend(self.analyze_clusters(target_var, cname, clusterer, doses, subset))
-        results = sorted(results, key = lambda x: x.correlation)
-        return results
-
-    def get_optimal_clustering(self, doses, target_var, args = None,
-                               subset = False, patient_subset = None):
-        clusters = np.zeros(target_var.shape)
-        if patient_subset is not None:
-            target = target_var[patient_subset]
-            doses = doses[patient_subset,:]
-        else:
-            target = target_var
-        result = self.cluster_by_dose(target, doses,
-                                      args, subset)
-        result = [r for r in result if r.cluster is 'all']
-        if args is not None:
-            doses = doses[:, args]
-        clusters[patient_subset] = result[0].model.fit_predict(doses).ravel() + 1
-        pval = self.fisher_exact_test(clusters, target_var)
-        clusterer_data = cluster_result(method = result[0].method,
-                                        cluster = result[0].cluster,
-                                        correlation = pval,
-                                        model = result[0].model)
-        optimal = (clusters, clusterer_data)
-        return optimal
-
-    def subset_features(self, x, y):
-        mutual_info = mutual_info_classif(x, y)
-        good_features = np.argwhere(mutual_info > 0).ravel()
-        return x[:, good_features]
