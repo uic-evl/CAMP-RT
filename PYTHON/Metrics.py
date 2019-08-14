@@ -45,6 +45,10 @@ def dist_to_sim(distance):
     sim[diagonals] = 0
     return sim
 
+def root_kernel(matrix):
+    matrix = matrix/matrix.sum(axis = 1)
+    return np.sqrt(matrix)
+
 def minmax_scale(matrix):
     m = matrix - matrix.min()
     return m/m.max()
