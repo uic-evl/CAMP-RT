@@ -20,6 +20,8 @@ rpy2.robjects.numpy2ri.activate()
 from sklearn.manifold import MDS
 from NCA import NeighborhoodComponentsAnalysis
 from Boruta import BorutaPy
+from Models import *
+from ErrorChecker import ErrorChecker
 
 from sklearn.naive_bayes import BernoulliNB, ComplementNB, GaussianNB
 from sklearn.preprocessing import OneHotEncoder, quantile_transform
@@ -28,10 +30,7 @@ from sklearn.metrics import accuracy_score, recall_score, roc_auc_score, roc_cur
 from sklearn.ensemble import ExtraTreesClassifier, VotingClassifier
 from sklearn.feature_selection import mutual_info_classif, f_classif, SelectKBest, mutual_info_regression
 from sklearn.linear_model import LogisticRegression
-from sklearn.manifold import MDS
 from sklearn.utils import resample
-
-from imblearn.combine import SMOTEENN, SMOTETomek
 
 cluster_result = namedtuple('cluster_result', ['method', 'cluster', 'correlation', 'model'])
 
@@ -142,7 +141,7 @@ def recall_based_model(x, y, model, score_threshold = .99, selector = None):
     loo = LeaveOneOut()
     loo.get_n_splits(x)
     y_out = np.zeros(y.shape)
-    resampler = SMOTETomek()
+#    resampler = SMOTETomek()
     if len(np.argwhere(y > 0)) <= 1:
         return y_out
     for train_index, test_index in loo.split(x):
@@ -161,8 +160,8 @@ def recall_based_model(x, y, model, score_threshold = .99, selector = None):
                 if fitted.ndim > 1 and fitted.shape[1] > 1:
                     xtrain = fitted
                     xtest = selector.transform(xtest)
-        xfit, yfit = resampler.fit_resample(xtrain, ytrain.ravel())
-        model.fit(xfit, yfit)
+#        xfit, yfit = resampler.fit_resample(xtrain, ytrain.ravel())
+        model.fit(xtrain, ytrain.ravel())
         yfit_pred = model.predict_proba(xtrain)
         sorted_scores = sorted(yfit_pred[:, 1], key = lambda x: -x)
         threshold_i = 0
@@ -316,24 +315,16 @@ def feature_matrix(db):
     discrete_volumes = Metrics.discretize(t_volumes, n_bins = 15, strategy='uniform')
     x = np.hstack([
         discrete_dists,
-        #discrete_volumes,
+        discrete_volumes,
         db.prescribed_doses.reshape(-1,1),
         db.dose_fractions.reshape(-1,1),
-        #db.has_gtvp.reshape(-1,1),
+        db.has_gtvp.reshape(-1,1),
         OneHotEncoder(sparse = False).fit_transform(db.lateralities.reshape(-1,1)),
         OneHotEncoder(sparse = False).fit_transform(db.subsites.reshape(-1,1)),
         OneHotEncoder(sparse = False).fit_transform(db.t_categories.reshape(-1,1)),
-        pca(db.lymph_nodes[:, np.argwhere(db.lymph_nodes.std(axis = 0) > 0).ravel()],4)
+        #Metrics.pca(db.lymph_nodes[:, np.argwhere(db.lymph_nodes.std(axis = 0) > 0).ravel()],4)
                ])
     return x
-
-def get_model_auc(x, y, model):
-    ypred = cross_val_predict(model, x, y, cv = LeaveOneOut(), method = 'predict_proba')
-    ypred = ypred[:,1]
-    roc_score = roc_auc_score(y, ypred)
-    fpr, tpr, thresholds = roc_curve(y, ypred)
-    plt.plot(fpr, tpr)
-    return fpr, tpr, thresholds, roc_score
 
 def cluster_with_model(db, similarity, toxicity, model = None, selector = None):
     cluster_stats = ClusterStats()
@@ -450,9 +441,6 @@ def select_supervised_features(known, estimated, toxicity, weight_func, n_sample
     transformed_predicted = np.vstack(transformed_predicted)
     return transformed_predicted
 
-from Models import *
-from ErrorChecker import ErrorChecker
-
 def save_prediction(transformed_predicted, name):
     transformed_predicted = transformed_predicted[:, np.argwhere(transformed_predicted.sum(axis = 0) > 0).ravel()]
     clustering = ClusterStats().get_optimal_clustering(transformed_predicted, toxicity)
@@ -471,6 +459,7 @@ def save_prediction(transformed_predicted, name):
 #db = PatientSet(root = 'data\\patients_v*\\',
 #                use_distances = False)
 
+evaluate_tiered_model(db)
 
 #toxicity = (db.feeding_tubes + db.aspiration) > 0
 #
@@ -484,28 +473,28 @@ def save_prediction(transformed_predicted, name):
 #true_doses = db.doses
 #est_doses = predicted_doses
 
-known = np.hstack([true_doses, feature_matrix(db)])
-guessed = np.hstack([est_doses, feature_matrix(db)])
-
-
-boruta = BorutaPy(ExtraTreesClassifier(300, max_depth=7), n_estimators = 300)
-n_samples = 200
-boruta.fit(rescale(known), toxicity)
-knownfit = rescale(known)
-xest = rescale(guessed)
-support = np.zeros((knownfit.shape[1],))
-weak_support = np.zeros(support.shape)
-save_prediction(rescale(guessed)*boruta.support_, 'boruta_nobootstrap')
-print(np.argwhere(boruta.support_ > 0).ravel())
-for n in range(n_samples):
-    xfit, y = resample(knownfit, toxicity, stratify = toxicity)
-    boruta.fit(xfit, y)
-    support += (boruta.support_)/(n_samples)
-    weak_support += (boruta.support_weak_)/(n_samples)
-    print(n, support*n)
-supported = support > .66 #2 standard deviations?
-
-save_prediction(rescale(guessed)*supported, 'boruta_bootstrap')
+#known = np.hstack([true_doses, feature_matrix(db)])
+#guessed = np.hstack([est_doses, feature_matrix(db)])
+#
+#
+#boruta = BorutaPy(ExtraTreesClassifier(300, max_depth=7), n_estimators = 300)
+#n_samples = 200
+#boruta.fit(rescale(known), toxicity)
+#knownfit = rescale(known)
+#xest = rescale(guessed)
+#support = np.zeros((knownfit.shape[1],))
+#weak_support = np.zeros(support.shape)
+#save_prediction(rescale(guessed)*boruta.support_, 'boruta_nobootstrap')
+#print(np.argwhere(boruta.support_ > 0).ravel())
+#for n in range(n_samples):
+#    xfit, y = resample(knownfit, toxicity, stratify = toxicity)
+#    boruta.fit(xfit, y)
+#    support += (boruta.support_)/(n_samples)
+#    weak_support += (boruta.support_weak_)/(n_samples)
+#    print(n, support*n)
+#supported = support > .66 #2 standard deviations?
+#
+#save_prediction(rescale(guessed)*supported, 'boruta_bootstrap')
 
 
 
