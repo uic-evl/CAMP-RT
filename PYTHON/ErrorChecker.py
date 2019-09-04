@@ -13,7 +13,7 @@ class ErrorChecker():
     #class that takes the patientset and checks that the data for each patient meets some conditions
     #used to get a list of the bad patients that the patientset class uses to remove values
 
-    def __init__(self):
+    def __init__(self, remove_outliers = False, remove_missing_gtvp = False):
         #saves locations of certain keys organs.
         #eyes are exempt from needing to have non-zero values, since they are basically 0 anyway
         self.ra_eye = Constants.organ_list.index('Rt_Anterior_Seg_Eyeball')
@@ -27,6 +27,8 @@ class ErrorChecker():
         self.eye_threshold = 14
         self.spine_threshold = 40
         self.brainstem_threshold = 40
+        self.remove_outliers = remove_outliers
+        self.remove_missing_gtvp = remove_missing_gtvp
 
     def get_thresholds(self, db):
         #get an acceptable dose threshold for an organ, either preset or >10 above tumor dose
@@ -73,7 +75,6 @@ class ErrorChecker():
         #check if position variance is too low (all in the center bascially)
         organ_spread = np.var(db.centroids, axis = 1).mean(axis = 1)
         bad_centroids = np.where( organ_spread < 200)[0]
-        print('bad centroids', bad_centroids)
         for bad_patient in bad_centroids:
             bad_patients.add(bad_patient)
         #check if no tumor
@@ -82,9 +83,10 @@ class ErrorChecker():
             tumor_volume = np.sum([gtv.volume for gtv in gtv_set])
             if tumor_volume <= .00001:
                 bad_patients.add(patient)
-
-#        bad_patients = bad_patients | self.get_data_outliers(db.doses)
-#        bad_patients = bad_patients | self.get_missing_gtvp(db)
+        if self.remove_outliers:
+            bad_patients = bad_patients | self.get_data_outliers(db.doses)
+        if self.remove_missing_gtvp:
+            bad_patients = bad_patients | self.get_missing_gtvp(db)
         return bad_patients
 
     def get_missing_gtvp(self, db):
@@ -119,5 +121,4 @@ class ErrorChecker():
         bad_patients = self.check_missing_organs(db)
         all_patients = set(range(db.get_num_patients()))
         good_patients = all_patients - bad_patients
-        print(bad_patients)
         return sorted(good_patients)

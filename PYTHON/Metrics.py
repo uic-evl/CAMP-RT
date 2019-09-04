@@ -501,3 +501,22 @@ def get_model_auc(x, y, model):
     roc_score = roc_auc_score(y, ypred)
     fpr, tpr, thresholds = roc_curve(y, ypred)
     return fpr, tpr, thresholds, roc_score
+
+def rescale(x1, x2 = None):
+    scale = lambda x: (x - x1.min(axis = 0))/(x1.max(axis = 0) - x1.min(axis = 0))
+    if x2 is not None:
+        return scale(x1), scale(x2)
+    return scale(x1)
+
+def normalize(x1, x2 = None):
+    normalize = lambda x: (x - x1.mean(axis = 0))/x1.std(axis = 0)
+    if x2 is not None:
+        return normalize(x1), normalize(x2)
+    return normalize(x1)
+
+def normalize_and_drop(x1, x2 = None):
+    args = np.argwhere(x1.std(axis = 0) > 0).ravel()
+    x1 = x1[:,args]
+    if x2 is not None:
+        x2 = x2[:,args]
+    return rescale(x1, x2)

@@ -351,11 +351,6 @@ def cluster_with_model(db, similarity, toxicity, model = None, selector = None):
 
     return cluster_results[0], labels
 
-def rescale(x1, x2 = None):
-    scale = lambda x: (x - x1.min(axis = 0))/(x1.max(axis = 0) - x1.min(axis = 0))
-    if x2 is not None:
-        return scale(x1), scale(x2)
-    return scale(x1)
 
 def nca_bootstrap_fit(xtrain, ytrain, xtest, n_samples = 100):
     nca = NeighborhoodComponentsAnalysis(5, max_iter=1000)
@@ -459,7 +454,7 @@ def save_prediction(transformed_predicted, name):
 #db = PatientSet(root = 'data\\patients_v*\\',
 #                use_distances = False)
 
-evaluate_tiered_model(db)
+#evaluate_tiered_model(db)
 
 #toxicity = (db.feeding_tubes + db.aspiration) > 0
 #

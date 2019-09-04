@@ -417,3 +417,10 @@ class PatientSet():
             p_tumor_centroids = get_transformed_tumor_centroids(self.gtvs[p], transform)
             transformed_tumor_centroids.append(p_tumor_centroids)
         return transformed_organ_centroids, transformed_tumor_centroids
+
+    def to_dataframe(self, attributes = ['tumor_distances', 'hpv', 'ajcc8'], to_merge = None):
+        data = {attr: getattr(self, attr) for attr in attributes}
+        df = pd.DataFrame(index = self.ids, data = data)
+        if to_merge is not None:
+            df = df.join(to_merge, how = 'inner')
+        return df
