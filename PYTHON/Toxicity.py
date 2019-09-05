@@ -7,6 +7,7 @@ Created on Thu Aug  8 13:11:50 2019
 from numpy.random import seed
 seed(1)
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from analysis import *
 from sklearn.cluster import KMeans, AgglomerativeClustering
@@ -437,7 +438,7 @@ def select_supervised_features(known, estimated, toxicity, weight_func, n_sample
     return transformed_predicted
 
 def save_prediction(transformed_predicted, name):
-    transformed_predicted = transformed_predicted[:, np.argwhere(transformed_predicted.sum(axis = 0) > 0).ravel()]
+    transformed_predicted = transformed_predicted[:, np.argwhere(transformed_predicted.std(axis = 0) > 0).ravel()]
     clustering = ClusterStats().get_optimal_clustering(transformed_predicted, toxicity)
     print(clustering[1])
     print(ClusterStats().get_contingency_table(clustering[0], toxicity))
@@ -446,51 +447,50 @@ def save_prediction(transformed_predicted, name):
         new_db = copy(db)
         new_db.classes = classes
         return new_db
-
+    pd.DataFrame(data = transformed_predicted, index = db.ids).to_csv('data/selected_features.csv')
     fancy_sim = Metrics.dist_to_sim(Metrics.reduced_augmented_sim(transformed_predicted, Metrics.mse))
+#    export(get_class_db(db, clustering[0]), similarity = fancy_sim, score_file = 'data\\' + name + '_similarity.csv')
 
-    export(get_class_db(db, clustering[0]), similarity = fancy_sim, score_file = 'data\\' + name + '_similarity.csv')
-
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                use_distances = False)
-
-#evaluate_tiered_model(db)
-
-#toxicity = (db.feeding_tubes + db.aspiration) > 0
-#
-#discrete_dists = discretize(-db.tumor_distances)
-#discrete_sim = Metrics.augmented_sim(discrete_dists, Metrics.jaccard_distance)
-#
-#predicted_doses = TreeKnnEstimator().predict_doses([discrete_sim], db)
-#
-#outliers = list(ErrorChecker().get_data_outliers(db.doses))
-#
-#true_doses = db.doses
-#est_doses = predicted_doses
-
-#known = np.hstack([true_doses, feature_matrix(db)])
-#guessed = np.hstack([est_doses, feature_matrix(db)])
-#
-#
-#boruta = BorutaPy(ExtraTreesClassifier(300, max_depth=7), n_estimators = 300)
-#n_samples = 200
-#boruta.fit(rescale(known), toxicity)
-#knownfit = rescale(known)
-#xest = rescale(guessed)
-#support = np.zeros((knownfit.shape[1],))
-#weak_support = np.zeros(support.shape)
-#save_prediction(rescale(guessed)*boruta.support_, 'boruta_nobootstrap')
-#print(np.argwhere(boruta.support_ > 0).ravel())
-#for n in range(n_samples):
-#    xfit, y = resample(knownfit, toxicity, stratify = toxicity)
-#    boruta.fit(xfit, y)
-#    support += (boruta.support_)/(n_samples)
-#    weak_support += (boruta.support_weak_)/(n_samples)
-#    print(n, support*n)
-#supported = support > .66 #2 standard deviations?
-#
-#save_prediction(rescale(guessed)*supported, 'boruta_bootstrap')
+def main():
+    db = PatientSet(root = 'data\\patients_v*\\',
+                    use_distances = False)
 
 
+    toxicity = (db.feeding_tubes + db.aspiration) > 0
 
+    discrete_dists = discretize(-db.tumor_distances)
+    discrete_sim = Metrics.augmented_sim(discrete_dists, Metrics.jaccard_distance)
+
+    predicted_doses = TreeKnnEstimator().predict_doses([discrete_sim], db)
+
+    outliers = list(ErrorChecker().get_data_outliers(db.doses))
+
+    true_doses = db.doses
+    est_doses = predicted_doses
+
+    known = np.hstack([true_doses, feature_matrix(db)])
+    guessed = np.hstack([est_doses, feature_matrix(db)])
+
+
+    boruta = BorutaPy(ExtraTreesClassifier(300, max_depth=7), n_estimators = 300)
+    n_samples = 200
+    boruta.fit(rescale(known), toxicity)
+    knownfit = rescale(known)
+    xest = rescale(guessed)
+    support = np.zeros((knownfit.shape[1],))
+    weak_support = np.zeros(support.shape)
+    save_prediction(rescale(guessed)*boruta.support_, 'boruta_nobootstrap')
+    print(np.argwhere(boruta.support_ > 0).ravel())
+    for n in range(n_samples):
+        xfit, y = resample(knownfit, toxicity, stratify = toxicity)
+        boruta.fit(xfit, y)
+        support += (boruta.support_)/(n_samples)
+        weak_support += (boruta.support_weak_)/(n_samples)
+        print(n, support*n)
+    supported = support > .66 #2 standard deviations?
+
+    save_prediction(rescale(guessed)*supported, 'boruta_bootstrap')
+
+if __name__ == "__main__":
+    main()
 

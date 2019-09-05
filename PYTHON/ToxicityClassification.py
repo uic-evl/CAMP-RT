@@ -4,6 +4,10 @@ Created on Fri Aug 30 12:02:42 2019
 
 @author: Andrew Wentzel
 """
+from numpy.random import seed
+seed(1)
+from tensorflow.compat.v1 import set_random_seed
+set_random_seed(2)
 
 from PatientSet import PatientSet
 from Constants import Constants
@@ -19,15 +23,72 @@ from sklearn.model_selection import cross_validate, cross_val_predict, LeaveOneO
 from sklearn.metrics import accuracy_score, recall_score, roc_auc_score, roc_curve, f1_score
 from sklearn.naive_bayes import BernoulliNB, ComplementNB, GaussianNB
 from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import OneHotEncoder, QuantileTransformer
+from sklearn.preprocessing import OneHotEncoder, QuantileTransformer, MinMaxScaler, RobustScaler, StandardScaler
 from sklearn.cluster import AgglomerativeClustering
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import VotingClassifier, ExtraTreesClassifier, RandomForestClassifier, AdaBoostClassifier
 from sklearn.svm import SVC
+from NCA import NeighborhoodComponentsAnalysis
+from sklearn.base import BaseEstimator
+from collections import namedtuple, OrderedDict
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
-warnings.filterwarnings("ignore", category=UserWarning)
-warnings.filterwarnings("ignore", category=RuntimeWarning)
+#warnings.filterwarnings("ignore", category=UserWarning)
+#warnings.filterwarnings("ignore", category=RuntimeWarning)
+
+class MetricLearningClassifier(BaseEstimator):
+
+    def __init__(self, n_components = None, init = 'auto', random_state = 1, resampler = None):
+        self.nca = NeighborhoodComponentsAnalysis(n_components = n_components,
+                                                  init = init,
+                                                  max_iter = 1000,
+                                                  random_state = random_state)
+        self.group_parameters = namedtuple('group_parameters', ['means', 'inv_covariance', 'max_dist'])
+        self.resampler = resampler
+
+    def fit(self, x, y):
+        if self.resampler is not None:
+            x,y = self.resampler.fit_resample(x,y)
+        self.nca.fit(x, y)
+        self.groups = OrderedDict()
+        for group in np.unique(y):
+            self.groups[group] = self.group_params(x, y, group)
+
+    def group_params(self, x, y, group):
+        targets = np.argwhere(y == group).ravel()
+        x_target = self.nca.transform(x[targets])
+        fmeans = x_target.mean(axis = 0)
+        inv_cov = np.linalg.inv(np.cov(x_target.T))
+        train_dists = self.mahalanobis_distances(x, self.group_parameters(fmeans, inv_cov, 0))
+        parameters = self.group_parameters(fmeans, inv_cov, train_dists.max())
+        return parameters
+
+    def mahalanobis_distances(self, x, group):
+        x_offset = self.nca.transform(x) - group.means
+        left_term = np.dot(x_offset, group.inv_covariance)
+        mahalanobis = np.dot(left_term, x_offset.T).diagonal()
+        return mahalanobis
+
+    def predict_proba(self, x):
+        all_distances = []
+        for group_id, group_params in self.groups.items():
+            distances = self.mahalanobis_distances(x, group_params)
+            proximity = np.clip(1 - (distances/group_params.max_dist), 0, 1)
+            all_distances.append(proximity)
+        output = np.hstack(all_distances).reshape(-1, len(self.groups.keys()))
+        return output#output.sum(axis = 1)
+
+    def predict(self, x):
+        labels = list(self.groups.keys())
+        probs = self.predict_proba(self, x)
+        return np.argmax(probs, axis = 1).ravel()
+
+    def fit_predict(self, x, y):
+        self.fit(x,y)
+        return self.predict(x)
+
+
 
 class RecallBasedModel:
 
@@ -65,7 +126,6 @@ class RecallBasedModel:
         while recall_score(y, ythresh) < self.recall_threshold and threshold_i < len(sorted_scores) - 1:
             threshold_i += 1
             ythresh = ypred[:,1] >= sorted_scores[threshold_i]
-        print(recall_score(y, ythresh))
         self.probability_threshold = sorted_scores[threshold_i]
         self.all_thresholds = sorted_scores
 
@@ -269,17 +329,17 @@ def feature_matrix(db):
 
 def cv_ensemble(features,
                 toxicity,
+                classifiers = None,
                 num_feature_splits = 1,
                 recall_threshold = .99,
                 feature_selection = False):
     if isinstance(features, PatientSet):
         features = feature_matrix(features)
-    classifiers = [
-#            BernoulliNB(),
-#            ComplementNB(),
-#            GaussianNB(),
-            LogisticRegression(solver = 'lbfgs',max_iter=3000)
-                   ]
+    if classifiers is None:
+        classifiers = [
+                BernoulliNB(),
+                LogisticRegression(solver = 'lbfgs',max_iter=3000)
+                       ]
     ensemble = IterativeClassifier(classifiers,
                                    num_feature_splits = num_feature_splits,
                                    recall_threshold = recall_threshold,
@@ -296,7 +356,7 @@ def cv_ensemble(features,
     print(roc_auc_score(toxicity, ypred), recall_score(toxicity, ypred > 0))
     print(ClusterStats().get_contingency_table(ypred, toxicity))
 
-def roc_cv(classifier, x, y, feature_selection_method = None, regularizer = None):
+def roc_cv(classifier, x, y, feature_selection_method = None, regularizer = None, ):
     x = feature_selection(x, y, feature_selection_method)
     loo = LeaveOneOut()
     ypred = np.zeros(y.shape)
@@ -318,7 +378,9 @@ def roc_cv(classifier, x, y, feature_selection_method = None, regularizer = None
 def feature_selection(x,y, method):
     return x
 
+#def main():
 
+import imblearn
 #db = PatientSet(root = 'data\\patients_v*\\',
 #                use_distances = False)
 df = pd.read_csv('data/ds_topFeatures.csv', index_col = 1).drop('Unnamed: 0', axis = 1)
@@ -328,18 +390,36 @@ ar = df.AR.values
 tox = df.TOX.values
 df = db.to_dataframe(['hpv'],df)
 features = df.drop(['FT', 'AR', 'TOX'], axis = 1).values
+#from preprocessing import Denoiser
+x = features #Denoiser(n_features = features.shape[1], verbose = 1, normalize = False, noise = .1).fit_transform(features)
 classifiers = [
-                LogisticRegression(solver = 'lbfgs', class_weight='balanced'),
-                AdaBoostClassifier(n_estimators = 50, learning_rate = .1),
+                MetricLearningClassifier(resampler = imblearn.under_sampling.OneSidedSelection()),
+#                MetricLearningClassifier(resampler = imblearn.under_sampling.CondensedNearestNeighbour()),
+#                MetricLearningClassifier(resampler = imblearn.under_sampling.TomekLinks()),
+#                MetricLearningClassifier(resampler = imblearn.under_sampling.AllKNN()),
+#                MetricLearningClassifier(resampler = imblearn.under_sampling.RepeatedEditedNearestNeighbours()),
+#                MetricLearningClassifier(resampler = imblearn.under_sampling.EditedNearestNeighbours()),
+#                MetricLearningClassifier(resampler = imblearn.under_sampling.NeighbourhoodCleaningRule()),
+#                MetricLearningClassifier(resampler = imblearn.combine.SMOTEENN()),
+#                MetricLearningClassifier(resampler = imblearn.over_sampling.SMOTE()),
+#                MetricLearningClassifier(resampler = imblearn.combine.SMOTETomek()),
+#                MetricLearningClassifier(),
+#                LogisticRegression(solver = 'lbfgs', class_weight='balanced'),
+#                AdaBoostClassifier(n_estimators = 50, learning_rate = .1),
                LogisticRegression(solver = 'lbfgs', max_iter = 3000),
-               RandomForestClassifier(n_estimators = 300),
-               ExtraTreesClassifier(n_estimators = 300),
+#               RandomForestClassifier(n_estimators = 300),
+#               ExtraTreesClassifier(n_estimators = 300),
                ]
+cv_ensemble(x, ft, classifiers = classifiers)
+cv_ensemble(x, ar, classifiers = classifiers)
 results = []
 for classifier in classifiers:
-    for outcome in [(ft, 'feeding_tube'), (ar, 'aspiration')]:
-        roc = roc_cv(classifier, features, outcome[0])
+    print(classifier)
+    for outcome in [(ft, 'feeding_tube'), (ar, 'aspiration'), (tox, 'all_toxicity')]:
+        roc = roc_cv(classifier, x, outcome[0], regularizer = QuantileTransformer())
         roc['outcome'] = outcome[1]
-        print(outcome[1], classifier)
-        print(roc['AUC'], roc['f1'])
+        print(outcome[1], roc['AUC'])
         results.append(roc)
+
+#if __name__ == "__main__":
+#    main()

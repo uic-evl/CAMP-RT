@@ -452,7 +452,7 @@ function updateScenes(selectedPatient, material){
 }
 
 function placeOrganModels(pOrgan, organProperties, scene, nodeColor) {
-    if (!(pOrgan == "GTVn" || pOrgan == "GTVp")) {
+    if (!Controller.isTumor(pOrgan)) {
 		var geometry = meshes[String(pOrgan)];
 		let currentOpacity = document.getElementById('opacSlider').value / 100.0;
 		let material = new THREE.MeshBasicMaterial({
@@ -579,7 +579,6 @@ function showPatient(materialArray, id, parentDivId, camera = null){
 		side: THREE.BackSide
 	});
 	
-	var gtvRegex = RegExp('GTV*');
 	var gtvs = [];
 	for (var pOrgan in patientOrganList) {
 		//this looks like it draws the organs in each patient?
@@ -613,7 +612,7 @@ function showPatient(materialArray, id, parentDivId, camera = null){
 		organSphere.userData.dosePerVolume = (data.getMeanDose(id, pOrgan) / data.getOrganVolume(id, pOrgan)).toFixed(3);
 		
 		//format the tumors in the data differently
-		if( gtvRegex.test(organSphere.name) ){
+		if( Controller.isTumor(organSphere.name) ){
 			gtvs.push(organSphere);
 			nodeColor = 'black';
 			//using real scaling doesn't seem to really work so it's just porportional now
@@ -650,7 +649,7 @@ function showPatient(materialArray, id, parentDivId, camera = null){
 	var [source_position, target_position] = getTargetVertices(gtvs);
 
 	if (source_position != null && target_position != null) {
-		//draws a line between the gtvp and gtvn is they are there
+		//draws a line between the gtvp and gtvn if they are there
 		tmp_geo.vertices.push(source_position);
 		tmp_geo.vertices.push(target_position);
 

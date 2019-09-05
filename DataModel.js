@@ -6,7 +6,8 @@ var Data = function(patientData, oAtlas) {
 	var public = {};
 	var patientCount = data.length;
 	var clusterColors = ['#ffec78', '#464168', '#8dd3c7', '#e78ac3', 'blue', '#80b1d3', 'purple', 'green', 'goldenrod', 'steelblue', 'brown', 'silver', 'burlywood', 'greenyellow', 'darkslategray']
-	let defaultClusterColor = '#0000000'
+	let defaultClusterColor = '#0000000';
+	var gtvRegex = RegExp('GTV*');
 	var functions = {
 	
 		

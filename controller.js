@@ -12,11 +12,12 @@ var Controller = (function(){
 		.range(['#999999','#3d32ff']);
 	var currentCamera = null;
 	var currentScene = 'Real';
+	var isTumor = (string) => gtvRegex.test(string);
 
 	return {
 		
 		brushOrgan: function(organ){
-			if(gtvRegex.test(organ)){
+			if(isTumor(organ)){
 				return;
 			}
 			try{
@@ -71,16 +72,17 @@ var Controller = (function(){
 			//changes color scheme of main patient to predicted, actual dose or dose error
 			var id = scene.userData.element.parentElement.id;
 			currentScene = type;
-			var gtvRegex = RegExp('GTV*');
 			scene.children.forEach(function(d){
 				//if not real dose, make the gtv outline translucent
-				if(gtvRegex.test(d.name)){
+				if(isTumor(d.name)){
 					let organName = d.name;
 					let outline = scene.getObjectByName(d.name + '_outline');
-					if(type.toLowerCase() != 'pred.' && type.toLowerCase() != 'error'){
+					if(outline.material != undefined){
+						if(type.toLowerCase() != 'pred.' && type.toLowerCase() != 'error'){
 						outline.material.opacity = 1;
-					} else{
-						outline.material.opacity = 0;
+						} else{
+							outline.material.opacity = 0;
+						}
 					}
 				}
 				//else, change all the value and colors accordingly
@@ -209,6 +211,8 @@ var Controller = (function(){
 				//camera.position.setLength(cameraDistZ);
 				camera.lookAt(scene.position);
 			};
-		}
+		},
+		
+		isTumor: isTumor
 	}
 })();

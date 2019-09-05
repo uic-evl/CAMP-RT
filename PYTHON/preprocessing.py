@@ -36,9 +36,10 @@ class Normalizer():
 
 class Denoiser():
     
-    def __init__(self, noise = 1, dropout = .1, n_features = None, normalize = True):
+    def __init__(self, noise = 1, dropout = .1, n_features = None, normalize = True, verbose = 0):
         if n_features is None:
             n_features = Constants.num_organs
+        self.verbose = verbose
         input_x = layers.Input(shape=(n_features,))
         encoder = Sequential([
                 layers.GaussianDropout(dropout),
@@ -65,7 +66,7 @@ class Denoiser():
         self.model.fit(x,x,
                        epochs = epochs,
                        batch_size = batch_size,
-                       verbose = 0)
+                       verbose = self.verbose)
         
     def transform(self, features, normalize = True):
         if self.normalizer is not None:
