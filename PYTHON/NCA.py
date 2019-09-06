@@ -57,7 +57,7 @@ def check_scalar(x, name, target_type, min_val=None, max_val=None):
 
     if max_val is not None and x > max_val:
         raise ValueError('`{}`= {}, must be <= {}.'.format(name, x, max_val))
-        
+
 class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
     """Neighborhood Components Analysis
     Neighborhood Component Analysis (NCA) is a machine learning algorithm for
@@ -412,7 +412,7 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
                     pca.fit(X)
                     transformation = pca.components_
                 elif init == 'lda':
-                    from ..discriminant_analysis import (
+                    from sklearn.discriminant_analysis import (
                         LinearDiscriminantAnalysis)
                     lda = LinearDiscriminantAnalysis(n_components=n_components)
                     if self.verbose:
@@ -474,7 +474,7 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
         X_embedded = np.dot(X, transformation.T)  # (n_samples, n_components)
 
         # Compute softmax distances
-        
+
         p_ij = pairwise_distances(X_embedded, squared=True)
         np.fill_diagonal(p_ij, np.inf)
         p_ij = softmax(-p_ij)  # (n_samples, n_samples)

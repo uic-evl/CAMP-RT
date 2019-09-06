@@ -418,7 +418,7 @@ class PatientSet():
             transformed_tumor_centroids.append(p_tumor_centroids)
         return transformed_organ_centroids, transformed_tumor_centroids
 
-    def to_dataframe(self, attributes = ['tumor_distances', 'hpv', 'ajcc8'], to_merge = None):
+    def to_dataframe(self, attributes, to_merge = None):
         data = {attr: getattr(self, attr) for attr in attributes}
         df = pd.DataFrame(index = self.ids, data = data)
         if to_merge is not None:

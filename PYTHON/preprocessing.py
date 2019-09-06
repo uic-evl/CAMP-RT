@@ -12,30 +12,30 @@ set_random_seed(2)
 from Constants import Constants
 from keras.models import Sequential, Model
 from keras.layers import Dense, Activation
-from keras import losses, optimizers,regularizers, layers 
+from keras import losses, optimizers,regularizers, layers
 
 class Normalizer():
-    
+
     def __init__(self):
         self.std = 1
         self.mean = 0
-        
+
     def fit(self, x):
         self.std = x.std(axis = 0)
         self.mean = x.mean(axis = 0)
-    
+
     def transform(self, x):
         return (x - self.mean)/self.std
-    
+
     def fit_transform(self, x):
         self.fit(x)
         return self.transform(x)
-    
+
     def unnormalize(self, x):
         return x*self.std + self.mean
 
 class Denoiser():
-    
+
     def __init__(self, noise = 1, dropout = .1, n_features = None, normalize = True, verbose = 0):
         if n_features is None:
             n_features = Constants.num_organs
@@ -53,11 +53,11 @@ class Denoiser():
             self.normalizer = Normalizer()
         else:
             self.normalizer = None
-        
+
     def fit(self, features, normalize = True, lr = .001,
                      epochs = 800, batch_size = 4):
         optimizer = optimizers.Adam(lr=lr)
-        self.model.compile(loss = losses.mean_squared_error, 
+        self.model.compile(loss = losses.mean_squared_error,
                       optimizer = optimizer)
         if self.normalizer is not None:
             x = self.normalizer.fit_transform(features)
@@ -67,7 +67,7 @@ class Denoiser():
                        epochs = epochs,
                        batch_size = batch_size,
                        verbose = self.verbose)
-        
+
     def transform(self, features, normalize = True):
         if self.normalizer is not None:
             x = self.normalizer.transform(features)
@@ -77,10 +77,9 @@ class Denoiser():
         if self.normalizer is not None:
             y = self.normalizer.unnormalize(y)
         return y
-    
+
     def fit_transform(self, features, normalize = True, lr = .001,
                      epochs = 800, batch_size = 4):
         self.fit(features, normalize = normalize, lr = lr,
                  epochs = epochs, batch_size=batch_size)
         return self.transform(features, normalize= normalize)
-    
