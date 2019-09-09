@@ -53,7 +53,7 @@ class PatientSet():
         metadata = pd.read_csv(metadata_file,
                                index_col = 0, #index is the "Dummy ID"
                                usecols = [0,1,2,3,4,5,6,7,8,9,10,11,12,
-                                          13,14,15,18,31,32,35,36,37,38]
+                                          13,14,15,16, 17,18,31,32,35,36,37,38]
                                ).loc[ids]
         print(metadata.columns)
 
@@ -83,6 +83,8 @@ class PatientSet():
 
         self.aspiration = np.zeros((num_patients,))
         self.aspiration_change = np.zeros((num_patients,))
+        self.smoking = np.zeros((num_patients,))
+        self.packs_per_year = np.zeros((num_patients,))
 
         laterality_list = []
         subsite_list = []
@@ -144,6 +146,8 @@ class PatientSet():
             self.hpv[patient_index] = new_patient.hpv
             self.feeding_tubes[patient_index] = (new_patient.feeding_tube.lower() == 'y')
             self.dose_fractions[patient_index] = new_patient.dose_fractions
+            self.smoking[patient_index] = new_patient.smoking
+            self.packs_per_year[patient_index] = new_patient.packs_per_year
 
             self.aspiration[patient_index] = new_patient.aspiration
             self.aspiration_change[patient_index] = new_patient.aspiration_change
@@ -228,6 +232,8 @@ class PatientSet():
 
         self.mean_tumor_distances = self.mean_tumor_distances[p]
         self.max_tumor_distances = self.max_tumor_distances[p]
+        self.packs_per_year = self.packs_per_year[p]
+        self.smoking = self.smoking[p]
 
         self.has_gtvp = self.has_gtvp[p]
         if self.all_organ_distances is not None:

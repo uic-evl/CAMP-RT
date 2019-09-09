@@ -17,6 +17,7 @@ from Models import *
 from Toxicity import ClusterStats
 from copy import copy
 import numpy as np
+import pandas as pd
 from Boruta import BorutaPy
 from sklearn.feature_selection import mutual_info_classif, f_classif, SelectPercentile, SelectKBest
 from sklearn.model_selection import cross_validate, cross_val_predict, LeaveOneOut
@@ -31,7 +32,7 @@ from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.ensemble import VotingClassifier, ExtraTreesClassifier, RandomForestClassifier, AdaBoostClassifier
 from sklearn.svm import SVC
 from NCA import NeighborhoodComponentsAnalysis
-from sklearn.base import BaseEstimator
+from sklearn.base import BaseEstimator, ClassifierMixin
 from collections import namedtuple, OrderedDict
 from imblearn import under_sampling, over_sampling, combine
 
@@ -40,11 +41,10 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-class MetricLearningClassifier(BaseEstimator):
+class MetricLearningClassifier(BaseEstimator, ClassifierMixin):
 
-    def __init__(self, n_components = None, init = 'pca', random_state = 1, resampler = None):
+    def __init__(self, n_components = None, random_state = 1, resampler = None):
         self.nca = NeighborhoodComponentsAnalysis(n_components = n_components,
-                                                  init = init,
                                                   max_iter = 1000,
                                                   random_state = random_state)
         self.group_parameters = namedtuple('group_parameters', ['means', 'inv_covariance', 'max_dist'])
@@ -88,7 +88,11 @@ class MetricLearningClassifier(BaseEstimator):
     def predict(self, x):
         labels = list(self.groups.keys())
         probs = self.predict_proba(self, x)
-        return np.argmax(probs, axis = 1).ravel()
+        max_probs =  np.argmax(probs, axis = 1).ravel()
+        ypred = np.zeros(max_probs.shape).astype(np.dtype(labels[0]))
+        for i in range(max_probs.shape[0]):
+            ypred[i] = labels[max_probs[i]]
+        return ypred[i]
 
     def fit_predict(self, x, y):
         self.fit(x,y)
@@ -393,11 +397,20 @@ def roc_cv(classifier, x, y, feature_selection_method = None, regularizer = None
 def feature_selection(x,y, method):
     return x
 
-
-def test_classifiers(db = None, log = False, extra_df= None):
+def generate_features(db = None, file = 'data/ds_topFeatures.csv', db_features = ['hpv']):
     if db is None:
         db = PatientSet(root = 'data\\patients_v*\\',
                         use_distances = False)
+    df = pd.read_csv(file, index_col = 1).drop('Unnamed: 0', axis = 1)
+    df['T.category'] = df['T.category'].apply(lambda x: int(x[1]))
+    ft = df.FT.values
+    ar = df.AR.values
+    tox = df.TOX.values
+    df = db.to_dataframe(db_features, df)
+    df = df.drop(['FT', 'AR', 'TOX'], axis = 1)
+    return  df, ft, ar, tox
+
+def test_classifiers(db = None, log = False):
     if log:
         f = open(Constants.toxicity_log_file, 'w')
         def write(string):
@@ -405,50 +418,26 @@ def test_classifiers(db = None, log = False, extra_df= None):
             f.write(str(string)+'\n')
     else:
         write = lambda string: print(string)
-    df = pd.read_csv('data/ds_topFeatures.csv', index_col = 1).drop('Unnamed: 0', axis = 1)
-    df['T.category'] = df['T.category'].apply(lambda x: int(x[1]))
-    ft = df.FT.values
-    ar = df.AR.values
-    tox = df.TOX.values
-    df = db.to_dataframe(['hpv'],df)
-    df = df.drop(['FT', 'AR', 'TOX'], axis = 1)
-    if extra_df is not None:
-        x = extra_df.values
-#        x = df.join(extra_df, how = 'inner').values
-    else:
-        x = df.values
+    df, ft, ar, tox = generate_features(db, db_features = ['smoking'])
     classifiers = [
-                    LogisticRegression(C = 0.1, solver = 'lbfgs', max_iter = 3000),
-                    LogisticRegression(C = 1, solver = 'lbfgs', max_iter = 3000),
-#                    LogisticRegression(C = 10, solver = 'lbfgs', max_iter = 3000),
-#                    LogisticRegression(C = 100, solver = 'lbfgs', max_iter = 3000),
-#                    QuadraticDiscriminantAnalysis(),
-#                   RandomForestClassifier(n_estimators = 300),
-#                   RandomForestClassifier(n_estimators = 300, min_samples_split = 4),
-                   MetricLearningClassifier(
+                    MetricLearningClassifier(
                             resampler = under_sampling.OneSidedSelection()),
+                    LogisticRegression(C = 1, solver = 'lbfgs', max_iter = 3000),
                     MetricLearningClassifier(
                             resampler = under_sampling.CondensedNearestNeighbour()),
                     MetricLearningClassifier(),
-                    KNeighborsClassifier(5),
-#                    KNeighborsClassifier(2),
-#                   ExtraTreesClassifier(n_estimators = 300),
-#                   AdaBoostClassifier(n_estimators = 20, learning_rate = .01),
-#                    AdaBoostClassifier(n_estimators = 50, learning_rate = .01),
-#                    AdaBoostClassifier(n_estimators = 100, learning_rate = .01),
 
                    ]
     results = []
     resamplers = [None,
-#                  under_sampling.EditedNearestNeighbours(),
-#                  under_sampling.CondensedNearestNeighbour(),
-#                  under_sampling.TomekLinks(),
-#                  under_sampling.NearMiss(),
-#                  under_sampling.NeighbourhoodCleaningRule(),
+                  under_sampling.EditedNearestNeighbours(),
+#                  under_sampling.InstanceHardnessThreshold(
+#                          estimator = MetricLearningClassifier(),
+#                          cv = 18),
+#                  under_sampling.InstanceHardnessThreshold(cv = 18),
                   under_sampling.InstanceHardnessThreshold(),
-#                  combine.SMOTEENN(),
-#                  combine.SMOTETomek(),
-#                  over_sampling.SMOTE(),
+                  under_sampling.CondensedNearestNeighbour(),
+                  combine.SMOTEENN(),
                   ]
     for classifier in classifiers:
         write(classifier)
@@ -456,23 +445,45 @@ def test_classifiers(db = None, log = False, extra_df= None):
             write(resampler)
             for outcome in [(ft, 'feeding_tube'), (ar, 'aspiration')]:
                 try:
-                    roc = roc_cv(classifier, x, outcome[0],
+                    roc = roc_cv(classifier, df.values, outcome[0],
                                  regularizer = QuantileTransformer(),
                                  resampler = resampler)
                     roc['outcome'] = outcome[1]
                     write(outcome[1])
                     write(roc['AUC'])
                     results.append(roc)
-                except:
-                    write('\n')
-                    write('Error with ' + str(classifier) + ' ' + str(resampler))
-                    write('\n\n')
+                except Exception as e:
+                    print(e)
             write('\n')
     if log:
         f.close()
 
-#test_classifiers(db)
 #db = PatientSet(root = 'data\\patients_v*\\',
 #                        use_distances = False)
-df = pd.read_csv('data/selected_features.csv', index_col = 0)
-test_classifiers(db, extra_df= df)
+#data, ft, ar, tox = generate_features(db, db_features = ['hpv', 'smoking'])
+#y = tox
+#x = data.values
+
+#clusters = data.hc_ward.values
+#high_cluster = np.argwhere(clusters == 2).ravel()
+#toxicity = np.argwhere(y > 0).ravel()
+#outliers = set(high_cluster) - set(toxicity)
+#inliers = set(high_cluster) - outliers
+##data = data.apply(lambda x: Metrics.minmax_scale(x), axis = 0)
+#data = data.assign(classes = pd.Series(-np.ones(y.shape), index = data.index).values)
+#data.classes.iloc[sorted(inliers)] = 0
+#data.classes.iloc[sorted(outliers)] = 1
+#inlier_data = (data[data.classes == 0])
+#outlier_data = (data[data.classes == 1])
+#pvals = {}
+#from scipy.stats import entropy, ttest_ind
+#for col in sorted(data.drop(['hc_ward', 'classes'], axis = 1).columns):
+#    v1 = inlier_data[col].values
+#    v2 = outlier_data[col].values
+#    pvals[col] = ttest_ind(v1, v2).pvalue
+#print(pvals)
+#sorted_pvals = sorted(pvals.items(), key = lambda x: x[1])
+#labels, vals = list(zip(*sorted_pvals))
+#plt.barh(np.arange(len(vals)), 1-np.array(vals), tick_label = labels)
+
+test_classifiers()
