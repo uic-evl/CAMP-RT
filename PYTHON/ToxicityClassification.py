@@ -48,17 +48,20 @@ class MetricLearningClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, n_components = None,
                  random_state = 1,
                  resampler = None,
-                 use_softmax = True):
+                 use_softmax = True,
+                 metric_learner = None):
         self.n_components = n_components
-        self.nca = NeighborhoodComponentsAnalysis(n_components = n_components,
-                                                  max_iter = 1000,
-                                                  random_state = random_state)
+        self.transformer = metric_learner
+        if metric_learner is None:
+            self.transformer = NeighborhoodComponentsAnalysis(n_components = n_components,
+                                                      max_iter = 1000,
+                                                      random_state = random_state)
         self.group_parameters = namedtuple('group_parameters', ['means', 'inv_covariance', 'max_dist'])
         self.resampler = resampler
         self.use_softmax = use_softmax
 
     def fit(self, x, y):
-        self.nca.fit(x, y)
+        self.transformer.fit(x, y)
         self.groups = OrderedDict()
         if self.resampler is not None:
             xtemp, ytemp = self.resampler.fit_resample(x,y)
@@ -70,18 +73,15 @@ class MetricLearningClassifier(BaseEstimator, ClassifierMixin):
 
     def group_params(self, x, y, group):
         targets = np.argwhere(y == group).ravel()
-        x_target = self.nca.transform(x[targets])
+        x_target = self.transformer.transform(x[targets])
         fmeans = x_target.mean(axis = 0)
-#        try:
-#            inv_cov = np.linalg.inv(np.cov(x_target.T))
-#        except:
         inv_cov = np.linalg.pinv(np.cov(x_target.T))
         train_dists = self.mahalanobis_distances(x, self.group_parameters(fmeans, inv_cov, 0))
         parameters = self.group_parameters(fmeans, inv_cov, train_dists.max())
         return parameters
 
     def mahalanobis_distances(self, x, group):
-        x_offset = self.nca.transform(x) - group.means
+        x_offset = self.transformer.transform(x) - group.means
         left_term = np.dot(x_offset, group.inv_covariance)
         mahalanobis = np.dot(left_term, x_offset.T).diagonal()
         return mahalanobis
@@ -475,29 +475,31 @@ def test_classifiers(db = None, log = False,
     write('features: ' + ', '.join([str(c) for c in df.columns]) + '\n')
     from xgboost import XGBClassifier
     classifiers = [
+                    DecisionTreeClassifier(),
                     XGBClassifier(booster = 'gblinear'),
-                    ExtraTreesClassifier(n_estimators = 200),
-#                    XGBClassifier(10, booster = 'gblinear'),
-#                    XGBClassifier(14, booster = 'gblinear'),
-#                    XGBClassifier(20),
+                    XGBClassifier(10, booster = 'gblinear'),
+                    XGBClassifier(14, booster = 'gblinear'),
+                    XGBClassifier(20),
                     LogisticRegression(C = 1, solver = 'lbfgs', max_iter = 3000),
                     MetricLearningClassifier(use_softmax = True),
                     MetricLearningClassifier(
                             resampler = under_sampling.OneSidedSelection()),
                     MetricLearningClassifier(
                             resampler = under_sampling.CondensedNearestNeighbour()),
+                    ExtraTreesClassifier(n_estimators = 200),
                    ]
     results = []
     resamplers = [None,
-                  under_sampling.RepeatedEditedNearestNeighbours(),
-                  under_sampling.EditedNearestNeighbours(),
 #                  under_sampling.InstanceHardnessThreshold(
 #                          estimator = MetricLearningClassifier(),
 #                          cv = 18),
 #                  under_sampling.InstanceHardnessThreshold(cv = 18),
-                  under_sampling.InstanceHardnessThreshold(),
-                  under_sampling.CondensedNearestNeighbour(),
+                  over_sampling.SMOTE(),
                   combine.SMOTEENN(),
+                  under_sampling.InstanceHardnessThreshold(),
+                  under_sampling.RepeatedEditedNearestNeighbours(),
+                  under_sampling.EditedNearestNeighbours(),
+                  under_sampling.CondensedNearestNeighbour(),
                   ]
 
     for classifier in classifiers:
@@ -559,7 +561,6 @@ def plot_correlations(db,
     inlier_data = (data[data.classes == 0])
     outlier_data = (data[data.classes == 1])
     pvals = {}
-    from scipy.stats import entropy, ttest_ind
     for col in sorted(data.drop(['hc_ward', 'classes'], axis = 1).columns):
         v1 = inlier_data[col].values
         v2 = outlier_data[col].values
@@ -573,14 +574,14 @@ def plot_correlations(db,
     plt.xlabel('1 - pvalue for kruskal-wallis test')
     plt.title('1 - pvalue between cluster 2 with and without ' + tox_name + ' per feature')
 
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                    use_distances = False)
-#plot_correlations(db, tox_name = 'feeding_tube', max_p = .25)
+db = PatientSet(root = 'data\\patients_v*\\',
+                    use_distances = False)
+plot_correlations(db, tox_name = 'feeding_tube', max_p = .25)
 #p_doses = default_rt_prediction(db)
-pdose_organs = ['Soft_Palate', 'SPC', 'Extended_Oral_Cavity', 'Hard_Palate', 'Mandible']
+pdose_organs = ['Soft_Palate', 'SPC', 'Extended_Oral_Cavity', 'Hard_Palate', 'Mandible', 'Brainstem', 'Lower_Lip']
 feature_organs = ['Lt_Masseter_M', 'Rt_Masseter_M']
 test_classifiers(db, log = True,
-                 db_features = ['hpv', 'volumes'],
+                 db_features = ['hpv', 'volumes', 'smoking'],
                  predicted_doses = p_doses,
                  pdose_organ_list = pdose_organs,
                  db_features_organ_list = feature_organs)
