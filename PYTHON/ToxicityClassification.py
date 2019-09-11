@@ -25,7 +25,7 @@ from sklearn.metrics import accuracy_score, recall_score, roc_auc_score, roc_cur
 from sklearn.naive_bayes import BernoulliNB, ComplementNB, GaussianNB
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.preprocessing import OneHotEncoder, QuantileTransformer, MinMaxScaler, RobustScaler, StandardScaler
+from sklearn.preprocessing import OneHotEncoder, QuantileTransformer, PowerTransformer
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
@@ -35,26 +35,36 @@ from NCA import NeighborhoodComponentsAnalysis
 from sklearn.base import BaseEstimator, ClassifierMixin
 from collections import namedtuple, OrderedDict
 from imblearn import under_sampling, over_sampling, combine
+from scipy.special import softmax
+from scipy.stats import kruskal
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
-warnings.filterwarnings("ignore", category=RuntimeWarning)
+#warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 class MetricLearningClassifier(BaseEstimator, ClassifierMixin):
 
-    def __init__(self, n_components = None, random_state = 1, resampler = None):
+    def __init__(self, n_components = None,
+                 random_state = 1,
+                 resampler = None,
+                 use_softmax = True):
+        self.n_components = n_components
         self.nca = NeighborhoodComponentsAnalysis(n_components = n_components,
                                                   max_iter = 1000,
                                                   random_state = random_state)
         self.group_parameters = namedtuple('group_parameters', ['means', 'inv_covariance', 'max_dist'])
         self.resampler = resampler
+        self.use_softmax = use_softmax
 
     def fit(self, x, y):
-        if self.resampler is not None:
-            x,y = self.resampler.fit_resample(x,y)
         self.nca.fit(x, y)
         self.groups = OrderedDict()
+        if self.resampler is not None:
+            xtemp, ytemp = self.resampler.fit_resample(x,y)
+            if len(np.unique(ytemp)) == len(np.unique(y)):
+                x = xtemp
+                y = ytemp
         for group in np.unique(y):
             self.groups[group] = self.group_params(x, y, group)
 
@@ -80,10 +90,14 @@ class MetricLearningClassifier(BaseEstimator, ClassifierMixin):
         all_distances = []
         for group_id, group_params in self.groups.items():
             distances = self.mahalanobis_distances(x, group_params)
-            proximity = np.clip(1 - (distances/group_params.max_dist), 0, 1)
+            proximity = np.clip(1 - (distances/group_params.max_dist), 0.00001, 1)
             all_distances.append(proximity)
         output = np.hstack(all_distances).reshape(-1, len(self.groups.keys()))
-        return output#/output.sum(axis = 1).reshape(-1,1)
+        if self.use_softmax:
+            output = softmax(output)
+        else:
+            output = output/output.sum(axis = 1).reshape(-1,1)
+        return output
 
     def predict(self, x):
         labels = list(self.groups.keys())
@@ -393,11 +407,28 @@ def roc_cv(classifier, x, y, feature_selection_method = None, regularizer = None
     results['classifier'] = classifier.fit(x,y)
     return results
 
+def organ_data_to_df(arr,
+                     ids = None,
+                     suffix = '_distance',
+                     organ_list = None,
+                     to_merge = None):
+    organ_list = organ_list if organ_list is not None else Constants.organ_list
+    assert(arr.shape[1] == len(organ_list))
+    columns = [o+suffix for o in organ_list]
+    if to_merge is not None and ids is None:
+        ids = to_merge.index.values
+    df = pd.DataFrame(arr, index = ids, columns = columns)
+    if to_merge is not None:
+        df = df.join(to_merge, how = 'inner')
+    return df
 
 def feature_selection(x,y, method):
     return x
 
-def generate_features(db = None, file = 'data/ds_topFeatures.csv', db_features = ['hpv']):
+def generate_features(db = None,
+                      file = 'data/ds_topFeatures.csv',
+                      db_features = ['hpv'],
+                      db_organ_list = None):
     if db is None:
         db = PatientSet(root = 'data\\patients_v*\\',
                         use_distances = False)
@@ -406,30 +437,59 @@ def generate_features(db = None, file = 'data/ds_topFeatures.csv', db_features =
     ft = df.FT.values
     ar = df.AR.values
     tox = df.TOX.values
-    df = db.to_dataframe(db_features, df)
+    df = db.to_dataframe(db_features, df, organ_list = db_organ_list)
     df = df.drop(['FT', 'AR', 'TOX'], axis = 1)
     return  df, ft, ar, tox
 
-def test_classifiers(db = None, log = False):
+def test_classifiers(db = None, log = False,
+                     db_features = ['hpv'],
+                     predicted_doses = None,
+                     pdose_organ_list = None,
+                     db_features_organ_list = None,
+                     regularizer = QuantileTransformer(),
+                     additional_features = None):
+
     if log:
-        f = open(Constants.toxicity_log_file, 'w')
+        from time import time
+        from datetime import datetime
+        timestamp = datetime.fromtimestamp(time()).strftime('%Y_%m_%d_%H%M%S')
+        f = open(Constants.toxicity_log_file_root + timestamp +'.txt', 'w', buffering = 1)
         def write(string):
             print(string)
             f.write(str(string)+'\n')
     else:
         write = lambda string: print(string)
-    df, ft, ar, tox = generate_features(db, db_features = ['smoking'])
+    df, ft, ar, tox = generate_features(db,
+                                        db_features = db_features,
+                                        db_organ_list = db_features_organ_list)
+
+    if predicted_doses is not None:
+        if not isinstance(predicted_doses, np.ndarray):
+            predicted_doses = default_rt_prediction(db)
+        o_args = np.array([Constants.organ_list.index(o) for o in pdose_organ_list if o in Constants.organ_list])
+        df = organ_data_to_df(predicted_doses[:,o_args],
+                          suffix = '_pdoses',
+                          to_merge = df,
+                          organ_list = pdose_organ_list)
+
+    write('features: ' + ', '.join([str(c) for c in df.columns]) + '\n')
+    from xgboost import XGBClassifier
     classifiers = [
+                    XGBClassifier(booster = 'gblinear'),
+                    ExtraTreesClassifier(n_estimators = 200),
+#                    XGBClassifier(10, booster = 'gblinear'),
+#                    XGBClassifier(14, booster = 'gblinear'),
+#                    XGBClassifier(20),
+                    LogisticRegression(C = 1, solver = 'lbfgs', max_iter = 3000),
+                    MetricLearningClassifier(use_softmax = True),
                     MetricLearningClassifier(
                             resampler = under_sampling.OneSidedSelection()),
-                    LogisticRegression(C = 1, solver = 'lbfgs', max_iter = 3000),
                     MetricLearningClassifier(
                             resampler = under_sampling.CondensedNearestNeighbour()),
-                    MetricLearningClassifier(),
-
                    ]
     results = []
     resamplers = [None,
+                  under_sampling.RepeatedEditedNearestNeighbours(),
                   under_sampling.EditedNearestNeighbours(),
 #                  under_sampling.InstanceHardnessThreshold(
 #                          estimator = MetricLearningClassifier(),
@@ -439,6 +499,7 @@ def test_classifiers(db = None, log = False):
                   under_sampling.CondensedNearestNeighbour(),
                   combine.SMOTEENN(),
                   ]
+
     for classifier in classifiers:
         write(classifier)
         for resampler in resamplers:
@@ -446,7 +507,7 @@ def test_classifiers(db = None, log = False):
             for outcome in [(ft, 'feeding_tube'), (ar, 'aspiration')]:
                 try:
                     roc = roc_cv(classifier, df.values, outcome[0],
-                                 regularizer = QuantileTransformer(),
+                                 regularizer = regularizer,
                                  resampler = resampler)
                     roc['outcome'] = outcome[1]
                     write(outcome[1])
@@ -458,32 +519,68 @@ def test_classifiers(db = None, log = False):
     if log:
         f.close()
 
+def plot_correlations(db,
+                      use_predicted_dose = True,
+                      use_distances = True,
+                      use_volumes = True,
+                      max_p = .15,
+                      tox_name = 'toxicity'):
+    db_features = ['hpv', 'smoking', 'ages',
+                   'packs_per_year', 'dose_fractions',
+                   'prescribed_doses', 'has_gtvp']
+    data, ft, ar, tox = generate_features(db, db_features =db_features)
+    if tox_name == 'toxicity':
+        y = tox
+    elif tox_name in ['feeding_tube', 'ft']:
+        y = ft
+    elif tox_name in ['aspiration', 'ar', 'aspiration_rate']:
+        y = ar
+    if use_predicted_dose:
+        pred_doses = default_rt_prediction(db)
+        data = organ_data_to_df(pred_doses,
+                                ids = db.ids, to_merge = data,
+                                suffix = '_pred_dose')
+    if use_distances:
+        data = organ_data_to_df(db.tumor_distances,
+                                ids = db.ids, to_merge = data,
+                                suffix = '_tumor_distance')
+    if use_volumes:
+        data = organ_data_to_df(db.volumes,
+                                ids = db.ids, to_merge = data,
+                                suffix = '_volumes')
+    clusters = data.hc_ward.values
+    high_cluster = np.argwhere(clusters == 2).ravel()
+    toxicity = np.argwhere(y > 0).ravel()
+    outliers = set(high_cluster) - set(toxicity)
+    inliers = set(high_cluster) - outliers
+    data = data.assign(classes = pd.Series(-np.ones(y.shape), index = data.index).values)
+    data.classes.iloc[sorted(inliers)] = 0
+    data.classes.iloc[sorted(outliers)] = 1
+    inlier_data = (data[data.classes == 0])
+    outlier_data = (data[data.classes == 1])
+    pvals = {}
+    from scipy.stats import entropy, ttest_ind
+    for col in sorted(data.drop(['hc_ward', 'classes'], axis = 1).columns):
+        v1 = inlier_data[col].values
+        v2 = outlier_data[col].values
+        pval = kruskal(v1, v2).pvalue
+        if pval < max_p:
+            pvals[col] = pval
+    sorted_pvals = sorted(pvals.items(), key = lambda x: x[1])
+    print(sorted_pvals)
+    labels, vals = list(zip(*sorted_pvals))
+    plt.barh(np.arange(len(vals)), max_p-np.array(vals), tick_label = labels, left = 1-max_p)
+    plt.xlabel('1 - pvalue for kruskal-wallis test')
+    plt.title('1 - pvalue between cluster 2 with and without ' + tox_name + ' per feature')
+
 #db = PatientSet(root = 'data\\patients_v*\\',
-#                        use_distances = False)
-#data, ft, ar, tox = generate_features(db, db_features = ['hpv', 'smoking'])
-#y = tox
-#x = data.values
-
-#clusters = data.hc_ward.values
-#high_cluster = np.argwhere(clusters == 2).ravel()
-#toxicity = np.argwhere(y > 0).ravel()
-#outliers = set(high_cluster) - set(toxicity)
-#inliers = set(high_cluster) - outliers
-##data = data.apply(lambda x: Metrics.minmax_scale(x), axis = 0)
-#data = data.assign(classes = pd.Series(-np.ones(y.shape), index = data.index).values)
-#data.classes.iloc[sorted(inliers)] = 0
-#data.classes.iloc[sorted(outliers)] = 1
-#inlier_data = (data[data.classes == 0])
-#outlier_data = (data[data.classes == 1])
-#pvals = {}
-#from scipy.stats import entropy, ttest_ind
-#for col in sorted(data.drop(['hc_ward', 'classes'], axis = 1).columns):
-#    v1 = inlier_data[col].values
-#    v2 = outlier_data[col].values
-#    pvals[col] = ttest_ind(v1, v2).pvalue
-#print(pvals)
-#sorted_pvals = sorted(pvals.items(), key = lambda x: x[1])
-#labels, vals = list(zip(*sorted_pvals))
-#plt.barh(np.arange(len(vals)), 1-np.array(vals), tick_label = labels)
-
-test_classifiers()
+#                    use_distances = False)
+#plot_correlations(db, tox_name = 'feeding_tube', max_p = .25)
+#p_doses = default_rt_prediction(db)
+pdose_organs = ['Soft_Palate', 'SPC', 'Extended_Oral_Cavity', 'Hard_Palate', 'Mandible']
+feature_organs = ['Lt_Masseter_M', 'Rt_Masseter_M']
+test_classifiers(db, log = True,
+                 db_features = ['hpv', 'volumes'],
+                 predicted_doses = p_doses,
+                 pdose_organ_list = pdose_organs,
+                 db_features_organ_list = feature_organs)

@@ -164,4 +164,4 @@ class Constants():
 
     subsite_map = {'BOT': 0, 'GPS': 1, 'NOS': 2, 'Soft palate': 3, 'Tonsil': 4}
     laterality_map = {'B': 0, 'L': 1, 'R': 2}
-    toxicity_log_file = 'data/tox_log.txt'
+    toxicity_log_file_root = 'data/toxicity_logs/tox_log'

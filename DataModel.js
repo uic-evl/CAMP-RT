@@ -1,10 +1,10 @@
 var Data = function(patientData, oAtlas) {
 	//module for reading the patient data so this is decoupled from the rest.
 	var self = this;
-	var data = patientData;
+	var pData = patientData;
 	var oAtlas = oAtlas;
 	var public = {};
-	var patientCount = data.length;
+	var patientCount = pData.length;
 	var clusterColors = ['#ffec78', '#464168', '#8dd3c7', '#e78ac3', 'blue', '#80b1d3', 'purple', 'green', 'goldenrod', 'steelblue', 'brown', 'silver', 'burlywood', 'greenyellow', 'darkslategray']
 	let defaultClusterColor = '#0000000';
 	var gtvRegex = RegExp('GTV*');
@@ -15,7 +15,7 @@ var Data = function(patientData, oAtlas) {
 			var max = 0;
 			var min = 100;
 			var organs = this.getOrganList();
-			data.forEach(function(p){
+			pData.forEach(function(p){
 				organs.forEach(function(o){
 					var organ = p.organData[o];
 					var dose = organ.meanDose;
@@ -30,7 +30,7 @@ var Data = function(patientData, oAtlas) {
 			var max = 0;
 			var min = 100;
 			var organs = this.getOrganList();
-			data.forEach(function(p){
+			pData.forEach(function(p){
 				organs.forEach(function(o){
 					var organ = p.organData[o];
 					var error  = Math.abs(organ.meanDose - organ.estimatedDose);
@@ -80,7 +80,7 @@ var Data = function(patientData, oAtlas) {
 		
 		getInternalIdList: function(){
 			var ids = new Array();
-			data.forEach(function(d){
+			pData.forEach(function(d){
 				ids.push(d.ID_internal);
 			});
 			return(ids);
@@ -92,10 +92,10 @@ var Data = function(patientData, oAtlas) {
 		},
 		
 		getInternalId: function(externalId){
-			for(var i = 1; i <=this.patientCount + 1; i++){
-				id = this.getPatientId(i);
+			for(var i = 1; i <= patientCount + 1; i++){
+				var id = this.getPatientId(i);
 				if(+id == +externalId){
-					return id;
+					return i;
 				}
 			}
 			return -1;
@@ -108,7 +108,7 @@ var Data = function(patientData, oAtlas) {
 		
 		getPatient: function(patientInternalId){
 			var id = +patientInternalId;
-			return(data[id - 1]);
+			return (pData[id - 1] == undefined)? -1 : pData[id-1];
 		},
 	
 		getPatientOrganData: function(id){
@@ -233,7 +233,7 @@ var Data = function(patientData, oAtlas) {
 		},
 		
 		getSortedPatients: function(){
-			var sortedData = data.concat().sort(function(x,y){ return (+x.ID_internal) > (+y.ID_internal); });
+			var sortedData = pData.concat().sort(function(x,y){ return (+x.ID_internal) > (+y.ID_internal); });
 			return sortedData;
 		},
 		

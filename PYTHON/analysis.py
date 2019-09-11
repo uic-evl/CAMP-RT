@@ -27,8 +27,11 @@ from sklearn.manifold import TSNE, MDS
 from sklearn.cluster import KMeans
 
 
-def export(data_set, patient_data_file = 'data\\patient_dataset.json', score_file = 'scores.csv',
+def export(data_set = None, patient_data_file = 'data\\patient_dataset.json', score_file = 'scores.csv',
            model = None, estimator = None, similarity = None, predicted_doses = None, clusterer=None):
+    if data_set is None:
+        data_set = PatientSet(root = 'data\\patients_v*\\',
+                use_distances = False)
     if model is None:
         model = TJaccardModel()
     if similarity is None:
@@ -166,7 +169,12 @@ def threshold_grid_search(db, similarity, start_k = .4, max_matches = 20,
     else:
         return((best_score, best_threshold, best_min_matches))
 
-
+def default_rt_prediction(db):
+    discrete_dists = discretize(db.tumor_distances)
+    estimator = TreeKnnEstimator()
+    similarity = augmented_sim(discrete_dists, jaccard_distance)
+    doses = estimator.predict_doses([similarity], db)
+    return doses
 
 #db = PatientSet(root = 'data\\patients_v*\\',
 #                use_distances = False)

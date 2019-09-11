@@ -424,8 +424,30 @@ class PatientSet():
             transformed_tumor_centroids.append(p_tumor_centroids)
         return transformed_organ_centroids, transformed_tumor_centroids
 
-    def to_dataframe(self, attributes, to_merge = None):
-        data = {attr: getattr(self, attr) for attr in attributes}
+    def to_dataframe(self, attributes, to_merge = None, organ_list = None):
+        #tries to convert internal variables to a dataframe with patient ids as the index
+        #attributes should be a list of strings of the member names
+        #assumes internal vectors are 1d arrays or 2d arrays of type (n_patientsxn_organs)
+        #so passing centroids shuuldn't work
+        #to merge is a dataframe also indexed on patient id
+        organ_list = Constants.organ_list if organ_list is None else organ_list
+        data = {}
+        for attr in attributes:
+            values = getattr(self, attr)
+            if values.ndim == 1:
+                data[attr] = values
+            elif values.ndim == 2 and values.shape[1] == Constants.num_organs:
+                for organ in organ_list:
+                    if organ in Constants.organ_list:
+                        pos = Constants.organ_list.index(organ)
+                        data[organ+'_'+attr] = values[:, pos]
+            else:
+                try:
+                    values = values.reshape(values.shape[0], -1)
+                    for i in range(values.shape[1]):
+                        data[attr + '_' + str(i)] = values[:,i]
+                except:
+                    print('error getting values for ' + attr)
         df = pd.DataFrame(index = self.ids, data = data)
         if to_merge is not None:
             df = df.join(to_merge, how = 'inner')

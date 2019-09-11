@@ -108,6 +108,7 @@ function loadOrganMeshes(){
 function start() {
 	
     selectedPatient = populateDropDownMenu();
+	console.log(selectedPatient);
     init(); // initialize
 
     populateOrganMasterList();
@@ -157,26 +158,26 @@ function populateDropDownMenu() {
     //THis appears to look at the url to see if a patient is selected there
 	//if so, sets "first patient" to this guy? otherwise, uses the lowest id (above)
     var patientURL = getQueryVariable("id");
-
-    if (patientURL != false) {
-        newID = data.getInternalId(+patientURL);
-		if(+newID >= 0){
-			firstPatient = newID;
+    if (patientURL > -1) {
+		let newId = data.getInternalId(+patientURL);
+		if(newId > -1){
+			firstPatient = newId;
 		}
     }
+	menu.value = firstPatient;
     return firstPatient;
 }
 
 function getQueryVariable(variable) {
     var query = window.location.search.substring(1);
-    var vars = query.split("&");
+    var vars = query.split("?");
     for (var i = 0; i < vars.length; i++) {
         var pair = vars[i].split("=");
         if (pair[0] == variable) {
-            return pair[1];
+            return +pair[1];
         }
     }
-    return (false);
+    return -1;
 }
 
 
