@@ -407,6 +407,17 @@ def roc_cv(classifier, x, y, feature_selection_method = None, regularizer = None
     results['classifier'] = classifier.fit(x,y)
     return results
 
+def presplit_roc_cv(classifier, data_split):
+    ypred = np.zeros((len(data_split),))
+    y = np.array([split['ytest'] for split in data_split])
+    i = 0
+    for split in data_split:
+        classifier.fit(split['xtrain'], split['ytrain'])
+        ypred[i] = classifier.predict_proba(split['xtest'])[0,1]
+        i += 1
+    return roc_auc_score(y, ypred)
+    
+
 def organ_data_to_df(arr,
                      ids = None,
                      suffix = '_distance',
@@ -447,7 +458,8 @@ def test_classifiers(db = None, log = False,
                      pdose_organ_list = None,
                      db_features_organ_list = None,
                      regularizer = QuantileTransformer(),
-                     additional_features = None):
+                     additional_features = None,
+                     data_splits = None):
 
     if log:
         from time import time
@@ -466,30 +478,49 @@ def test_classifiers(db = None, log = False,
     if predicted_doses is not None:
         if not isinstance(predicted_doses, np.ndarray):
             predicted_doses = default_rt_prediction(db)
-        o_args = np.array([Constants.organ_list.index(o) for o in pdose_organ_list if o in Constants.organ_list])
-        df = organ_data_to_df(predicted_doses[:,o_args],
-                          suffix = '_pdoses',
-                          to_merge = df,
-                          organ_list = pdose_organ_list)
+        pdose_organ_list = Constants.organ_list if pdose_organ_list is None else pdose_organ_list
+        if len(pdose_organ_list) > 0:
+            o_args = np.array([Constants.organ_list.index(o) for o in pdose_organ_list if o in Constants.organ_list])
+            df = organ_data_to_df(predicted_doses[:,o_args],
+                              suffix = '_pdoses',
+                              to_merge = df,
+                              organ_list = pdose_organ_list)
 
     write('features: ' + ', '.join([str(c) for c in df.columns]) + '\n')
+    outcomes = [(ft, 'feeding_tube'), (ar, 'aspiration')]
     from xgboost import XGBClassifier
     classifiers = [
-                    DecisionTreeClassifier(),
+#                    DecisionTreeClassifier(),
+                    MetricLearningClassifier(use_softmax = True),
+                    ExtraTreesClassifier(n_estimators = 200),
                     XGBClassifier(booster = 'gblinear'),
                     XGBClassifier(10, booster = 'gblinear'),
                     XGBClassifier(14, booster = 'gblinear'),
                     XGBClassifier(20),
-                    LogisticRegression(C = 1, solver = 'lbfgs', max_iter = 3000),
-                    MetricLearningClassifier(use_softmax = True),
                     MetricLearningClassifier(
                             resampler = under_sampling.OneSidedSelection()),
                     MetricLearningClassifier(
                             resampler = under_sampling.CondensedNearestNeighbour()),
-                    ExtraTreesClassifier(n_estimators = 200),
+                    LogisticRegression(C = 1, solver = 'lbfgs', max_iter = 3000),
                    ]
-    results = []
-    resamplers = [None,
+    data_splits = get_all_splits(df, regularizer, outcomes) if data_splits is None else data_splits
+    print('splits finished')
+    for classifier in classifiers:
+        write(classifier)
+        for outcome in outcomes:
+            data_split = data_splits[outcome[1]]
+            for resampler_name, splits in data_split.items():
+                write(resampler_name)
+                auc = presplit_roc_cv(classifier, splits)
+                write(outcome[1])
+                write(auc)
+                write('\n')
+    if log:
+        f.close()
+        
+def get_all_splits(df, regularizer, outcomes, resamplers = None):
+    if resamplers is None:
+        resamplers = [None,
 #                  under_sampling.InstanceHardnessThreshold(
 #                          estimator = MetricLearningClassifier(),
 #                          cv = 18),
@@ -497,36 +528,46 @@ def test_classifiers(db = None, log = False,
                   over_sampling.SMOTE(),
                   combine.SMOTEENN(),
                   under_sampling.InstanceHardnessThreshold(),
-                  under_sampling.RepeatedEditedNearestNeighbours(),
+#                  under_sampling.RepeatedEditedNearestNeighbours(),
                   under_sampling.EditedNearestNeighbours(),
                   under_sampling.CondensedNearestNeighbour(),
                   ]
-
-    for classifier in classifiers:
-        write(classifier)
+    data_splits = {}
+    for outcome in outcomes:
+        splits = {str(resampler): get_splits(df.values, outcome[0], regularizer, [resampler]) for resampler in resamplers}
+        data_splits[outcome[1]] = splits
+    return data_splits
+        
+def get_splits(x, y, regularizer = None, resamplers = None):
+    loo = LeaveOneOut()
+    splits = []
+    for train, test in loo.split(x):
+        split = {}
+        xtrain, ytrain = x[train], y[train]
+        xtest, ytest = x[test], y[test]
+        if regularizer is not None:
+            xtrain = regularizer.fit_transform(xtrain)
+            xtest = regularizer.transform(xtest)
         for resampler in resamplers:
-            write(resampler)
-            for outcome in [(ft, 'feeding_tube'), (ar, 'aspiration')]:
-                try:
-                    roc = roc_cv(classifier, df.values, outcome[0],
-                                 regularizer = regularizer,
-                                 resampler = resampler)
-                    roc['outcome'] = outcome[1]
-                    write(outcome[1])
-                    write(roc['AUC'])
-                    results.append(roc)
-                except Exception as e:
-                    print(e)
-            write('\n')
-    if log:
-        f.close()
+            if resampler is None:
+                continue
+            xtrain, ytrain = resampler.fit_resample(xtrain, ytrain)
+        split['xtrain'] = xtrain
+        split['xtest'] = xtest
+        split['ytrain'] = ytrain
+        split['ytest'] = ytest
+        split['train_index'] = train
+        split['test_index'] = test
+        splits.append(split)
+    return splits
 
 def plot_correlations(db,
                       use_predicted_dose = True,
                       use_distances = True,
                       use_volumes = True,
                       max_p = .15,
-                      tox_name = 'toxicity'):
+                      tox_name = 'toxicity',
+                      pred_doses = None):
     db_features = ['hpv', 'smoking', 'ages',
                    'packs_per_year', 'dose_fractions',
                    'prescribed_doses', 'has_gtvp']
@@ -538,7 +579,8 @@ def plot_correlations(db,
     elif tox_name in ['aspiration', 'ar', 'aspiration_rate']:
         y = ar
     if use_predicted_dose:
-        pred_doses = default_rt_prediction(db)
+        if pred_doses is None:
+            pred_doses = default_rt_prediction(db)
         data = organ_data_to_df(pred_doses,
                                 ids = db.ids, to_merge = data,
                                 suffix = '_pred_dose')
@@ -552,6 +594,7 @@ def plot_correlations(db,
                                 suffix = '_volumes')
     clusters = data.hc_ward.values
     high_cluster = np.argwhere(clusters == 2).ravel()
+    print(len(high_cluster))
     toxicity = np.argwhere(y > 0).ravel()
     outliers = set(high_cluster) - set(toxicity)
     inliers = set(high_cluster) - outliers
@@ -560,6 +603,8 @@ def plot_correlations(db,
     data.classes.iloc[sorted(outliers)] = 1
     inlier_data = (data[data.classes == 0])
     outlier_data = (data[data.classes == 1])
+    print(inlier_data.index)
+    print(outlier_data.index)
     pvals = {}
     for col in sorted(data.drop(['hc_ward', 'classes'], axis = 1).columns):
         v1 = inlier_data[col].values
@@ -574,14 +619,14 @@ def plot_correlations(db,
     plt.xlabel('1 - pvalue for kruskal-wallis test')
     plt.title('1 - pvalue between cluster 2 with and without ' + tox_name + ' per feature')
 
-db = PatientSet(root = 'data\\patients_v*\\',
-                    use_distances = False)
-plot_correlations(db, tox_name = 'feeding_tube', max_p = .25)
+#db = PatientSet(root = 'data\\patients_v*\\',
+#                    use_distances = False)
 #p_doses = default_rt_prediction(db)
-pdose_organs = ['Soft_Palate', 'SPC', 'Extended_Oral_Cavity', 'Hard_Palate', 'Mandible', 'Brainstem', 'Lower_Lip']
+#plot_correlations(db, max_p = .25, pred_doses = p_doses)
+pdose_organs = []#['Soft_Palate', 'SPC', 'Extended_Oral_Cavity', 'Hard_Palate', 'Mandible', 'Brainstem', 'Lower_Lip']
 feature_organs = ['Lt_Masseter_M', 'Rt_Masseter_M']
 test_classifiers(db, log = True,
-                 db_features = ['hpv', 'volumes', 'smoking'],
+                 db_features = ['hpv'],
                  predicted_doses = p_doses,
                  pdose_organ_list = pdose_organs,
                  db_features_organ_list = feature_organs)
