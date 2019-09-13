@@ -435,7 +435,12 @@ class PatientSet():
         for attr in attributes:
             values = getattr(self, attr)
             if values.ndim == 1:
-                data[attr] = values
+                try:
+                    data[attr] = pd.to_numeric(values)
+                except:
+                    for encoding in np.unique(values):
+                        name = attr + '_' + encoding
+                        data[name] = (values == encoding).astype('int32')
             elif values.ndim == 2 and values.shape[1] == Constants.num_organs:
                 for organ in organ_list:
                     if organ in Constants.organ_list:

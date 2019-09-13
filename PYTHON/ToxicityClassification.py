@@ -36,6 +36,7 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from collections import namedtuple, OrderedDict
 from imblearn import under_sampling, over_sampling, combine
 from scipy.special import softmax
+from sklearn.metrics import silhouette_score
 from scipy.stats import kruskal
 
 import warnings
@@ -45,22 +46,38 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 class MetricLearningClassifier(BaseEstimator, ClassifierMixin):
 
-    def __init__(self, n_components = None,
+    def __init__(self, n_components = 'auto',
                  random_state = 1,
                  resampler = None,
-                 use_softmax = True,
-                 metric_learner = None):
+                 use_softmax = True):
         self.n_components = n_components
-        self.transformer = metric_learner
-        if metric_learner is None:
-            self.transformer = NeighborhoodComponentsAnalysis(n_components = n_components,
-                                                      max_iter = 1000,
-                                                      random_state = random_state)
+        if n_components is not 'auto':
+            self.transformer = NeighborhoodComponentsAnalysis(n_components = n_components)
         self.group_parameters = namedtuple('group_parameters', ['means', 'inv_covariance', 'max_dist'])
         self.resampler = resampler
         self.use_softmax = use_softmax
 
+    def get_optimal_components(self, x, y):
+        n_components = x.shape[1]
+        def get_score():
+            nca = NeighborhoodComponentsAnalysis(n_components = n_components)
+            nca.fit(x,y)
+            return silhouette_score(nca.transform(x), y), nca
+        score, nca = get_score()
+        while True:
+            if n_components <= 2:
+                return nca
+            n_components -= 1
+            new_score, new_nca = get_score()
+            if new_score > score:
+                score = new_score
+                nca = new_nca
+            else:
+                return nca
+
     def fit(self, x, y):
+        if self.n_components == 'auto':
+            self.transformer = self.get_optimal_components(x, y)
         self.transformer.fit(x, y)
         self.groups = OrderedDict()
         if self.resampler is not None:
@@ -414,9 +431,21 @@ def presplit_roc_cv(classifier, data_split):
     for split in data_split:
         classifier.fit(split['xtrain'], split['ytrain'])
         ypred[i] = classifier.predict_proba(split['xtest'])[0,1]
+        if i == 0:
+            has_importances = hasattr(classifier, 'feature_importances_')
+        if has_importances:
+            if i == 0:
+                importances = classifier.feature_importances_
+            else:
+                importances += classifier.feature_importances_
         i += 1
-    return roc_auc_score(y, ypred)
-    
+    if has_importances:
+        importances /= i
+        importances = pd.Series(data = importances, index = data_split[0]['feature_labels'])
+    else:
+        importances = None
+    return roc_auc_score(y, ypred), importances
+
 
 def organ_data_to_df(arr,
                      ids = None,
@@ -452,14 +481,31 @@ def generate_features(db = None,
     df = df.drop(['FT', 'AR', 'TOX'], axis = 1)
     return  df, ft, ar, tox
 
+def generate_baseline_features(db = None,
+                               file = 'data/baselineClustering.csv',
+                               db_features = [],
+                               db_organ_list = None):
+    df = pd.read_csv(file, index_col = 'Dummy.ID').drop('Unnamed: 0', axis = 1)
+    ft = df.FT.values
+    ar = df.AR.values
+    tox = df.TOX.values
+    if db is None and db_features is not None and len(db_features) > 0:
+        db = PatientSet(root = 'data\\patients_v*\\',
+                        use_distances = False)
+        df = db.to_dataframe(db_features, df, organ_list = db_organ_list)
+    df = df.drop(['FT', 'AR', 'TOX'], axis = 1)
+    return df, ft, ar, tox
+
 def test_classifiers(db = None, log = False,
                      db_features = ['hpv'],
+                     feature_getter = generate_features,
                      predicted_doses = None,
                      pdose_organ_list = None,
                      db_features_organ_list = None,
                      regularizer = QuantileTransformer(),
                      additional_features = None,
-                     data_splits = None):
+                     data_splits = None,
+                     print_importances = True):
 
     if log:
         from time import time
@@ -471,7 +517,7 @@ def test_classifiers(db = None, log = False,
             f.write(str(string)+'\n')
     else:
         write = lambda string: print(string)
-    df, ft, ar, tox = generate_features(db,
+    df, ft, ar, tox = feature_getter(db,
                                         db_features = db_features,
                                         db_organ_list = db_features_organ_list)
 
@@ -490,18 +536,16 @@ def test_classifiers(db = None, log = False,
     outcomes = [(ft, 'feeding_tube'), (ar, 'aspiration')]
     from xgboost import XGBClassifier
     classifiers = [
-#                    DecisionTreeClassifier(),
                     MetricLearningClassifier(use_softmax = True),
-                    ExtraTreesClassifier(n_estimators = 200),
-                    XGBClassifier(booster = 'gblinear'),
-                    XGBClassifier(10, booster = 'gblinear'),
-                    XGBClassifier(14, booster = 'gblinear'),
-                    XGBClassifier(20),
                     MetricLearningClassifier(
                             resampler = under_sampling.OneSidedSelection()),
                     MetricLearningClassifier(
                             resampler = under_sampling.CondensedNearestNeighbour()),
                     LogisticRegression(C = 1, solver = 'lbfgs', max_iter = 3000),
+                    XGBClassifier(booster = 'gblinear'),
+                    XGBClassifier(10, booster = 'gblinear'),
+                    DecisionTreeClassifier(),
+                    ExtraTreesClassifier(n_estimators = 200),
                    ]
     data_splits = get_all_splits(df, regularizer, outcomes) if data_splits is None else data_splits
     print('splits finished')
@@ -511,34 +555,38 @@ def test_classifiers(db = None, log = False,
             data_split = data_splits[outcome[1]]
             for resampler_name, splits in data_split.items():
                 write(resampler_name)
-                auc = presplit_roc_cv(classifier, splits)
+                auc, importances = presplit_roc_cv(classifier, splits)
                 write(outcome[1])
                 write(auc)
+                if importances is not None:
+                    write(importances)
                 write('\n')
     if log:
         f.close()
-        
+
 def get_all_splits(df, regularizer, outcomes, resamplers = None):
     if resamplers is None:
         resamplers = [None,
-#                  under_sampling.InstanceHardnessThreshold(
-#                          estimator = MetricLearningClassifier(),
-#                          cv = 18),
-#                  under_sampling.InstanceHardnessThreshold(cv = 18),
+                  under_sampling.InstanceHardnessThreshold(
+                          estimator = MetricLearningClassifier(),
+                          cv = 18),
+                  under_sampling.InstanceHardnessThreshold(cv = 18),
                   over_sampling.SMOTE(),
                   combine.SMOTEENN(),
                   under_sampling.InstanceHardnessThreshold(),
-#                  under_sampling.RepeatedEditedNearestNeighbours(),
+                  under_sampling.RepeatedEditedNearestNeighbours(),
                   under_sampling.EditedNearestNeighbours(),
                   under_sampling.CondensedNearestNeighbour(),
                   ]
     data_splits = {}
     for outcome in outcomes:
-        splits = {str(resampler): get_splits(df.values, outcome[0], regularizer, [resampler]) for resampler in resamplers}
+        splits = {str(resampler): get_splits(df, outcome[0], regularizer, [resampler]) for resampler in resamplers}
         data_splits[outcome[1]] = splits
     return data_splits
-        
-def get_splits(x, y, regularizer = None, resamplers = None):
+
+def get_splits(df, y, regularizer = None, resamplers = None):
+    x = df.values
+    feature_labels = list(df.columns)
     loo = LeaveOneOut()
     splits = []
     for train, test in loo.split(x):
@@ -558,6 +606,7 @@ def get_splits(x, y, regularizer = None, resamplers = None):
         split['ytest'] = ytest
         split['train_index'] = train
         split['test_index'] = test
+        split['feature_labels'] = feature_labels
         splits.append(split)
     return splits
 
@@ -622,11 +671,14 @@ def plot_correlations(db,
 #db = PatientSet(root = 'data\\patients_v*\\',
 #                    use_distances = False)
 #p_doses = default_rt_prediction(db)
-#plot_correlations(db, max_p = .25, pred_doses = p_doses)
-pdose_organs = []#['Soft_Palate', 'SPC', 'Extended_Oral_Cavity', 'Hard_Palate', 'Mandible', 'Brainstem', 'Lower_Lip']
+
+pdose_organs = ['Soft_Palate', 'SPC', 'Extended_Oral_Cavity', 'Hard_Palate', 'Mandible', 'Brainstem', 'Lower_Lip']
 feature_organs = ['Lt_Masseter_M', 'Rt_Masseter_M']
 test_classifiers(db, log = True,
-                 db_features = ['hpv'],
-                 predicted_doses = p_doses,
-                 pdose_organ_list = pdose_organs,
-                 db_features_organ_list = feature_organs)
+#                 feature_getter = generate_baseline_features,
+                 db_features = ['hpv', 'ages'],
+#                 predicted_doses = p_doses,
+#                 pdose_organ_list = pdose_organs,
+                 db_features_organ_list = feature_organs
+                 )
+#plot_correlations(db, max_p = .25, pred_doses = p_doses)

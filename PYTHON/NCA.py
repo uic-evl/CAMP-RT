@@ -239,7 +239,6 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
                      ConvergenceWarning)
 
             print('[{}] Training took {:8.2f}s.'.format(cls_name, t_train))
-
         return self
 
     def transform(self, X):
