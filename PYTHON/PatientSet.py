@@ -23,7 +23,7 @@ from Metrics import lcr_args, get_flip_args
 
 class PatientSet():
 
-    def __init__(self, outliers = [], root = 'data\\patients_v2*\\',
+    def __init__(self, outliers = [], root = 'data\\patients_v*\\',
                  use_distances = False, use_clean_subset = True, denoise = True):
         self.classes = None
         self.num_classes = 0

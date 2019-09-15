@@ -32,10 +32,12 @@ def export(data_set = None, patient_data_file = 'data\\patient_dataset.json', sc
     if data_set is None:
         data_set = PatientSet(root = 'data\\patients_v*\\',
                 use_distances = False)
-    if model is None:
-        model = TJaccardModel()
     if similarity is None:
-        similarity = model.get_similarity(data_set) #similarity scores
+        if model is not None:
+            similarity = model.get_similarity(data_set) #similarity scores
+        else:
+            discrete_dists = Metrics.discretize(db.tumor_distances)
+            similarity = [Metrics.reduced_augmented_sim(discrete_dists, Metrics.mse)]
     if estimator is None:
         if isinstance(similarity, list):
             estimator = TreeKnnEstimator()

@@ -22,7 +22,7 @@ from Boruta import BorutaPy
 from sklearn.feature_selection import mutual_info_classif, f_classif, SelectPercentile, SelectKBest
 from sklearn.model_selection import cross_validate, cross_val_predict, LeaveOneOut
 from sklearn.metrics import accuracy_score, recall_score, roc_auc_score, roc_curve, f1_score
-from sklearn.naive_bayes import BernoulliNB, ComplementNB, GaussianNB
+from sklearn.naive_bayes import BernoulliNB, ComplementNB, GaussianNB, MultinomialNB
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import OneHotEncoder, QuantileTransformer, PowerTransformer
@@ -469,23 +469,8 @@ def generate_features(db = None,
                       file = 'data/ds_topFeatures.csv',
                       db_features = ['hpv'],
                       db_organ_list = None):
-    if db is None:
-        db = PatientSet(root = 'data\\patients_v*\\',
-                        use_distances = False)
-    df = pd.read_csv(file, index_col = 1).drop('Unnamed: 0', axis = 1)
+    df = pd.read_csv(file, index_col = 1).drop('Unnamed: 0', axis = 1).sort_index()
     df['T.category'] = df['T.category'].apply(lambda x: int(x[1]))
-    ft = df.FT.values
-    ar = df.AR.values
-    tox = df.TOX.values
-    df = db.to_dataframe(db_features, df, organ_list = db_organ_list)
-    df = df.drop(['FT', 'AR', 'TOX'], axis = 1)
-    return  df, ft, ar, tox
-
-def generate_baseline_features(db = None,
-                               file = 'data/baselineClustering.csv',
-                               db_features = [],
-                               db_organ_list = None):
-    df = pd.read_csv(file, index_col = 'Dummy.ID').drop('Unnamed: 0', axis = 1)
     ft = df.FT.values
     ar = df.AR.values
     tox = df.TOX.values
@@ -494,8 +479,62 @@ def generate_baseline_features(db = None,
                         use_distances = False)
         df = db.to_dataframe(db_features, df, organ_list = db_organ_list)
     df = df.drop(['FT', 'AR', 'TOX'], axis = 1)
+    return  df, ft, ar, tox
+
+def generate_baseline_features(db = None,
+                               file = 'data/baselineClustering.csv',
+                               db_features = [],
+                               db_organ_list = None,
+                               df1_features = ['hc_ward'],
+                               binarize = True,
+                               to_drop = ['manhattan_k=2', 'manhattan_k=3', 'manhattan_k=4']):
+    df = pd.read_csv(file, index_col = 'Dummy.ID').drop('Unnamed: 0', axis = 1).sort_index()
+    ft = df.FT.values
+    ar = df.AR.values
+    tox = df.TOX.values
+    if db is None and db_features is not None and len(db_features) > 0:
+        db = PatientSet(root = 'data\\patients_v*\\',
+                        use_distances = False)
+        df = db.to_dataframe(db_features, df, organ_list = db_organ_list)
+    if df1_features is not None and len(df1_features) > 0:
+        df1 = generate_features(db)[0]
+        for feature in df1_features:
+            df[feature] = df1[feature]
+    if binarize:
+        above_average = lambda name: df[name].apply(lambda x: x > df[name].values.mean())
+        df['Total.dose'] = above_average('Total.dose')
+        df['Age.at.Diagnosis..Calculated.'] = above_average('Age.at.Diagnosis..Calculated.')
+    if to_drop is not None:
+        df = df.drop(to_drop, axis = 1)
+    df = df.drop(['FT', 'AR', 'TOX'], axis = 1)
     return df, ft, ar, tox
 
+def generate_cluster_features(db = None,
+                              db_features = [],
+                              baseline_file = 'data/baselineClustering.csv',
+                              top_clustering_file = 'data/ds_topFeatures.csv',
+                              db_organ_list = None,
+                              cluster_names = ['hc_ward', 'manhattan_k=4', 'T.category']):
+    baseline = pd.read_csv(baseline_file, index_col = 'Dummy.ID').drop('Unnamed: 0', axis = 1)
+    dist_clusters = pd.read_csv(top_clustering_file, index_col = 'Dummy.ID').drop('Unnamed: 0', axis = 1)
+    if 'T.category' in cluster_names:
+        dist_clusters['T.category'] = dist_clusters['T.category'].apply(lambda x: int(x[1]))
+    print(baseline.FT.values - dist_clusters.FT.values)
+    df = baseline.merge(dist_clusters, on=['Dummy.ID','FT','AR','TOX'])
+    ft = df.FT.values
+    ar = df.AR.values
+    tox = df.TOX.values
+    to_drop = set(df.columns) - set(cluster_names)
+    if db_features is not None and len(db_features) > 0:
+        if db is None:
+            db = PatientSet(root = 'data\\patients_v*\\',
+                            use_distances = False)
+        df = db.to_dataframe(db_features, df, organ_list = db_organ_list)
+    df = df.drop(to_drop, axis = 1)
+    print(df.columns)
+    return df, ft, ar, tox
+        
+    
 def test_classifiers(db = None, log = False,
                      db_features = ['hpv'],
                      feature_getter = generate_features,
@@ -536,16 +575,18 @@ def test_classifiers(db = None, log = False,
     outcomes = [(ft, 'feeding_tube'), (ar, 'aspiration')]
     from xgboost import XGBClassifier
     classifiers = [
-                    MetricLearningClassifier(use_softmax = True),
-                    MetricLearningClassifier(
-                            resampler = under_sampling.OneSidedSelection()),
-                    MetricLearningClassifier(
-                            resampler = under_sampling.CondensedNearestNeighbour()),
+                    GaussianNB(),
+                    ComplementNB(),
                     LogisticRegression(C = 1, solver = 'lbfgs', max_iter = 3000),
                     XGBClassifier(booster = 'gblinear'),
                     XGBClassifier(10, booster = 'gblinear'),
                     DecisionTreeClassifier(),
                     ExtraTreesClassifier(n_estimators = 200),
+                    MetricLearningClassifier(use_softmax = True),
+                    MetricLearningClassifier(
+                            resampler = under_sampling.OneSidedSelection()),
+                    MetricLearningClassifier(
+                            resampler = under_sampling.CondensedNearestNeighbour()),
                    ]
     data_splits = get_all_splits(df, regularizer, outcomes) if data_splits is None else data_splits
     print('splits finished')
@@ -567,16 +608,16 @@ def test_classifiers(db = None, log = False,
 def get_all_splits(df, regularizer, outcomes, resamplers = None):
     if resamplers is None:
         resamplers = [None,
-                  under_sampling.InstanceHardnessThreshold(
-                          estimator = MetricLearningClassifier(),
-                          cv = 18),
-                  under_sampling.InstanceHardnessThreshold(cv = 18),
-                  over_sampling.SMOTE(),
-                  combine.SMOTEENN(),
-                  under_sampling.InstanceHardnessThreshold(),
-                  under_sampling.RepeatedEditedNearestNeighbours(),
-                  under_sampling.EditedNearestNeighbours(),
-                  under_sampling.CondensedNearestNeighbour(),
+#                  under_sampling.InstanceHardnessThreshold(
+#                          estimator = MetricLearningClassifier(),
+#                          cv = 18),
+#                  under_sampling.InstanceHardnessThreshold(cv = 18),
+#                  over_sampling.SMOTE(),
+#                  combine.SMOTEENN(),
+#                  under_sampling.InstanceHardnessThreshold(),
+#                  under_sampling.RepeatedEditedNearestNeighbours(),
+#                  under_sampling.EditedNearestNeighbours(),
+#                  under_sampling.CondensedNearestNeighbour(),
                   ]
     data_splits = {}
     for outcome in outcomes:
@@ -668,15 +709,18 @@ def plot_correlations(db,
     plt.xlabel('1 - pvalue for kruskal-wallis test')
     plt.title('1 - pvalue between cluster 2 with and without ' + tox_name + ' per feature')
 
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                    use_distances = False)
+#db = PatientSet()
+#df = generate_features(db)
+#db.classes = df[0].hc_ward - 1
+#export(db)
 #p_doses = default_rt_prediction(db)
 
-pdose_organs = ['Soft_Palate', 'SPC', 'Extended_Oral_Cavity', 'Hard_Palate', 'Mandible', 'Brainstem', 'Lower_Lip']
+#pdose_organs = ['Soft_Palate', 'SPC', 'Extended_Oral_Cavity', 'Hard_Palate', 'Mandible', 'Brainstem', 'Lower_Lip']
 feature_organs = ['Lt_Masseter_M', 'Rt_Masseter_M']
-test_classifiers(db, log = True,
-#                 feature_getter = generate_baseline_features,
-                 db_features = ['hpv', 'ages'],
+test_classifiers(db, 
+                 log = True,
+                 feature_getter = generate_cluster_features,
+                 db_features = ['volumes'],
 #                 predicted_doses = p_doses,
 #                 pdose_organ_list = pdose_organs,
                  db_features_organ_list = feature_organs
