@@ -27,30 +27,51 @@ from sklearn.manifold import TSNE, MDS
 from sklearn.cluster import KMeans
 
 
-def export(data_set = None, patient_data_file = 'data\\patient_dataset.json', score_file = 'scores.csv',
-           model = None, estimator = None, similarity = None, predicted_doses = None, clusterer=None):
+def export(data_set = None,
+           patient_data_file = 'data\\patient_dataset.json',
+           score_file = 'data/scores.csv',
+           method = 'tanimoto',
+#           model = None,
+#           estimator = None,
+#           similarity = None,
+#           predicted_doses = None,
+           clusterer=None):
     if data_set is None:
         data_set = PatientSet(root = 'data\\patients_v*\\',
                 use_distances = False)
-    if similarity is None:
-        if model is not None:
-            similarity = model.get_similarity(data_set) #similarity scores
-        else:
-            discrete_dists = Metrics.discretize(db.tumor_distances)
-            similarity = [Metrics.reduced_augmented_sim(discrete_dists, Metrics.mse)]
-    if estimator is None:
-        if isinstance(similarity, list):
-            estimator = TreeKnnEstimator()
-        else:
-            estimator = KnnEstimator(match_type = 'clusters')
-    if predicted_doses is None:
-        predicted_doses = estimator.predict_doses(similarity, data_set)
-        if isinstance(similarity, list):
-            similarity = dose_similarity(predicted_doses)
+    if method == 'tsim':
+        estimator = KnnEstimator()
+        similarity = tsim_similarity(data_set)
+        predicted_doses = tsim_prediction(data_set, similarity)
+    else:
+        if method != 'tanimoto':
+            print('error, unknown prediction method given')
+        estimator = TreeKnnEstimator()
+        similarity = default_similarity(data_set)
+        predicted_doses = default_rt_prediction(data_set, [similarity])
+
+    #this part is from a previous version where I could pass any mixture of stuff to test and plot
+    #not really usefull anymore, but if needed, se old vresion
+#    if similarity is None:
+#        if model is not None:
+#            similarity = model.get_similarity(data_set) #similarity scores
+#        else:
+#            similarity = default_similarity(data_set)
+#    if estimator is None:
+#        if isinstance(similarity, list):
+#            estimator = TreeKnnEstimator()
+#        else:
+#            estimator = KnnEstimator(match_type = 'clusters')
+#    if predicted_doses is None:
+#        predicted_doses = estimator.predict_doses(similarity, data_set)
+#        if isinstance(similarity, list):
+#            similarity = dose_similarity(predicted_doses)
+
     if clusterer == 'default':
         from sklearn.cluster import KMeans
         clusterer = KMeans(n_clusters = 3)
     error = estimator.get_error(predicted_doses, data_set.doses) #a vector of errors
+    print('error: ', error.mean(), '%')
     n_patients = data_set.get_num_patients()
     disimilarity = 1- np.round(similarity[:n_patients, :n_patients], 3)
     disimilarity = (disimilarity + disimilarity.T)/2
@@ -171,12 +192,23 @@ def threshold_grid_search(db, similarity, start_k = .4, max_matches = 20,
     else:
         return((best_score, best_threshold, best_min_matches))
 
-def default_rt_prediction(db):
-    discrete_dists = discretize(db.tumor_distances)
+def tsim_similarity(db):
+    return TsimModel().get_similarity(db, augment = True)
+
+def tsim_prediction(db, sim = None):
+    sim = tsim_similarity(db) if sim is None else sim
+    return KnnEstimator().predict_doses(sim, db)
+
+def default_similarity(db):
+    discrete_dists = discretize(-db.tumor_distances)
+    return augmented_sim(discrete_dists, jaccard_distance)
+
+def default_rt_prediction(db, similarity = None):
+    similarity = [default_similarity(db)] if similarity is None else similarity
     estimator = TreeKnnEstimator()
-    similarity = augmented_sim(discrete_dists, jaccard_distance)
-    doses = estimator.predict_doses([similarity], db)
-    return doses
+    return estimator.predict_doses(similarity, db)
+
+
 
 #db = PatientSet(root = 'data\\patients_v*\\',
 #                use_distances = False)

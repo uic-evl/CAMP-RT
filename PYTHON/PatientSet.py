@@ -272,6 +272,9 @@ class PatientSet():
             group = 1
         return group
 
+    def get_xerostima(self):
+        return self.feeding_tubes + self.aspiration > 1
+
     def check_if_full_dose(self, dose_vector):
         #checks difference in sternoceldomastoids to seperate out unilaterally dosed patients?
         #may be used for getting classes eventually?

@@ -19,8 +19,8 @@ import rpy2.robjects.numpy2ri
 from rpy2.robjects.packages import importr
 rpy2.robjects.numpy2ri.activate()
 from sklearn.manifold import MDS
-from NCA import NeighborhoodComponentsAnalysis
-from Boruta import BorutaPy
+from dependencies.NCA import NeighborhoodComponentsAnalysis
+from dependencies.Boruta import BorutaPy
 from Models import *
 from ErrorChecker import ErrorChecker
 

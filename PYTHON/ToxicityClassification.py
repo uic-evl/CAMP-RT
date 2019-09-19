@@ -18,7 +18,7 @@ from Toxicity import ClusterStats
 from copy import copy
 import numpy as np
 import pandas as pd
-from Boruta import BorutaPy
+from dependencies.Boruta import BorutaPy
 from sklearn.feature_selection import mutual_info_classif, f_classif, SelectPercentile, SelectKBest
 from sklearn.model_selection import cross_validate, cross_val_predict, LeaveOneOut
 from sklearn.metrics import accuracy_score, recall_score, roc_auc_score, roc_curve, f1_score
@@ -31,7 +31,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.ensemble import VotingClassifier, ExtraTreesClassifier, RandomForestClassifier, AdaBoostClassifier
 from sklearn.svm import SVC
-from NCA import NeighborhoodComponentsAnalysis
+from dependencies.NCA import NeighborhoodComponentsAnalysis
 from sklearn.base import BaseEstimator, ClassifierMixin
 from collections import namedtuple, OrderedDict
 from imblearn import under_sampling, over_sampling, combine
@@ -69,7 +69,7 @@ class MetricLearningClassifier(BaseEstimator, ClassifierMixin):
                 return nca
             n_components -= 1
             new_score, new_nca = get_score()
-            if new_score > score:
+            if new_score > 1.1*score:
                 score = new_score
                 nca = new_nca
             else:
@@ -124,6 +124,34 @@ class MetricLearningClassifier(BaseEstimator, ClassifierMixin):
         for i in range(max_probs.shape[0]):
             ypred[i] = labels[max_probs[i]]
         return ypred[i]
+
+    def fit_predict(self, x, y):
+        self.fit(x,y)
+        return self.predict(x)
+
+class BayesWrapper(BaseEstimator, ClassifierMixin):
+
+    def __init__(self, bayes = BernoulliNB(alpha = 0), n_categories = None):
+        if n_categories is None:
+            self.encoder = OneHotEncoder(categories = 'auto',
+                                         sparse = False,
+                                         handle_unknown = 'ignore')
+        else:
+            self.encoder = KBinsDiscretizer(n_bins = n_categories, encode = 'ordinal')
+        self.bayes = bayes
+
+    def fit(self, x, y):
+        x = self.encoder.fit_transform(x)
+        self.bayes.fit(x,y)
+        return self
+
+    def predict(self, x):
+        xpred = self.encoder.transform(x)
+        return self.bayes.predict(xpred)
+
+    def predict_proba(self, x):
+        xpred = self.encoder.transform(x)
+        return self.bayes.predict_proba(xpred)
 
     def fit_predict(self, x, y):
         self.fit(x,y)
@@ -453,6 +481,7 @@ def organ_data_to_df(arr,
                      organ_list = None,
                      to_merge = None):
     organ_list = organ_list if organ_list is not None else Constants.organ_list
+    print(arr.shape[1], len(organ_list))
     assert(arr.shape[1] == len(organ_list))
     columns = [o+suffix for o in organ_list]
     if to_merge is not None and ids is None:
@@ -514,12 +543,28 @@ def generate_cluster_features(db = None,
                               baseline_file = 'data/baselineClustering.csv',
                               top_clustering_file = 'data/ds_topFeatures.csv',
                               db_organ_list = None,
-                              cluster_names = ['hc_ward', 'manhattan_k=4', 'T.category']):
+                              use_baseline_features = True,
+                              use_top_features = False,
+                              discrete_features = False,
+                              cluster_names = ['hc_ward4','kmeans_k=4']):
     baseline = pd.read_csv(baseline_file, index_col = 'Dummy.ID').drop('Unnamed: 0', axis = 1)
     dist_clusters = pd.read_csv(top_clustering_file, index_col = 'Dummy.ID').drop('Unnamed: 0', axis = 1)
+    non_features = ['manhattan_k=2',
+                    'manhattan_k=3',
+                    'manhattan_k=4',
+                    'hc_ward2',
+                    'hc_ward4',
+                    'nb_clust',
+                    'FT',
+                    'AR',
+                    'TOX']
+    non_features = list(set(non_features) - set(cluster_names))
+    if use_baseline_features:
+        cluster_names = cluster_names + list(baseline.drop(non_features, axis = 1, errors='ignore').columns)
+    if use_top_features:
+        cluster_names = cluster_names + list( dist_clusters.drop(non_features,axis=1, errors='ignore').columns)
     if 'T.category' in cluster_names:
         dist_clusters['T.category'] = dist_clusters['T.category'].apply(lambda x: int(x[1]))
-    print(baseline.FT.values - dist_clusters.FT.values)
     df = baseline.merge(dist_clusters, on=['Dummy.ID','FT','AR','TOX'])
     ft = df.FT.values
     ar = df.AR.values
@@ -530,21 +575,31 @@ def generate_cluster_features(db = None,
             db = PatientSet(root = 'data\\patients_v*\\',
                             use_distances = False)
         df = db.to_dataframe(db_features, df, organ_list = db_organ_list)
-    df = df.drop(to_drop, axis = 1)
-    print(df.columns)
+    df = df.drop(to_drop, axis = 1, errors = 'ignore')
+    if discrete_features:
+        df = discretize_continuous_fields(df, 5)
     return df, ft, ar, tox
-        
-    
+
+def discretize_continuous_fields(df, n_bins):
+    encoder = KBinsDiscretizer(n_bins = n_bins, encode = 'ordinal')
+    for col in df.columns:
+        vals = df[col].values
+        if len(np.unique(vals)) > n_bins:
+            df[col] = encoder.fit_transform(vals.reshape(-1,1)).ravel()
+    return df
+
 def test_classifiers(db = None, log = False,
-                     db_features = ['hpv'],
-                     feature_getter = generate_features,
+                     feature_params = {},
                      predicted_doses = None,
                      pdose_organ_list = None,
-                     db_features_organ_list = None,
                      regularizer = QuantileTransformer(),
                      additional_features = None,
                      data_splits = None,
                      print_importances = True):
+
+    result_template = {'cluster_names': copy(str(feature_params['cluster_names'] + feature_params['db_features'])),
+                       'Baseline': str(feature_params['use_baseline_features']),
+                       'Top_features': str(feature_params['use_top_features'])}
 
     if log:
         from time import time
@@ -556,9 +611,8 @@ def test_classifiers(db = None, log = False,
             f.write(str(string)+'\n')
     else:
         write = lambda string: print(string)
-    df, ft, ar, tox = feature_getter(db,
-                                        db_features = db_features,
-                                        db_organ_list = db_features_organ_list)
+    feature_params['db'] = db
+    df, ft, ar, tox = generate_cluster_features(**feature_params)
 
     if predicted_doses is not None:
         if not isinstance(predicted_doses, np.ndarray):
@@ -575,49 +629,68 @@ def test_classifiers(db = None, log = False,
     outcomes = [(ft, 'feeding_tube'), (ar, 'aspiration')]
     from xgboost import XGBClassifier
     classifiers = [
-                    GaussianNB(),
-                    ComplementNB(),
+#                    DecisionTreeClassifier(),
+#                    DecisionTreeClassifier(criterion='entropy'),
+#                    XGBClassifier(1, booster = 'gblinear'),
+#                    XGBClassifier(3, booster = 'gblinear'),
+#                    XGBClassifier(5, booster = 'gblinear'),
+#                    XGBClassifier(),
+#                    XGBClassifier(booster = 'dart'),
                     LogisticRegression(C = 1, solver = 'lbfgs', max_iter = 3000),
-                    XGBClassifier(booster = 'gblinear'),
-                    XGBClassifier(10, booster = 'gblinear'),
-                    DecisionTreeClassifier(),
-                    ExtraTreesClassifier(n_estimators = 200),
-                    MetricLearningClassifier(use_softmax = True),
-                    MetricLearningClassifier(
-                            resampler = under_sampling.OneSidedSelection()),
-                    MetricLearningClassifier(
-                            resampler = under_sampling.CondensedNearestNeighbour()),
+#                    MetricLearningClassifier(use_softmax = True),
+#                    MetricLearningClassifier(
+#                            resampler = under_sampling.OneSidedSelection()),
+#                    MetricLearningClassifier(
+#                            resampler = under_sampling.CondensedNearestNeighbour()),
+#                    ExtraTreesClassifier(n_estimators = 200),
+#                    RandomForestClassifier(n_estimators = 200, max_depth = 3),
+#                    BayesWrapper(),
                    ]
     data_splits = get_all_splits(df, regularizer, outcomes) if data_splits is None else data_splits
     print('splits finished')
+    results = []
     for classifier in classifiers:
         write(classifier)
         for outcome in outcomes:
             data_split = data_splits[outcome[1]]
             for resampler_name, splits in data_split.items():
-                write(resampler_name)
-                auc, importances = presplit_roc_cv(classifier, splits)
-                write(outcome[1])
-                write(auc)
-                if importances is not None:
-                    write(importances)
-                write('\n')
+                try:
+                    write(resampler_name)
+                    auc, importances = presplit_roc_cv(classifier, splits)
+                    write(outcome[1])
+                    write(auc)
+                    if importances is not None:
+                        write(importances)
+                    write('\n')
+                    result = copy(result_template)
+                    result['classifier'] = str(classifier)
+                    result['outcome'] = str(outcome[1])
+                    result['resampler'] = str(resampler_name)
+                    result['AUC'] = auc
+                    results.append(result)
+                except:
+                    continue
     if log:
         f.close()
+    return results
 
 def get_all_splits(df, regularizer, outcomes, resamplers = None):
     if resamplers is None:
         resamplers = [None,
+                  under_sampling.RandomUnderSampler(),
+                  over_sampling.RandomOverSampler(),
 #                  under_sampling.InstanceHardnessThreshold(
 #                          estimator = MetricLearningClassifier(),
 #                          cv = 18),
 #                  under_sampling.InstanceHardnessThreshold(cv = 18),
-#                  over_sampling.SMOTE(),
-#                  combine.SMOTEENN(),
-#                  under_sampling.InstanceHardnessThreshold(),
+                  over_sampling.SMOTE(),
+                  combine.SMOTEENN(),
+                  combine.SMOTETomek(),
+                  under_sampling.InstanceHardnessThreshold(),
 #                  under_sampling.RepeatedEditedNearestNeighbours(),
-#                  under_sampling.EditedNearestNeighbours(),
+                  under_sampling.EditedNearestNeighbours(),
 #                  under_sampling.CondensedNearestNeighbour(),
+#                  under_sampling.OneSidedSelection(),
                   ]
     data_splits = {}
     for outcome in outcomes:
@@ -710,19 +783,38 @@ def plot_correlations(db,
     plt.title('1 - pvalue between cluster 2 with and without ' + tox_name + ' per feature')
 
 #db = PatientSet()
-#df = generate_features(db)
-#db.classes = df[0].hc_ward - 1
-#export(db)
-#p_doses = default_rt_prediction(db)
 
-#pdose_organs = ['Soft_Palate', 'SPC', 'Extended_Oral_Cavity', 'Hard_Palate', 'Mandible', 'Brainstem', 'Lower_Lip']
-feature_organs = ['Lt_Masseter_M', 'Rt_Masseter_M']
-test_classifiers(db, 
-                 log = True,
-                 feature_getter = generate_cluster_features,
-                 db_features = ['volumes'],
-#                 predicted_doses = p_doses,
-#                 pdose_organ_list = pdose_organs,
-                 db_features_organ_list = feature_organs
-                 )
+feature_params = {
+                  'db_features': [],
+                  'db_organ_list': None,
+                  'use_baseline_features': True,
+                  'use_top_features': False,
+                  'discrete_features': False,
+                  'cluster_names': []
+                  }
+all_results = []
+run = lambda x: test_classifiers(db, log = True, feature_params = x)
+
+for cluster_combo in [['hc_ward4'],['manhattan_k=4'],[],['hc_ward4', 'manhattan_k=4'],['nb_clust']]:
+    feature_params['cluster_names'] = cluster_combo
+    all_results.extend(run(feature_params))
+
+
+feature_params['db_features'] = ['discrete_dists', 'bilateral', 'prescribed_doses', 'dose_fractions']
+feature_params['db_organ_list'] = ['IPC', 'Larynx', 'Supraglottic_Larynx', 'SPC', 'Soft_Palate', 'Genioglossus_M', 'Tongue', 'Extended_Oral_Cavity']
+feature_params['use_baseline_features'] = False
+feature_params['cluster_names'] = ['hc_ward4','nb_clust']
+all_results.extend(test_classifiers(db, log = True, feature_params = feature_params, pdose_organ_list = ['SPC', 'Tongue'], predicted_doses=db.pdoses))
+
+#df = pd.DataFrame(all_results).sort_values(
+#        ['classifier',
+#         'outcome',
+#         'AUC',
+#         'resampler',
+#         'cluster_names',
+#         'Baseline'],
+#         kind = 'mergesort',
+#         ascending = False)
+#df.to_csv('data/toxcity_classification_tests_918.csv')
+
 #plot_correlations(db, max_p = .25, pred_doses = p_doses)

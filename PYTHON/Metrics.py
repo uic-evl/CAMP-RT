@@ -14,7 +14,7 @@ import cv2
 from skimage.measure import compare_mse
 import pandas as pd
 from re import match, sub, search
-from NCA import NeighborhoodComponentsAnalysis
+from dependencies.NCA import NeighborhoodComponentsAnalysis
 from sklearn.preprocessing import KBinsDiscretizer
 from sklearn.model_selection import LeaveOneOut, cross_val_predict
 from sklearn.metrics import roc_auc_score, roc_curve
@@ -30,7 +30,7 @@ def pca(points, n_components = 2):
     principle_components = np.dot(points, eig)
     return(principle_components)
 
-def discretize(x, n_bins = 9, encode = 'ordinal', strategy = 'kmeans'):
+def discretize(x, n_bins = 10, encode = 'ordinal', strategy = 'kmeans'):
     discretizer = KBinsDiscretizer(n_bins = n_bins,
                                    encode = encode,
                                    strategy = strategy)
