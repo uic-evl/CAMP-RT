@@ -55,7 +55,7 @@ class PatientSet():
                                usecols = [0,1,2,3,4,5,6,7,8,9,10,11,12,
                                           13,14,15,16, 17,18,31,32,35,36,37,38]
                                ).loc[ids]
-        print(metadata.columns)
+#        print(metadata.columns)
 
         #super inefficient way of reading in the data
         patients = OrderedDict()
@@ -259,7 +259,8 @@ class PatientSet():
                 subclass = self.classes[patient_id]
                 group = (group-1)*self.num_classes + subclass
             except:
-                print('patient ', patient_id, 'not in class list, defaulting to 0')
+                pass
+#                print('patient ', patient_id, 'not in class list, defaulting to 0')
         return int(group)
 
     def get_default_class(self, patient_id, dose_vector):
@@ -289,7 +290,7 @@ class PatientSet():
                     ls = dose_vector[ls_pos]
                     rs = dose_vector[rs_pos]
             except:
-                print('error in getting dose?')
+#                print('error in getting dose?')
                 ls = 1
                 rs = 1
             if np.abs(ls - rs)/max([ls, rs]) < .6:
@@ -308,7 +309,7 @@ class PatientSet():
                 ls = dose_vector[self.left]
                 rs = dose_vector[self.right]
         except:
-            print('error in getting dose?')
+#            print('error in getting dose?')
             return(True, False)
         full_dose = bool(np.abs(ls - rs).mean() < 22)
         left_dominant = bool(ls.mean() > rs.mean())

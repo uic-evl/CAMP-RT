@@ -96,7 +96,7 @@ class ErrorChecker():
             unilateral = db.get_default_class(db.ids[p], db.doses[p]) > 2
             if not unilateral:
                 pset.add(p)
-        print(pset)
+#        print(pset)
         return pset
 
     def get_data_outliers(self, doses, dose_match_threshold = .2, min_matches = 1):

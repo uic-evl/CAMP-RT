@@ -14,7 +14,6 @@ from Constants import Constants
 import Metrics
 from analysis import *
 from Models import *
-from Toxicity import ClusterStats
 from copy import copy
 import numpy as np
 import pandas as pd
@@ -38,6 +37,9 @@ from imblearn import under_sampling, over_sampling, combine
 from scipy.special import softmax
 from sklearn.metrics import silhouette_score
 from scipy.stats import kruskal
+
+from time import time
+from datetime import datetime
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -549,7 +551,7 @@ def generate_cluster_features(db = None,
                               cluster_names = ['hc_ward4','kmeans_k=4']):
     baseline = pd.read_csv(baseline_file, index_col = 'Dummy.ID').drop('Unnamed: 0', axis = 1)
     dist_clusters = pd.read_csv(top_clustering_file, index_col = 'Dummy.ID').drop('Unnamed: 0', axis = 1)
-    non_features = ['manhattan_k=2',
+    all_clusters = set(['manhattan_k=2',
                     'manhattan_k=3',
                     'manhattan_k=4',
                     'hc_ward2',
@@ -557,8 +559,8 @@ def generate_cluster_features(db = None,
                     'nb_clust',
                     'FT',
                     'AR',
-                    'TOX']
-    non_features = list(set(non_features) - set(cluster_names))
+                    'TOX'])
+    non_features = list(all_clusters - set(cluster_names))
     if use_baseline_features:
         cluster_names = cluster_names + list(baseline.drop(non_features, axis = 1, errors='ignore').columns)
     if use_top_features:
@@ -578,6 +580,15 @@ def generate_cluster_features(db = None,
     df = df.drop(to_drop, axis = 1, errors = 'ignore')
     if discrete_features:
         df = discretize_continuous_fields(df, 5)
+    columns = df.columns
+    for col in columns:
+        if col in all_clusters:
+            groups = set(df[col].values)
+            for g in groups:
+                col_name = col + '=' + str(g)
+                df[col_name] = df[col].values == g
+            df = df.drop(col, axis = 1)
+    print(df.columns)
     return df, ft, ar, tox
 
 def discretize_continuous_fields(df, n_bins):
@@ -602,8 +613,6 @@ def test_classifiers(db = None, log = False,
                        'Top_features': str(feature_params['use_top_features'])}
 
     if log:
-        from time import time
-        from datetime import datetime
         timestamp = datetime.fromtimestamp(time()).strftime('%Y_%m_%d_%H%M%S')
         f = open(Constants.toxicity_log_file_root + timestamp +'.txt', 'w', buffering = 1)
         def write(string):
@@ -682,15 +691,15 @@ def get_all_splits(df, regularizer, outcomes, resamplers = None):
 #                  under_sampling.InstanceHardnessThreshold(
 #                          estimator = MetricLearningClassifier(),
 #                          cv = 18),
-#                  under_sampling.InstanceHardnessThreshold(cv = 18),
+                  under_sampling.InstanceHardnessThreshold(cv = 18),
                   over_sampling.SMOTE(),
                   combine.SMOTEENN(),
                   combine.SMOTETomek(),
                   under_sampling.InstanceHardnessThreshold(),
-#                  under_sampling.RepeatedEditedNearestNeighbours(),
+                  under_sampling.RepeatedEditedNearestNeighbours(),
                   under_sampling.EditedNearestNeighbours(),
-#                  under_sampling.CondensedNearestNeighbour(),
-#                  under_sampling.OneSidedSelection(),
+                  under_sampling.CondensedNearestNeighbour(),
+                  under_sampling.OneSidedSelection(),
                   ]
     data_splits = {}
     for outcome in outcomes:
@@ -782,7 +791,23 @@ def plot_correlations(db,
     plt.xlabel('1 - pvalue for kruskal-wallis test')
     plt.title('1 - pvalue between cluster 2 with and without ' + tox_name + ' per feature')
 
-#db = PatientSet()
+    discrete_dists = Metrics.discretize(-db.tumor_distances, n_bins = 15, strategy='uniform')
+    t_volumes = np.array([np.sum([g.volume for g in gtvs]) for gtvs in db.gtvs]).reshape(-1,1)
+    discrete_volumes = Metrics.discretize(t_volumes, n_bins = 15, strategy='uniform')
+
+def augmented_db(db = None, db_args = {}):
+    if db is None:
+        db = PatientSet(**db_args)
+    db.discrete_dists = Metrics.discretize(-db.tumor_distances, n_bins = 15, strategy='uniform')
+    db.t_volumes = np.array([np.sum([g.volume for g in gtvs]) for gtvs in db.gtvs]).reshape(-1,1)
+    db.bilateral = db.lateralities == 'B'
+    db.pdoses = default_rt_prediction(db)
+    db.t4 = db.t_categories == 'T4'
+    db.m_volumes = db.volumes[:, [Constants.organ_list.index('Rt_Masseter_M'), Constants.organ_list.index('Lt_Masseter_M')]].sum(axis = 1).ravel()
+    return(db)
+
+
+#db = augmented_db()
 
 feature_params = {
                   'db_features': [],
@@ -795,26 +820,40 @@ feature_params = {
 all_results = []
 run = lambda x: test_classifiers(db, log = True, feature_params = x)
 
-for cluster_combo in [['hc_ward4'],['manhattan_k=4'],[],['hc_ward4', 'manhattan_k=4'],['nb_clust']]:
+for cluster_combo in [['hc_ward2'],['hc_ward4'],['manhattan_k=4'],['hc_ward4', 'manhattan_k=4'],['nb_clust'],[]]:
     feature_params['cluster_names'] = cluster_combo
     all_results.extend(run(feature_params))
 
 
-feature_params['db_features'] = ['discrete_dists', 'bilateral', 'prescribed_doses', 'dose_fractions']
-feature_params['db_organ_list'] = ['IPC', 'Larynx', 'Supraglottic_Larynx', 'SPC', 'Soft_Palate', 'Genioglossus_M', 'Tongue', 'Extended_Oral_Cavity']
 feature_params['use_baseline_features'] = False
-feature_params['cluster_names'] = ['hc_ward4','nb_clust']
-all_results.extend(test_classifiers(db, log = True, feature_params = feature_params, pdose_organ_list = ['SPC', 'Tongue'], predicted_doses=db.pdoses))
+feature_params['cluster_names'] = ['hc_ward4']
+all_results.extend(test_classifiers(db, log = True, feature_params = feature_params))
 
-#df = pd.DataFrame(all_results).sort_values(
-#        ['classifier',
-#         'outcome',
-#         'AUC',
-#         'resampler',
-#         'cluster_names',
-#         'Baseline'],
-#         kind = 'mergesort',
-#         ascending = False)
-#df.to_csv('data/toxcity_classification_tests_918.csv')
+feature_params['cluster_names'] = ['manhattan_k=4']
+all_results.extend(test_classifiers(db, log = True, feature_params = feature_params))
+
+feature_params['cluster_names'] = ['hc_ward2','manhattan_k=2']
+all_results.extend(test_classifiers(db, log = True, feature_params = feature_params))
+
+feature_params['cluster_names'] = ['hc_ward4','manhattan_k=4']
+all_results.extend(test_classifiers(db, log = True, feature_params = feature_params))
+
+feature_params['db_features'] =['discrete_dists', 'bilateral', 'prescribed_doses', 'dose_fractions','m_volumes', 't_categories']
+feature_params['db_organ_list'] = ['SPC', 'Tongue']
+pdose_organs = ['IPC','Larynx', 'Supraglottic_Larynx', 'SPC', 'Soft_Palate','Genioglossus_M', 'Tongue', 'Extended_Oral_Cavity']
+all_results.extend(test_classifiers(db, log = False, feature_params = feature_params, pdose_organ_list = pdose_organs, predicted_doses=db.pdoses))
+
+df = pd.DataFrame(all_results).sort_values(
+        ['classifier',
+         'outcome',
+         'AUC',
+         'resampler',
+         'cluster_names',
+         'Baseline'],
+         kind = 'mergesort',
+         ascending = False)
+df.to_csv('data/toxcity_classification_tests_'
+          + datetime.fromtimestamp(time()).strftime('%Y_%m_%d_%H%M%S')
+          + '.csv', index = False)
 
 #plot_correlations(db, max_p = .25, pred_doses = p_doses)
