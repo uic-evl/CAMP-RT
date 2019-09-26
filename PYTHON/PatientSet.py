@@ -9,7 +9,7 @@ from tensorflow import set_random_seed
 set_random_seed(2)
 
 from glob import glob
-from re import findall, match
+from re import findall, match, sub
 import json
 import numpy as np
 import pandas as pd
@@ -428,7 +428,7 @@ class PatientSet():
             transformed_tumor_centroids.append(p_tumor_centroids)
         return transformed_organ_centroids, transformed_tumor_centroids
 
-    def to_dataframe(self, attributes, to_merge = None, organ_list = None):
+    def to_dataframe(self, attributes, to_merge = None, organ_list = None, merge_mirrored_organs = False):
         #tries to convert internal variables to a dataframe with patient ids as the index
         #attributes should be a list of strings of the member names
         #assumes internal vectors are 1d arrays or 2d arrays of type (n_patientsxn_organs)
@@ -458,6 +458,18 @@ class PatientSet():
                 except:
                     print('error getting values for ' + attr)
         df = pd.DataFrame(index = self.ids, data = data)
+        if merge_mirrored_organs: 
+            organs_to_drop = []
+            for col in df.columns:
+                if match('Rt_*', col):
+                    base_organ = sub('Rt_','',col)
+                    for col2 in df.columns:
+                        if match('Lt_*', col2):
+                            if base_organ == sub('Lt_', '', col2):
+                                df[base_organ + '_combined'] = df[col] + df[col2]
+                                organs_to_drop.extend([col,col2])
+                                break
+            df = df.drop(organs_to_drop, axis = 1)
         if to_merge is not None:
             df = df.join(to_merge, how = 'inner')
         return df
