@@ -458,7 +458,7 @@ class PatientSet():
                 except:
                     print('error getting values for ' + attr)
         df = pd.DataFrame(index = self.ids, data = data)
-        if merge_mirrored_organs: 
+        if merge_mirrored_organs:
             organs_to_drop = []
             for col in df.columns:
                 if match('Rt_*', col):
@@ -466,7 +466,8 @@ class PatientSet():
                     for col2 in df.columns:
                         if match('Lt_*', col2):
                             if base_organ == sub('Lt_', '', col2):
-                                df[base_organ + '_combined'] = df[col] + df[col2]
+
+                                df[base_organ + '_combined'] = np.sqrt(df[col]**2 + df[col2]**2)
                                 organs_to_drop.extend([col,col2])
                                 break
             df = df.drop(organs_to_drop, axis = 1)

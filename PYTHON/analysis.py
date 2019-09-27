@@ -208,8 +208,3 @@ def default_rt_prediction(db, similarity = None):
     estimator = TreeKnnEstimator()
     return estimator.predict_doses(similarity, db)
 
-
-
-#db = PatientSet(root = 'data\\patients_v*\\',
-#                use_distances = False)
-#export(db)
