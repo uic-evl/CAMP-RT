@@ -147,7 +147,8 @@ class Patient():
                 if node in Patient.node_binarizer:
                     node_vector[Patient.node_binarizer[node]] = 1
                 else:
-                    print('notation not accounted for in lymph nodes:', node)
+                    pass
+#                     print('notation not accounted for in lymph nodes:', node)
         k = 0
         for val in Patient.node_binarizer.values():
             if isinstance(val, int):
@@ -257,7 +258,7 @@ class Patient():
             new_tumor = self.combine_gtvs(gtvs, gtvset, name = name)
             temp_gtvs.append(new_tumor)
         if len(gtvs) > len(temp_gtvs):
-            print(self.id, new_gtvs)
+#             print(self.id, new_gtvs)
             self.gtvs = temp_gtvs
 
     def combine_gtvs(self, gtvs, gtvset, name = None):

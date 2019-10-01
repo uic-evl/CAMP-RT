@@ -1,7 +1,7 @@
 #functions for getting clusters
 import numpy as np
 import pandas as pd
-
+import re
 from analysis import *
 from collections import namedtuple
 import Metrics
@@ -117,7 +117,7 @@ class FeatureClusterer():
 
 class FeatureSelector():
 
-    def __init__(self, model = None, n_samples = 1, rescale = True, threshold = .0001):
+    def __init__(self, model = None, n_samples = 1, rescale = True, threshold = .0001,print_out = True):
         if model is None:
             from sklearn.linear_model import LogisticRegression
             model = LogisticRegression(C = 100, solver = 'lbfgs', max_iter = 10000)
@@ -125,6 +125,8 @@ class FeatureSelector():
         self.n_samples = n_samples
         self.threshold = threshold
         self.rescale = rescale
+        self.print_out = print_out
+        self.isfit = False
 
     def get_importances(self, x, y, x_val = None):
         importances = np.zeros((x.shape[1],))
@@ -178,6 +180,7 @@ class FeatureSelector():
                                                            x_val = x.loc[:, features_to_keep])
             new_featureset = features_to_keep + [next_best_feature]
             xtemp = x.loc[:, new_featureset].values
+            print(x.loc[:, new_featureset])
             new_score = self.bootstrap_score(xtemp, y)
 #            self.model.fit(xtemp, y.reshape(-1,1))
 #            ypred = self.model.predict_proba(xtemp)[:,1]
@@ -186,15 +189,23 @@ class FeatureSelector():
                 break
             best_score = new_score
             features_to_keep = new_featureset
-            print(features_to_keep)
-            print(best_score)
-            print()
+            self.print_updates(features_to_keep, best_score)
+     
         self.features_to_keep = features_to_keep
         print(features_to_keep)
         self.feature_inds = [np.argwhere(x.columns == f)[0][0] for f in features_to_keep]
+        self.isfit = True
         return self
+    
+    def print_updates(self, features_to_keep, best_score):
+        if self.print_out == False:
+            return
+        print(features_to_keep)
+        print(best_score)
+        print()
 
     def transform(self, x, y = None):
+        assert(self.isfit)
         return x.iloc[:, self.feature_inds]
 
     def fit_transform(self, x, y):
@@ -203,14 +214,15 @@ class FeatureSelector():
 
 class FeatureClusterSelector(FeatureSelector):
 
-    def __init__(self, clusterer = None, n_samples = 1, rescale = True, threshold = 0):
+    def __init__(self, clusterer = None, n_samples = 1, rescale = False, threshold = 0, print_out = True):
         if clusterer is None:
             from sklearn.cluster import AgglomerativeClustering
-            self.clusterer = AgglomerativeClustering(n_clusters = 4)
+            self.model = AgglomerativeClustering(n_clusters = 4)
         else:
-            self.clusterer = clusterer
+            self.model = clusterer
         self.n_samples = 1
         self.rescale = rescale
+        self.print_out = print_out
         self.threshold = threshold
 
     def bootstrap_score(self, x, y):
@@ -223,10 +235,25 @@ class FeatureClusterSelector(FeatureSelector):
                 xtemp, ytemp = x, y
             if xtemp.ndim == 1:
                 xtemp = xtemp.reshape(-1,1)
-            clusters = self.clusterer.fit_predict(xtemp).ravel()
-            score += (1-fisher_exact_test(clusters, ytemp))/self.n_samples
+            clusters = self.model.fit_predict(xtemp).ravel()
+            score += -fisher_exact_test(clusters, ytemp)/self.n_samples
         return score
-
+    
+    def predict_labels(self, x, y=None):
+        assert(self.isfit)
+        x = self.transform(x)
+        return self.model.fit_predict(x.values, y)
+        
+    def fit_predict_labels(self, x):
+        x = self.fit_transform(x,y)
+        return self.model.fit_predict(x.values, y)
+    
+    def print_updates(self, features_to_keep, best_score):
+        if self.print_out == False:
+            return
+        print(features_to_keep)
+        print(-best_score)
+        print()
 
 
 cluster_result = namedtuple('cluster_result', ['method', 'cluster', 'correlation','rand_score', 'model'])
@@ -240,15 +267,15 @@ def get_sortable_metric(c_result, metric):
     else:
         return -c_result.rand_score
 
-def get_clusterers(min_clusters = 4, max_clusters = 4):
+def get_clusterers(min_clusters = 2, max_clusters = 4):
     c_range = range(min_clusters, max_clusters + 1)
     clusterers = {}
-#    clusterers['l1_weighted'] = [FClusterer(c) for c in c_range]
-#    clusterers['l2_weighted'] = [FClusterer(c, dist_func = l2) for c in c_range]
-#    clusterers['centroid'] = [FClusterer(c, link='centroid') for c in c_range]
-#    clusterers['median'] = [FClusterer(c, link = 'median') for c in c_range]
+    clusterers['l1_weighted'] = [FClusterer(c) for c in c_range]
+    clusterers['l2_weighted'] = [FClusterer(c, dist_func = l2) for c in c_range]
+    clusterers['centroid'] = [FClusterer(c, link='centroid') for c in c_range]
+    clusterers['median'] = [FClusterer(c, link = 'median') for c in c_range]
+    clusterers['Kmeans'] = [KMeans(c) for c in c_range]
     clusterers['ward'] = [AgglomerativeClustering(c) for c in c_range]
-#    clusterers['Kmeans'] = [KMeans(c) for c in c_range]
     return clusterers
 
 def fisher_exact_test(c_labels, y):
@@ -334,3 +361,49 @@ def get_optimal_clustering(features, target_var,
                                     model = result[0].model)
     optimal = (clusters, clusterer_data)
     return optimal
+
+def get_train_test_datasets(db, 
+                            unclusterables =[], 
+                            clusterables =[], 
+                            train_only = [], 
+                            test_only = [],
+                            organs = None,
+                            feature_clusterer = None
+                           ):
+    if organs is None:
+        #default organ list is organs - eyeballs since they bad
+        organs = copy(Constants.organ_list)
+        for o in Constants.organ_list:
+            if re.search('Eyeball', o) is not None:
+                organs.remove(o)
+                
+    base = db.to_dataframe(unclusterables,
+                           merge_mirrored_organs = True, 
+                           organ_list = organs)
+    #if we pass a feature_clusterer, performs clustering on the groups of features individually
+    for f in clusterables:
+        temp_data = db.to_dataframe([f], 
+                               merge_mirrored_organs = True, 
+                               organ_list = organs)
+        if feature_clusterer is not None:
+            temp_data = FeatureClusterer(feature_clusterer).fit_predict(temp_data)
+        base = base.join(temp_data, how = 'inner')
+        
+    #baseically train only should be dose and test only should be predicted dose if we want to do that
+    def add_featureset(fset, fit, fc):
+        if fset is None or len(fset) < 1:
+            return base.copy()
+        df = db.to_dataframe(fset,
+                             merge_mirrored_organs = True,
+                             organ_list = organs)
+        if fc is not None:
+            df = fc.fit_predict(df) if fit else fc.predict(df)
+        df = df.join(base, how = 'inner')
+        return df
+    
+    fc = None
+    if feature_clusterer is not None:
+        fc = FeatureClusterer(feature_clusterer)
+    train = add_featureset(train_only, True, fc)
+    test = add_featureset(test_only, False, fc)
+    return train.copy(), test.copy()
