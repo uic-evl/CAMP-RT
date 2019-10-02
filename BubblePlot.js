@@ -169,6 +169,7 @@ var OrganBubblePlot = (function(){
 				.attr('stroke', 'black');
 		}
 		drawDose('estimatedDose', '#3d32ff');
+		console.log(this.data.getClusterColor(patient));
 		drawDose('meanDose', this.data.getClusterColor(patient));
 	}
 	

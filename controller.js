@@ -11,6 +11,7 @@ var Controller = (function(){
 		.domain([0, 20])
 		.range(['#999999','#3d32ff']);
 	var currentCamera = null;
+	var selectedPatient = null;
 
 	return {
 		
@@ -160,11 +161,15 @@ var Controller = (function(){
 					d3.selectAll('.doseRect').moveToFront();
 				}
 			}
+			d3.selectAll('.doseRect').filter('.meanDose')
+				.attr('fill', data.getClusterColor(selectedPatient))
+				.attr('opacity', 1);
 		},
 		 
-		setup: function(){
+		setup: function(updatedPatient){
 			//setup general listenrs
 			var self = this;
+			selectedPatient = updatedPatient;
 			d3.selectAll('.description').on('mouseover', function(d){
 				var id = this.parentNode.parentNode.id;
 				self.brush(id);
