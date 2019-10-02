@@ -18,6 +18,7 @@ from sklearn.metrics import adjusted_rand_score, f1_score, roc_auc_score
 from sklearn.cluster import AffinityPropagation, AgglomerativeClustering, KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import resample
+from sklearn.base import ClusterMixin, BaseEstimator
 
 def l1(x1, x2):
     return np.sum(np.abs(x1-x2))
@@ -38,7 +39,7 @@ def pdist(x, dist_func):
             distance.append(dist_func(x[i], x[j]))
     return np.array(distance)
 
-class FClusterer():
+class FClusterer(ClusterMixin, BaseEstimator):
 
     def __init__(self, n_clusters, dist_func = l1, link = 'weighted', criterion = 'maxclust'):
         self.link = link
@@ -50,7 +51,7 @@ class FClusterer():
         clusters = linkage(x, method = self.link, metric = self.dist_func)
         return fcluster(clusters, self.t, criterion = self.criterion)
 
-class FeatureClusterer():
+class FeatureClusterer(ClusterMixin, BaseEstimator):
     #clusters features together
     #like sklearn feature agglomeration, but can work on dataframes and tracks names of the features
 
@@ -115,7 +116,7 @@ class FeatureClusterer():
         self.fit(x)
         return self.predict(x)
 
-class FeatureSelector():
+class FeatureSelector(BaseEstimator):
 
     def __init__(self, model = None, n_samples = 1, rescale = True, threshold = .0001,print_out = True):
         if model is None:
@@ -128,20 +129,23 @@ class FeatureSelector():
         self.print_out = print_out
         self.isfit = False
 
-    def get_importances(self, x, y, x_val = None):
-        importances = np.zeros((x.shape[1],))
+    def get_importances(self, x, y, x_val = None, as_df = False):
+        importances = np.zeros((self.n_samples, x.shape[1]))
         for pos, col in enumerate(x.columns):
             if x_val is not None:
-                xtrain = x_val.join(x[col], how='inner').values
+                xtrain = x_val.join(x[col], how='inner')
             else:
-                xtrain = x[col].values
-            score = self.bootstrap_score(xtrain, y)
-            importances[pos] += score
+                xtrain = x[col]
+            importances[:,pos] = self.bootstrap_score(xtrain, y)
+        if as_df:
+            return pd.DataFrame(importances, columns = x.columns)
         return importances
 
     def bootstrap_score(self, x, y, metric = roc_auc_score):
+        if isinstance(x, pd.DataFrame) or isinstance(x, pd.Series):
+            x = x.copy().values
         x = x.astype('int32')
-        score = 0
+        score = []
         for dummy in range(self.n_samples):
             if self.n_samples > 1:
                 xtemp, ytemp = resample(x, y)
@@ -150,8 +154,8 @@ class FeatureSelector():
             if xtemp.ndim == 1:
                 xtemp = xtemp.reshape(-1,1)
             ypred = self.cv_predict(xtemp, ytemp)
-            score += metric(ytemp.ravel(), ypred.ravel())/self.n_samples
-        return score
+            score.append(metric(ytemp.ravel(), ypred.ravel()))
+        return np.array(score)
 
     def cv_predict(self, x, y):
         ypred = np.zeros(y.shape)
@@ -179,9 +183,9 @@ class FeatureSelector():
             next_best_feature, _ = self.get_most_important(x_remaining,y,
                                                            x_val = x.loc[:, features_to_keep])
             new_featureset = features_to_keep + [next_best_feature]
-            xtemp = x.loc[:, new_featureset].values
-            print(x.loc[:, new_featureset])
-            new_score = self.bootstrap_score(xtemp, y)
+            xtemp = x.loc[:, new_featureset]
+            print(x.loc[:, new_featureset].head(5))
+            new_score = self.bootstrap_score(xtemp, y).mean()
 #            self.model.fit(xtemp, y.reshape(-1,1))
 #            ypred = self.model.predict_proba(xtemp)[:,1]
 #            new_score = roc_auc_score(y.ravel(), ypred.ravel())
@@ -220,15 +224,17 @@ class FeatureClusterSelector(FeatureSelector):
             self.model = AgglomerativeClustering(n_clusters = 4)
         else:
             self.model = clusterer
-        self.n_samples = 1
+        self.n_samples = n_samples
         self.rescale = rescale
         self.print_out = print_out
         self.threshold = threshold
 
     def bootstrap_score(self, x, y):
+        if isinstance(x, pd.DataFrame) or isinstance(x, pd.Series):
+            x = x.copy().values
         x = x.astype('int32')
-        score = 0
-        for dummy in range(self.n_samples):
+        score = []
+        for d in range(self.n_samples):
             if self.n_samples > 1:
                 xtemp, ytemp = resample(x, y)
             else:
@@ -236,8 +242,8 @@ class FeatureClusterSelector(FeatureSelector):
             if xtemp.ndim == 1:
                 xtemp = xtemp.reshape(-1,1)
             clusters = self.model.fit_predict(xtemp).ravel()
-            score += -fisher_exact_test(clusters, ytemp)/self.n_samples
-        return score
+            score.append(1-fisher_exact_test(clusters, ytemp))
+        return np.array(score)
     
     def predict_labels(self, x, y=None):
         assert(self.isfit)
@@ -252,7 +258,7 @@ class FeatureClusterSelector(FeatureSelector):
         if self.print_out == False:
             return
         print(features_to_keep)
-        print(-best_score)
+        print(1-best_score)
         print()
 
 
@@ -286,7 +292,7 @@ def fisher_exact_test(c_labels, y):
     #call fishers test from r
     contingency = get_contingency_table(c_labels, y)
     stats = importr('stats')
-    pval = stats.fisher_test(contingency)[0][0]
+    pval = stats.fisher_test(contingency,workspace=2e8)[0][0]
     return pval
 
 def get_contingency_table(x, y):
