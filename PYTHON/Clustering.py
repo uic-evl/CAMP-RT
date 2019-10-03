@@ -129,13 +129,17 @@ class FeatureSelector(BaseEstimator):
         self.print_out = print_out
         self.isfit = False
 
-    def get_importances(self, x, y, x_val = None, as_df = False):
+    def get_importances(self, x, y, baseline = None, as_df = True):
+        base_set = set(baseline) if baseline is not None else set([])
         importances = np.zeros((self.n_samples, x.shape[1]))
         for pos, col in enumerate(x.columns):
-            if x_val is not None:
-                xtrain = x_val.join(x[col], how='inner')
+            if col in base_set:
+                continue
+            if baseline is not None:
+                columns = baseline + [col]
             else:
-                xtrain = x[col]
+                columns = [col]
+            xtrain = x.loc[:, columns]
             importances[:,pos] = self.bootstrap_score(xtrain, y)
         if as_df:
             return pd.DataFrame(importances, columns = x.columns)
@@ -144,7 +148,7 @@ class FeatureSelector(BaseEstimator):
     def bootstrap_score(self, x, y, metric = roc_auc_score):
         if isinstance(x, pd.DataFrame) or isinstance(x, pd.Series):
             x = x.copy().values
-        x = x.astype('int32')
+        x = x.astype('float64')
         score = []
         for dummy in range(self.n_samples):
             if self.n_samples > 1:
@@ -169,8 +173,10 @@ class FeatureSelector(BaseEstimator):
             ypred[d] = self.model.predict_proba(xtest)[:,1]
         return ypred
 
-    def get_most_important(self, x, y, x_val = None):
-        importances = self.get_importances(x,y, x_val)
+    def get_most_important(self, x, y, baseline = None):
+        importances = self.get_importances(x,y,baseline)
+        importances = importances.mean(axis = 0)
+        importances = importances.values.ravel()
         fname = x.columns[np.argmax(importances)]
         return fname, importances.max()
 
@@ -179,24 +185,14 @@ class FeatureSelector(BaseEstimator):
         top_feature, best_score = self.get_most_important(x, y)
         features_to_keep = [top_feature]
         while len(features_to_keep) < x.shape[1]:
-            x_remaining = x.drop(features_to_keep, axis = 1)
-            next_best_feature, _ = self.get_most_important(x_remaining,y,
-                                                           x_val = x.loc[:, features_to_keep])
-            new_featureset = features_to_keep + [next_best_feature]
-            xtemp = x.loc[:, new_featureset]
-            print(x.loc[:, new_featureset].head(5))
-            new_score = self.bootstrap_score(xtemp, y).mean()
-#            self.model.fit(xtemp, y.reshape(-1,1))
-#            ypred = self.model.predict_proba(xtemp)[:,1]
-#            new_score = roc_auc_score(y.ravel(), ypred.ravel())
+            next_best_feature, new_score = self.get_most_important(x,y,baseline = features_to_keep)
             if new_score < best_score + self.threshold:
                 break
             best_score = new_score
-            features_to_keep = new_featureset
+            features_to_keep = features_to_keep + [next_best_feature]
             self.print_updates(features_to_keep, best_score)
      
         self.features_to_keep = features_to_keep
-        print(features_to_keep)
         self.feature_inds = [np.argwhere(x.columns == f)[0][0] for f in features_to_keep]
         self.isfit = True
         return self
@@ -232,7 +228,7 @@ class FeatureClusterSelector(FeatureSelector):
     def bootstrap_score(self, x, y):
         if isinstance(x, pd.DataFrame) or isinstance(x, pd.Series):
             x = x.copy().values
-        x = x.astype('int32')
+        x = x.astype('float64')
         score = []
         for d in range(self.n_samples):
             if self.n_samples > 1:
@@ -277,11 +273,11 @@ def get_clusterers(min_clusters = 2, max_clusters = 4):
     c_range = range(min_clusters, max_clusters + 1)
     clusterers = {}
     clusterers['l1_weighted'] = [FClusterer(c) for c in c_range]
-    clusterers['l2_weighted'] = [FClusterer(c, dist_func = l2) for c in c_range]
-    clusterers['centroid'] = [FClusterer(c, link='centroid') for c in c_range]
-    clusterers['median'] = [FClusterer(c, link = 'median') for c in c_range]
-    clusterers['Kmeans'] = [KMeans(c) for c in c_range]
-    clusterers['ward'] = [AgglomerativeClustering(c) for c in c_range]
+#     clusterers['l2_weighted'] = [FClusterer(c, dist_func = l2) for c in c_range]
+#     clusterers['centroid'] = [FClusterer(c, link='centroid') for c in c_range]
+#     clusterers['median'] = [FClusterer(c, link = 'median') for c in c_range]
+#     clusterers['Kmeans'] = [KMeans(c) for c in c_range]
+#     clusterers['ward'] = [AgglomerativeClustering(c) for c in c_range]
     return clusterers
 
 def fisher_exact_test(c_labels, y):
@@ -405,7 +401,7 @@ def get_train_test_datasets(db,
         if fc is not None:
             df = fc.fit_predict(df) if fit else fc.predict(df)
         df = df.join(base, how = 'inner')
-        return df
+        return df.astype('float64')
     
     fc = None
     if feature_clusterer is not None:
