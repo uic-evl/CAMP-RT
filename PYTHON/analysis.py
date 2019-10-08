@@ -31,10 +31,6 @@ def export(data_set = None,
            patient_data_file = '../data/patient_dataset.json',
            score_file = 'data/scores.csv',
            method = 'tanimoto',
-#           model = None,
-#           estimator = None,
-#           similarity = None,
-#           predicted_doses = None,
            clusterer=None):
     if data_set is None:
         data_set = PatientSet(root = 'data/patients_v*/',

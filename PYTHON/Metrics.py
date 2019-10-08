@@ -10,7 +10,6 @@ from Models import *
 from scipy.spatial.distance import directed_hausdorff
 from scipy.spatial import ConvexHull, procrustes
 import copy
-from skimage.measure import compare_mse
 import pandas as pd
 from re import match, sub, search
 from dependencies.NCA import NeighborhoodComponentsAnalysis
@@ -171,7 +170,7 @@ def lymph_similarity(db, file = 'data/spatial_lymph_scores.csv'):
 #4 arguments.  2 vectors of distances, and two (optinally) of volumes
 #methods passed to get_sim need to accept two patients and a database. use lambda functions for more args
 def mse(x,y,w=None,v=None):
-    return compare_mse(x,y)
+    return np.mean((x.ravel() - y.ravel())**2)
 
 def jaccard_distance(x, y, w = None, v = None):
     numerator = x.dot(y)
