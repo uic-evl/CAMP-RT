@@ -6,8 +6,7 @@ Created on Fri Mar  8 10:08:52 2019
 """
 from numpy.random import seed
 seed(1)
-from tensorflow.compat.v1 import set_random_seed
-set_random_seed(2)
+from preprocessing import *
 from PatientSet import PatientSet
 from ErrorChecker import ErrorChecker
 from Constants import Constants
@@ -19,10 +18,8 @@ from collections import OrderedDict
 import matplotlib.pyplot as plt
 from copy import copy
 #import metric_learn
-from preprocessing import *
 from Metrics import *
 
-from SyntheticDataGenerator import *
 from sklearn.manifold import TSNE, MDS
 from sklearn.cluster import KMeans
 

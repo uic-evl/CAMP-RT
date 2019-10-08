@@ -9,10 +9,9 @@ from numpy.random import seed
 seed(1)
 try:
     from tensorflow import set_random_seed
-    set_random_seed(2)
 except:
-    from tensorflow.random import set_seed
-    set_seed(2)
+    from tensorflow.compat.v1.random import set_random_seed
+set_random_seed(2)
 from Constants import Constants
 from keras.models import Sequential, Model
 from keras.layers import Dense, Activation

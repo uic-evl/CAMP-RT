@@ -5,9 +5,7 @@ Created on Mon Jan 21 17:22:31 2019
 """
 from numpy.random import seed
 seed(1)
-from tensorflow import set_random_seed
-set_random_seed(2)
-
+from preprocessing import *
 from glob import glob
 from re import findall, match, sub
 import json
@@ -17,7 +15,6 @@ from collections import OrderedDict
 from Constants import Constants
 from Patient import Patient
 from ErrorChecker import ErrorChecker
-from preprocessing import Denoiser
 from Metrics import lcr_args, get_flip_args
 
 class PatientSet():
