@@ -28,7 +28,7 @@ from sklearn.cluster import KMeans
 
 
 def export(data_set = None,
-           patient_data_file = 'data\\patient_dataset.json',
+           patient_data_file = '../data/patient_dataset.json',
            score_file = 'data/scores.csv',
            method = 'tanimoto',
 #           model = None,
@@ -37,7 +37,7 @@ def export(data_set = None,
 #           predicted_doses = None,
            clusterer=None):
     if data_set is None:
-        data_set = PatientSet(root = 'data\\patients_v*\\',
+        data_set = PatientSet(root = 'data/patients_v*/',
                 use_distances = False)
     if method == 'tsim':
         estimator = KnnEstimator()
@@ -49,23 +49,6 @@ def export(data_set = None,
         estimator = TreeKnnEstimator()
         similarity = default_similarity(data_set)
         predicted_doses = default_rt_prediction(data_set, [similarity])
-
-    #this part is from a previous version where I could pass any mixture of stuff to test and plot
-    #not really usefull anymore, but if needed, se old vresion
-#    if similarity is None:
-#        if model is not None:
-#            similarity = model.get_similarity(data_set) #similarity scores
-#        else:
-#            similarity = default_similarity(data_set)
-#    if estimator is None:
-#        if isinstance(similarity, list):
-#            estimator = TreeKnnEstimator()
-#        else:
-#            estimator = KnnEstimator(match_type = 'clusters')
-#    if predicted_doses is None:
-#        predicted_doses = estimator.predict_doses(similarity, data_set)
-#        if isinstance(similarity, list):
-#            similarity = dose_similarity(predicted_doses)
 
     if clusterer == 'default':
         from sklearn.cluster import KMeans

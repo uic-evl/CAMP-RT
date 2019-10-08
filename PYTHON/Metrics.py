@@ -10,7 +10,6 @@ from Models import *
 from scipy.spatial.distance import directed_hausdorff
 from scipy.spatial import ConvexHull, procrustes
 import copy
-import cv2
 from skimage.measure import compare_mse
 import pandas as pd
 from re import match, sub, search
@@ -202,37 +201,6 @@ def local_ssim(x,y,v = None, w = None):
 
 def harmonic_sum(values):
     return 1/np.sum([1/v for v in values])
-
-def tumor_emd(db, p1, p2, centroids):
-    #calculates an emd between tumors
-    #should be passed as a lambda function to getsim with centroids as a
-    #normalized list of tumor centroid value
-    def weighted_point(p):
-        #currently set to give the largest tumor a weight of 3 and everything else 1
-        #works better than just volume
-        centroid = centroids[p]
-        volume = np.array([g.volume for g in db.gtvs[p]]).reshape(-1,1)
-        max_volume = volume.max()
-        for v in range(len(volume)):
-            if volume[v] == max_volume:
-                volume[v] = 3
-            else:
-                volume[v] = np.sign(volume[v])
-        return np.hstack([np.sqrt(volume), centroid]).astype('float32')
-    point1 = weighted_point(p1)
-    point2 = weighted_point(p2)
-    return cv2.EMD(point1, point2, cv2.DIST_C)[0]
-
-def organ_emd(db, p1, p2, centroids):
-    #this one calculates a patient-wise emd based on a list of organ centroids
-    #assumes centroids is an array npatientsxnorgansxndims
-    def weighted_point(p):
-        centroid = centroids[p,:,:]
-        volumes = db.volumes[p,:].reshape(-1,1)
-        return np.hstack([np.sqrt(volumes), centroid]).astype('float32')
-    point1 = weighted_point(p1)
-    point2 = weighted_point(p2)
-    return cv2.EMD(point1, point2, cv2.DIST_C)[0]
 
 def undirected_hausdorff_distance(db,p1,p2,centroids):
     h1 = directed_hausdorff(centroids[p1], centroids[p2], 1)
