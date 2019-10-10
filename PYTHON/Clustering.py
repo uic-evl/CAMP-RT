@@ -41,6 +41,17 @@ def pdist(x, dist_func):
             distance.append(dist_func(x[i], x[j]))
     return np.array(distance)
 
+
+def fisher_exact_test(c_labels, y):
+    if len(set(y)) == 1:
+        print('fisher test run with no positive class')
+        return 0
+    #call fishers test from r
+    contingency = get_contingency_table(c_labels, y)
+    stats = importr('stats')
+    pval = stats.fisher_test(contingency,workspace=2e8)[0][0]
+    return pval
+
 class FClusterer(ClusterMixin, BaseEstimator):
 
     def __init__(self, n_clusters, dist_func = l1, link = 'weighted', criterion = 'maxclust'):
@@ -52,7 +63,25 @@ class FClusterer(ClusterMixin, BaseEstimator):
     def fit_predict(self, x, y = None):
         clusters = linkage(x, method = self.link, metric = self.dist_func)
         return fcluster(clusters, self.t, criterion = self.criterion)
-
+    
+class BestClusterer(ClusterMixin, BaseEstimator):
+    
+    def __init__(self, clusterers = None, min_clusters = 2, max_clusters = 5, metric = None):
+        if clusterers is None:
+            c_range = range(min_clusters, max_clusters + 1)
+            clusterers = [FClusterer(c) for c in c_range]
+            clusterers +=  [FClusterer(c, dist_func = l2) for c in c_range]
+            clusterers += [KMeans(c) for c in c_range]
+            clusterers += [AgglomerativeClustering(c) for c in c_range]
+        self.clusterers = clusterers
+        if metric is none:
+            #default score is 1 - correlation p value
+            metric = lambda c,y: 1-fisher_exact_test(c,y)
+        self.metric = metric #should take cluster_labes, classes and return a goodness score
+        
+    def fit(self, x, y):
+        pass
+    
 class FeatureClusterer(ClusterMixin, BaseEstimator):
     #clusters features together
     #like sklearn feature agglomeration, but can work on dataframes and tracks names of the features
@@ -111,6 +140,8 @@ class FeatureClusterer(ClusterMixin, BaseEstimator):
     def fit_predict(self, x, y = None):
         self.fit(x)
         return self.predict(x)
+    
+    
 def score_multithreaded(feature_selector, fset, y):
     x = fset[1].copy()
     name = fset[0]
@@ -118,16 +149,20 @@ def score_multithreaded(feature_selector, fset, y):
 
 class FeatureSelector(BaseEstimator):
 
-    def __init__(self, model = None, n_samples = 1, rescale = True, threshold = .0001,print_out = True):
+    def __init__(self, model = None, n_samples = 1, rescale = True, threshold = .0001,print_out = True, n_jobs = None):
         if model is None:
-            from sklearn.linear_model import LogisticRegression
-            model = LogisticRegression(C = 100, solver = 'lbfgs', max_iter = 10000)
+            model = self.default_model()
         self.model = model
         self.n_samples = n_samples
         self.threshold = threshold
         self.rescale = rescale
+        self.n_jobs = n_jobs
         self.print_out = print_out
         self.isfit = False
+        
+    def default_mode(self):
+        from sklearn.linear_model import LogisticRegression
+        return LogisticRegression(C = 100, solver = 'lbfgs', max_iter = 10000)
 
     def get_importances(self, x, y, baseline = None, as_df = True):
         base_set = set(baseline) if baseline is not None else set([])
@@ -138,7 +173,7 @@ class FeatureSelector(BaseEstimator):
             getcols = lambda x: [x]
         fsets = [(col, x.loc[:, getcols(col)]) for col in x.columns if col not in base_set]
         importances = []
-        with Pool(4) as pool:
+        with Pool(n_jobs) as pool:
             results = [pool.apply_async(score_multithreaded, args=(self,fset,y)) for fset in fsets]
             result_vals = list([res.get(timeout=10000) for res in results])
             importances = [i[1].reshape(-1,1) for i in result_vals]
@@ -177,14 +212,6 @@ class FeatureSelector(BaseEstimator):
         return ypred
 
     def get_most_important(self, x, y, baseline = None):#         for pos, col in enumerate(x.columns):
-#             if col in base_set:
-#                 continue
-#             if baseline is not None:
-#                 columns = baseline + [col]
-#             else:
-#                 columns = [col]
-#             xtrain = x.loc[:, columns]
-#             importances[:,pos] = self.bootstrap_score(xtrain, y)
         importances = self.get_importances(x,y,baseline)
         print(importances.shape)
         print(importances.mean(axis=0).shape)
@@ -232,20 +259,8 @@ class FeatureSelector(BaseEstimator):
 
 class FeatureClusterSelector(FeatureSelector):
 
-    def __init__(self, clusterers = None, n_samples = 1, 
-                 rescale = False, threshold = 0, 
-                 print_out = True,
-                 min_clusters = 4,
-                 max_clusters = 4):
-        if clusterer is None:
-            from sklearn.cluster import AgglomerativeClustering
-            self.models = [AgglomerativeClustering(n_clusters = c) for c in range(min_clusters, max_clusters)]
-        else:
-            self.models = clusterer
-        self.n_samples = n_samples
-        self.rescale = rescale
-        self.print_out = print_out
-        self.threshold = threshold
+    def default_model(self):
+        return FeatureClusterer(4)
 
     def bootstrap_score(self, x, y):
         if isinstance(x, pd.DataFrame) or isinstance(x, pd.Series):
@@ -301,17 +316,6 @@ def get_clusterers(min_clusters = 2, max_clusters = 4):
     clusterers['Kmeans'] = [KMeans(c) for c in c_range]
     clusterers['ward'] = [AgglomerativeClustering(c) for c in c_range]
     return clusterers
-
-def fisher_exact_test(c_labels, y):
-    if len(set(y)) == 1:
-        print('fisher test run with no positive class')
-        return 0
-#        assert(len(set(y)) == 2)
-    #call fishers test from r
-    contingency = get_contingency_table(c_labels, y)
-    stats = importr('stats')
-    pval = stats.fisher_test(contingency,workspace=2e8)[0][0]
-    return pval
 
 def get_contingency_table(x, y):
     #assumes x and y are two equal length vectors, creates a mxn contigency table from them
