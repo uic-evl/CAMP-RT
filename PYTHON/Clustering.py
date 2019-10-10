@@ -2,10 +2,12 @@
 import numpy as np
 import pandas as pd
 import re
+import copy
 from analysis import *
 from collections import namedtuple
 import Metrics
 from PatientSet import PatientSet
+from multiprocessing import Pool
 
 #for getting the fisher exact test
 import rpy2.robjects.numpy2ri
@@ -85,12 +87,6 @@ class FeatureClusterer(ClusterMixin, BaseEstimator):
     def predict(self, x, y = None):
         index = list(x.index)
         x = x.transpose()
-#        if hasattr(self.base_model, 'predict'):
-#            labels = self.base_model.predict(x)
-#        else:
-#            labels = self.base_model.fit_predict(x)
-#        labels = self.map_to_zero(labels)
-#        print(sorted(set(labels)))
         is_df = isinstance(x, pd.DataFrame)
 
         groups = [[] for x in range(len(set(self.labels)))]
@@ -115,6 +111,10 @@ class FeatureClusterer(ClusterMixin, BaseEstimator):
     def fit_predict(self, x, y = None):
         self.fit(x)
         return self.predict(x)
+def score_multithreaded(feature_selector, fset, y):
+    x = fset[1].copy()
+    name = fset[0]
+    return (name, feature_selector.bootstrap_score(x, y.copy()))
 
 class FeatureSelector(BaseEstimator):
 
@@ -131,18 +131,21 @@ class FeatureSelector(BaseEstimator):
 
     def get_importances(self, x, y, baseline = None, as_df = True):
         base_set = set(baseline) if baseline is not None else set([])
-        importances = np.zeros((self.n_samples, x.shape[1]))
-        for pos, col in enumerate(x.columns):
-            if col in base_set:
-                continue
-            if baseline is not None:
-                columns = baseline + [col]
-            else:
-                columns = [col]
-            xtrain = x.loc[:, columns]
-            importances[:,pos] = self.bootstrap_score(xtrain, y)
+#         importances = np.zeros((self.n_samples, x.shape[1]))
+        if baseline is not None:
+            getcols = lambda x: [x] + baseline
+        else:
+            getcols = lambda x: [x]
+        fsets = [(col, x.loc[:, getcols(col)]) for col in x.columns if col not in base_set]
+        importances = []
+        with Pool(4) as pool:
+            results = [pool.apply_async(score_multithreaded, args=(self,fset,y)) for fset in fsets]
+            result_vals = list([res.get(timeout=10000) for res in results])
+            importances = [i[1].reshape(-1,1) for i in result_vals]
+            importances = np.hstack(importances)
         if as_df:
-            return pd.DataFrame(importances, columns = x.columns)
+            titles = [r[0] for r in result_vals]
+            return pd.DataFrame(importances, columns = titles)
         return importances
 
     def bootstrap_score(self, x, y, metric = roc_auc_score):
@@ -173,12 +176,27 @@ class FeatureSelector(BaseEstimator):
             ypred[d] = self.model.predict_proba(xtest)[:,1]
         return ypred
 
-    def get_most_important(self, x, y, baseline = None):
+    def get_most_important(self, x, y, baseline = None):#         for pos, col in enumerate(x.columns):
+#             if col in base_set:
+#                 continue
+#             if baseline is not None:
+#                 columns = baseline + [col]
+#             else:
+#                 columns = [col]
+#             xtrain = x.loc[:, columns]
+#             importances[:,pos] = self.bootstrap_score(xtrain, y)
         importances = self.get_importances(x,y,baseline)
-        importances = importances.mean(axis = 0)
-        importances = importances.values.ravel()
-        fname = x.columns[np.argmax(importances)]
-        return fname, importances.max()
+        print(importances.shape)
+        print(importances.mean(axis=0).shape)
+        names = importances.columns
+        important = importances.mean(axis = 0)
+        important = important.values.ravel()
+        fname = names[np.argmax(important)]
+        print(importances)
+        print(important.max())
+        print(fname)
+        print(importances.iloc[:,np.argmax(important)])
+        return fname, important.max()
 
     def fit(self, x, y):
         x = x.copy()
@@ -214,12 +232,16 @@ class FeatureSelector(BaseEstimator):
 
 class FeatureClusterSelector(FeatureSelector):
 
-    def __init__(self, clusterer = None, n_samples = 1, rescale = False, threshold = 0, print_out = True):
+    def __init__(self, clusterers = None, n_samples = 1, 
+                 rescale = False, threshold = 0, 
+                 print_out = True,
+                 min_clusters = 4,
+                 max_clusters = 4):
         if clusterer is None:
             from sklearn.cluster import AgglomerativeClustering
-            self.model = AgglomerativeClustering(n_clusters = 4)
+            self.models = [AgglomerativeClustering(n_clusters = c) for c in range(min_clusters, max_clusters)]
         else:
-            self.model = clusterer
+            self.models = clusterer
         self.n_samples = n_samples
         self.rescale = rescale
         self.print_out = print_out
@@ -273,11 +295,11 @@ def get_clusterers(min_clusters = 2, max_clusters = 4):
     c_range = range(min_clusters, max_clusters + 1)
     clusterers = {}
     clusterers['l1_weighted'] = [FClusterer(c) for c in c_range]
-#     clusterers['l2_weighted'] = [FClusterer(c, dist_func = l2) for c in c_range]
+    clusterers['l2_weighted'] = [FClusterer(c, dist_func = l2) for c in c_range]
 #     clusterers['centroid'] = [FClusterer(c, link='centroid') for c in c_range]
 #     clusterers['median'] = [FClusterer(c, link = 'median') for c in c_range]
-#     clusterers['Kmeans'] = [KMeans(c) for c in c_range]
-#     clusterers['ward'] = [AgglomerativeClustering(c) for c in c_range]
+    clusterers['Kmeans'] = [KMeans(c) for c in c_range]
+    clusterers['ward'] = [AgglomerativeClustering(c) for c in c_range]
     return clusterers
 
 def fisher_exact_test(c_labels, y):

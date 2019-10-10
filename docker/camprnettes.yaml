@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod 
+metadata:
+  name: campRnetTs       # What your Kubernetes pod will be called
+  namespace: awentze2 # The namespace to run your pod in
+spec:
+  containers:
+  - image: camprt     # Name of the Docker image you want to run
+    args: ["sleep", "infinity"]
+    imagePullPolicy: IfNotPresent 
+    name: camprt    # Name of your container inside your pod
+  volumeMounts:
+    - name: nfs-volume
+      mountPath: /target/directory/to/mount/to/in/container
+  volumes:
+  - name: nfs-volume
+    nfs:
+      server: iridium.evl.uic.edu
+      path: /data/docker_nfs/andrew
+  restartPolicy: Always
