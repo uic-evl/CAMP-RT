@@ -66,7 +66,7 @@ class FClusterer(ClusterMixin, BaseEstimator):
     
 class BestClusterer(ClusterMixin, BaseEstimator):
     
-    def __init__(self, clusterers = None, min_clusters = 2, max_clusters = 5, metric = None):
+    def __init__(self, clusterers = None, min_clusters = 2, max_clusters = 5, metric = None, n_jobs = None):
         if clusterers is None:
             c_range = range(min_clusters, max_clusters + 1)
             clusterers = [FClusterer(c) for c in c_range]
@@ -78,9 +78,13 @@ class BestClusterer(ClusterMixin, BaseEstimator):
             #default score is 1 - correlation p value
             metric = lambda c,y: 1-fisher_exact_test(c,y)
         self.metric = metric #should take cluster_labes, classes and return a goodness score
+        self.n_jobs = n_jobs
         
     def fit(self, x, y):
-        pass
+        scores = []
+        with Pool(self.n_jobs) as pool:
+            pass
+            
     
 class FeatureClusterer(ClusterMixin, BaseEstimator):
     #clusters features together
@@ -149,7 +153,7 @@ def score_multithreaded(feature_selector, fset, y):
 
 class FeatureSelector(BaseEstimator):
 
-    def __init__(self, model = None, n_samples = 1, rescale = True, threshold = .0001,print_out = True, n_jobs = None):
+    def __init__(self, model = None, n_samples = 1, rescale = True, threshold = 0, print_out = True, n_jobs = None):
         if model is None:
             model = self.default_model()
         self.model = model
@@ -173,7 +177,7 @@ class FeatureSelector(BaseEstimator):
             getcols = lambda x: [x]
         fsets = [(col, x.loc[:, getcols(col)]) for col in x.columns if col not in base_set]
         importances = []
-        with Pool(n_jobs) as pool:
+        with Pool(self.n_jobs) as pool:
             results = [pool.apply_async(score_multithreaded, args=(self,fset,y)) for fset in fsets]
             result_vals = list([res.get(timeout=10000) for res in results])
             importances = [i[1].reshape(-1,1) for i in result_vals]
@@ -213,16 +217,10 @@ class FeatureSelector(BaseEstimator):
 
     def get_most_important(self, x, y, baseline = None):#         for pos, col in enumerate(x.columns):
         importances = self.get_importances(x,y,baseline)
-        print(importances.shape)
-        print(importances.mean(axis=0).shape)
         names = importances.columns
         important = importances.mean(axis = 0)
         important = important.values.ravel()
         fname = names[np.argmax(important)]
-        print(importances)
-        print(important.max())
-        print(fname)
-        print(importances.iloc[:,np.argmax(important)])
         return fname, important.max()
 
     def fit(self, x, y):
@@ -260,7 +258,7 @@ class FeatureSelector(BaseEstimator):
 class FeatureClusterSelector(FeatureSelector):
 
     def default_model(self):
-        return FeatureClusterer(4)
+        return FClusterer(4)
 
     def bootstrap_score(self, x, y):
         if isinstance(x, pd.DataFrame) or isinstance(x, pd.Series):

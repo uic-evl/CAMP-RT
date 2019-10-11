@@ -1,5 +1,5 @@
 c.NotebookApp.allow_remote_access = True
 c.NotebookApp.ip = '*'
-c.NotebookApp.password = u'sha1:031e9852ca0b:49418d1293afbb2a6446e07b726ad7c9796908e1'
+c.NotebookApp.password = u'sha1:3fed42cc8c2b:8925cbe6a33ce01a649e375f615a4556e731a755'
 c.NotebookApp.port = 8888
 c.Notebook.open_browser = False
