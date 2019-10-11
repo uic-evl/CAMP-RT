@@ -7,7 +7,7 @@ from analysis import *
 from collections import namedtuple
 import Metrics
 from PatientSet import PatientSet
-from multiprocessing import Pool
+from multiprocessing import Pool, Process, Lock
 
 #for getting the fisher exact test
 import rpy2.robjects.numpy2ri
@@ -64,26 +64,69 @@ class FClusterer(ClusterMixin, BaseEstimator):
         clusters = linkage(x, method = self.link, metric = self.dist_func)
         return fcluster(clusters, self.t, criterion = self.criterion)
     
+def best_clusterer_score(clusterer,curr_clusterer, x, y):
+    return clusterer.score(curr_clusterer,x,y)
+    
 class BestClusterer(ClusterMixin, BaseEstimator):
     
-    def __init__(self, clusterers = None, min_clusters = 2, max_clusters = 5, metric = None, n_jobs = None):
+    def __init__(self, clusterers = None, min_clusters = 2, max_clusters = 5, metric = None, n_jobs = 1):
         if clusterers is None:
             c_range = range(min_clusters, max_clusters + 1)
             clusterers = [FClusterer(c) for c in c_range]
             clusterers +=  [FClusterer(c, dist_func = l2) for c in c_range]
-            clusterers += [KMeans(c) for c in c_range]
-            clusterers += [AgglomerativeClustering(c) for c in c_range]
+#             clusterers += [KMeans(c) for c in c_range]
+#             clusterers += [AgglomerativeClustering(c) for c in c_range]
         self.clusterers = clusterers
-        if metric is none:
-            #default score is 1 - correlation p value
-            metric = lambda c,y: 1-fisher_exact_test(c,y)
-        self.metric = metric #should take cluster_labes, classes and return a goodness score
+#         if metric is None:
+#             #default score is 1 - correlation p value
+#             metric = lambda c,y: 1-fisher_exact_test(c,y)
+#         self.metric = metric #should take cluster_labes, classes and return a goodness score
         self.n_jobs = n_jobs
         
+    def metric(self, c, y):
+        return 1 - fisher_exact_test(c,y)
+    
+    def score(self, clusterer_idx, x, y):
+        clusterer = self.clusterers[clusterer_idx]
+        cluster_labels = clusterer.fit_predict(x).ravel()
+        return (clusterer_idx, self.metric(cluster_labels, y.ravel()))
+        
     def fit(self, x, y):
-        scores = []
-        with Pool(self.n_jobs) as pool:
-            pass
+        if self.n_jobs == 1:
+            self.fit_singlecore(x,y)
+        else:
+            self.fit_multicore(x,y)
+    
+    def fit_singlecore(self, x, y):
+        score_tuple = [self.score(i, x, y) for i in range(len(self.clusterers))]
+        scores = sorted(score_tuple, key = lambda x: -x[1]) #sort in descending order
+        self.best_clusterer_idx = scores[0][0]
+        self.best_score = scores[0][1]
+        
+    def fit_multicore(self, x,y):
+#         scores = np.zeros((len(self.clusterers),))
+#         def update_scores(i):
+#             scores[i] = self.score(i, x, y)
+#         for i, clusterer in enumerate(self.clusterers):
+#             NoDaemonProcess(target = update_scores, args = (i,)).start()
+#         self.best_clusterer_idx = np.argmax(scores)
+#         self.best_score = np.max(scores)
+        with Pool(self.n_jobs) as cpool:
+            results = [cpool.appy_async(best_clusterer_score, args = (self,c,x,y)) for c in range(len(self.clusterers))]
+            score_tuple = [res.get() for res in results]
+            cpool.close()
+            cpool.join()
+            print(score_tuple)
+        scores = sorted(score_tuple, key = lambda x: -x[1]) #sort in descending order
+        self.best_clusterer_idx = scores[0][0]
+        self.best_score = scores[0][1]
+    
+    def predict(self, x):
+        return self.clusterers[self.best_clusterer_idx].fit_predict(x)
+                
+    def fit_predict(self, x, y = None):
+        self.fit(x,y)
+        return self.predict(x)
             
     
 class FeatureClusterer(ClusterMixin, BaseEstimator):
@@ -272,7 +315,7 @@ class FeatureClusterSelector(FeatureSelector):
                 xtemp, ytemp = x, y
             if xtemp.ndim == 1:
                 xtemp = xtemp.reshape(-1,1)
-            clusters = self.model.fit_predict(xtemp).ravel()
+            clusters = self.model.fit_predict(xtemp, ytemp).ravel()
             score.append(1-fisher_exact_test(clusters, ytemp))
         return np.array(score)
     
