@@ -16,7 +16,7 @@ from sklearn.cluster import KMeans, AgglomerativeClustering
 from copy import copy
 from sklearn.preprocessing import quantile_transform
 from sklearn.tree import DecisionTreeClassifier
-
+from multiprocessing import Pool
 
 
 class Estimator(ABC):
@@ -437,20 +437,25 @@ class TreeKnnEstimator(KnnEstimator, SupervisedModel):
         y = np.array(y)
         positions = np.array(positions)
         return [x, y, positions]
+    
+def tsim_score(model, patient1, patient2, distances, volumes, clusters, adjacency):
+    model_sim = model.pairwise_similarity(patient1, patient2, distances, volumes, clusters, adjacency)
+    return patient1, patient2, model_sim
 
 class TsimModel():
     #orginal-ish similarity model that gives a similarity matrix from get_simirity based on a spatial ssim
     def __init__(self, max_distance = 50, patients = None, organs = None,
-                 similarity_function = None, use_classes = False):
+                 similarity_function = None, use_classes = False, n_jobs = None):
         self.max_distance = max_distance
         #for subsetting the data later
         self.patients = patients
         self.organs = organs
         self.use_classes = use_classes
         if similarity_function is None:
-            self.similarity_function = self.local_ssim
+            self.similarity_function = Metrics.local_ssim
         else:
             self.similarity_function = similarity_function
+        self.n_jobs = n_jobs
 
     def get_adjacency_lists(self, organ_distance_matrix, organs = None):
         if organs is None:
@@ -486,19 +491,27 @@ class TsimModel():
             volumes = Metrics.augment_mirrored(volumes, organ_list = organ_list)
         scores = self.similarity(adjacency, distances, volumes, clusters)
         return scores
-
+    
     def similarity(self, adjacency, distances, volumes, clusters, similarity_function = None):
         num_patients, num_organs = distances.shape
         num_original_patients = len(clusters)
         score_matrix = np.zeros((num_patients, num_patients))
-        for patient1 in range(0, num_patients - 1):
-            for patient2 in range(patient1 + 1, num_patients):
-                if (patient1 % num_original_patients) == (patient2 % num_original_patients):
-                    continue
-                scores = self.pairwise_similarity(patient1, patient2,
-                                                     distances, volumes,
-                                                     clusters, adjacency)
-                score_matrix[patient1, patient2] = scores
+        with Pool(self.n_jobs) as pool:
+            score_results = []
+            for patient1 in range(0, num_patients - 1):
+                for patient2 in range(patient1 + 1, num_patients):
+                    if (patient1 % num_original_patients) == (patient2 % num_original_patients):
+                        continue
+                    score_result = pool.apply_async(tsim_score, 
+                                                   args = (self, patient1, 
+                                                           patient2, distances, 
+                                                           volumes,clusters, 
+                                                           adjacency)
+                                                  )
+                    score_results.append(score_result)
+            for res in score_results:
+                (p1, p2, score) = res.get(10000)
+                score_matrix[p1, p2] = score
         score_matrix += np.transpose(score_matrix)
 #        scale to between 0 and .99
         score_matrix = (score_matrix - score_matrix.min())
@@ -529,26 +542,6 @@ class TsimModel():
             v2 = volumes[patient2, adjacent_args]
             scores.append( self.similarity_function(d1,d2,v1,v2) )
         return np.mean(scores)
-
-
-    def local_ssim(self, x,y,v = None, w = None):
-        c1 = .000001
-        c2  = .000001
-        mean_x = np.mean(x)
-        mean_y = np.mean(y)
-        covariance = np.cov(x,y)
-        numerator = (2*mean_x*mean_y + c1) * (covariance[0,1] + covariance[1,0] + c2)
-        denominator = (mean_x**2 + mean_y**2 + c1)*(np.var(x) + np.var(y) + c2)
-        if v is not None and w is not None:
-            mean_v = np.mean(v)
-            mean_w = np.mean(w)
-            numerator *= (2*mean_v*mean_w + c1)
-            denominator *= (mean_v**2 + mean_w**2 + c1)
-        if denominator > 0:
-            return numerator/denominator
-        else:
-            print('error, zero denomiator in ssim function')
-            return 0
 
 class TJaccardModel(TsimModel):
     #smalle variant of the tsim model that uses jaccard by default.  saves like two lines of work later

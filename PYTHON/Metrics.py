@@ -44,6 +44,25 @@ def dist_to_sim(distance):
     sim[diagonals] = 0
     return sim
 
+def local_ssim(x,y,v = None, w = None):
+    c1 = .000001
+    c2  = .000001
+    mean_x = np.mean(x)
+    mean_y = np.mean(y)
+    covariance = np.cov(x,y)
+    numerator = (2*mean_x*mean_y + c1) * (covariance[0,1] + covariance[1,0] + c2)
+    denominator = (mean_x**2 + mean_y**2 + c1)*(np.var(x) + np.var(y) + c2)
+    if v is not None and w is not None:
+        mean_v = np.mean(v)
+        mean_w = np.mean(w)
+        numerator *= (2*mean_v*mean_w + c1)
+        denominator *= (mean_v**2 + mean_w**2 + c1)
+    if denominator > 0:
+        return numerator/denominator
+    else:
+        print('error, zero denomiator in ssim function')
+        return 0
+
 def root_kernel(matrix):
     matrix = matrix/(matrix.sum(axis = 1) + .000001).reshape(-1,1)
     return np.sqrt(matrix)

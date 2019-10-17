@@ -207,7 +207,7 @@ class FeatureSelector(BaseEstimator):
         self.print_out = print_out
         self.isfit = False
         
-    def default_mode(self):
+    def default_model(self):
         from sklearn.linear_model import LogisticRegression
         return LogisticRegression(C = 100, solver = 'lbfgs', max_iter = 10000)
 
@@ -441,7 +441,7 @@ def get_train_test_datasets(db,
                            ):
     if organs is None:
         #default organ list is organs - eyeballs since they bad
-        organs = copy(Constants.organ_list)
+        organs = copy.copy(Constants.organ_list)
         for o in Constants.organ_list:
             if re.search('Eyeball', o) is not None:
                 organs.remove(o)

@@ -168,11 +168,11 @@ def threshold_grid_search(db, similarity, start_k = .4, max_matches = 20,
     else:
         return((best_score, best_threshold, best_min_matches))
 
-def tsim_similarity(db):
-    return TsimModel().get_similarity(db, augment = True)
+def tsim_similarity(db, jobs = 4):
+    return TsimModel(n_jobs = jobs).get_similarity(db, augment = True)
 
-def tsim_prediction(db, sim = None):
-    sim = tsim_similarity(db) if sim is None else sim
+def tsim_prediction(db, sim = None, jobs = 4):
+    sim = tsim_similarity(db, jobs) if sim is None else sim
     return KnnEstimator().predict_doses(sim, db)
 
 def default_similarity(db):

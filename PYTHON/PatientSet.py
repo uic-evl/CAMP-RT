@@ -16,11 +16,12 @@ from Constants import Constants
 from Patient import Patient
 from ErrorChecker import ErrorChecker
 from Metrics import lcr_args, get_flip_args
+import copy
 
 class PatientSet():
 
     def __init__(self, outliers = [], root = 'data/patients_v*/',
-                 use_distances = False, use_clean_subset = True, denoise = True):
+                 use_distances = False, use_clean_subset = True, denoise = True, additional_features = False):
         self.classes = None
         self.num_classes = 0
         self.left, center, self.right = lcr_args()
@@ -30,6 +31,9 @@ class PatientSet():
         if denoise:
             self.denoise_tumor_distances()
         print('\npatient data loaded...\n')
+        self.additional_features = additional_features
+        if additional_features:
+            self.add_features()
 
     def read_patient_data(self, root, outliers, use_distances):
 
@@ -234,6 +238,28 @@ class PatientSet():
         self.has_gtvp = self.has_gtvp[p]
         if self.all_organ_distances is not None:
             self.all_organ_distances = self.all_organ_distances[:,:,p]
+            
+    def add_features(self):
+        from analysis import tsim_prediction
+        #add more fields for use in the clustering scripts for feature testing
+        self.t_volumes = np.array([np.sum([g.volume for g in gtvs]) for gtvs in self.gtvs]).reshape(-1,1)
+        self.bilateral = self.lateralities == 'B'
+        self.total_volumes = self.volumes.sum(axis = 1)
+        self.toxicity = self.feeding_tubes + self.aspiration
+        self.tsimdoses = tsim_prediction(self)
+        self.neck_width = np.linalg.norm(self.centroids[:,Constants.organ_list.index('Lt_Sternocleidomastoid_M'),:] - self.centroids[:,Constants.organ_list.index('Rt_Sternocleidomastoid_M'), :], axis = 1)
+            
+    def to_pickle(self, add_features = True, file_loc = False):
+        if file_loc is False:
+            file_loc = Constants.patient_set_pickle
+        if add_features and not self.additional_features:
+            self.add_features()
+        import pickle
+        try:
+            pickle.dumps(self, open(file_loc, 'wb'))
+            print('dataset saved to ' + file_loc)
+        except:
+            print('error pickling data')    
 
     def get_num_patients(self):
         return( self.doses.shape[0] )
