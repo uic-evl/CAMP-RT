@@ -9,4 +9,12 @@ spec:
     args: ["sleep", "infinity"]
     imagePullPolicy: Always
     name: camprt    # Name of your container inside your pod
+    volumeMounts:
+    - name: nsf-volume
+      mountPath: /mnt
+  volumes:
+  - name: nfs-volume
+    nfs:
+      server: iridium.evl.uic.edu
+      path: /data/docker_nfs/andrew
   restartPolicy: Always
