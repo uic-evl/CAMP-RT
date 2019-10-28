@@ -17,6 +17,7 @@ from Patient import Patient
 from ErrorChecker import ErrorChecker
 from Metrics import lcr_args, get_flip_args
 import copy
+import pickle
 
 class PatientSet():
 
@@ -245,21 +246,10 @@ class PatientSet():
         self.t_volumes = np.array([np.sum([g.volume for g in gtvs]) for gtvs in self.gtvs]).reshape(-1,1)
         self.bilateral = self.lateralities == 'B'
         self.total_volumes = self.volumes.sum(axis = 1)
-        self.toxicity = self.feeding_tubes + self.aspiration
+        self.toxicity = self.feeding_tubes + self.aspiration > 0
         self.tsimdoses = tsim_prediction(self)
         self.neck_width = np.linalg.norm(self.centroids[:,Constants.organ_list.index('Lt_Sternocleidomastoid_M'),:] - self.centroids[:,Constants.organ_list.index('Rt_Sternocleidomastoid_M'), :], axis = 1)
-            
-    def to_pickle(self, add_features = True, file_loc = False):
-        if file_loc is False:
-            file_loc = Constants.patient_set_pickle
-        if add_features and not self.additional_features:
-            self.add_features()
-        import pickle
-        try:
-            pickle.dumps(self, open(file_loc, 'wb'))
-            print('dataset saved to ' + file_loc)
-        except:
-            print('error pickling data')    
+        self.additional_features = True
 
     def get_num_patients(self):
         return( self.doses.shape[0] )
@@ -467,3 +457,32 @@ class PatientSet():
         if to_merge is not None:
             df = df.join(to_merge, how = 'inner')
         return df
+    
+def save_patientset(db = None, add_features = True):
+    if db is None:
+        db = PatientSet()
+    try:
+        if not db.additional_features and add_features:
+            db.add_features()
+        pickle.dump(db, open(Constants.patient_set_pickle, 'wb'))
+        print("Patient Set Save successfully")
+        return db
+    except:
+        print("Error saving PatientSet")
+        return False
+        
+def load_patientset(add_features = True):
+    try:
+        new_db = pickle.load(open(Constants.patient_set_pickle, 'rb'))
+        if not new_db.additional_features and add_features:
+            new_db.add_features()
+        return new_db
+    except:
+        print("Error loading patientset, trying to resave it...")
+        try:
+            new_db = save_patientset()
+            return new_db
+        except:
+            print("Could not resave patientset.  you have bugs in yo code")
+            return False
+        
