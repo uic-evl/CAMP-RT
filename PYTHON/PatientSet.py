@@ -81,7 +81,7 @@ class PatientSet():
         self.hpv = np.zeros((num_patients,))
         self.dose_fractions = np.zeros((num_patients,))
         self.has_gtvp = np.zeros((num_patients,))
-
+    
         self.aspiration = np.zeros((num_patients,))
         self.aspiration_change = np.zeros((num_patients,))
         self.smoking = np.zeros((num_patients,))
@@ -92,6 +92,8 @@ class PatientSet():
         gtv_list = []
         classes = np.zeros((num_patients,))
         self.feeding_tubes = np.zeros((num_patients,)).astype('bool')
+        
+        self.race = np.zeros((num_patients,)).astype('str')
 
         self.mean_tumor_distances = np.copy(tumor_distance_matrix)
         self.max_tumor_distances = np.copy(tumor_distance_matrix)
@@ -157,7 +159,7 @@ class PatientSet():
             self.mean_tumor_distances[patient_index] = new_patient.mean_tumor_distances
 
             self.has_gtvp[patient_index] = new_patient.gtvs[0].volume > 0
-
+            self.race[patient_index] = new_patient.race
             if use_distances:
                 organ_distance_matrix[:, :, patient_index] = np.nan_to_num(new_patient.distances)
         self.doses = np.nan_to_num(dose_matrix)
@@ -235,6 +237,7 @@ class PatientSet():
         self.max_tumor_distances = self.max_tumor_distances[p]
         self.packs_per_year = self.packs_per_year[p]
         self.smoking = self.smoking[p]
+        self.race = self.race[p]
 
         self.has_gtvp = self.has_gtvp[p]
         if self.all_organ_distances is not None:

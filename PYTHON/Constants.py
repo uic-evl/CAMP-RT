@@ -88,3 +88,4 @@ class Constants():
     laterality_map = {'B': 0, 'L': 1, 'R': 2}
     toxicity_log_file_root = 'data/toxicity_logs/tox_log'
     patient_set_pickle = 'data/patientSetAugmented.p'
+    baseline_feature_file = 'data/baselineClustering.csv'
