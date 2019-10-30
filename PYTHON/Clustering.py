@@ -112,7 +112,7 @@ class BestClusterer(ClusterMixin, BaseEstimator):
 #         self.best_clusterer_idx = np.argmax(scores)
 #         self.best_score = np.max(scores)
         with Pool(self.n_jobs) as cpool:
-            results = [cpool.appy_async(best_clusterer_score, args = (self,c,x,y)) for c in range(len(self.clusterers))]
+            results = [cpool.apply_async(best_clusterer_score, args = (self,c,x,y)) for c in range(len(self.clusterers))]
             score_tuple = [res.get() for res in results]
             cpool.close()
             cpool.join()
@@ -120,9 +120,12 @@ class BestClusterer(ClusterMixin, BaseEstimator):
         scores = sorted(score_tuple, key = lambda x: -x[1]) #sort in descending order
         self.best_clusterer_idx = scores[0][0]
         self.best_score = scores[0][1]
+        
+    def get_best_clusterer(self):
+        return self.clusterers[self.best_clusterer_idx]
     
     def predict(self, x):
-        return self.clusterers[self.best_clusterer_idx].fit_predict(x)
+        return self.get_best_clusterer().fit_predict(x)
                 
     def fit_predict(self, x, y = None):
         self.fit(x,y)
@@ -417,7 +420,7 @@ def get_optimal_clustering(features, target_var,
         features = features[patient_subset,:]
     else:
         target = target_var
-    result = cluster(target, features,  metric, args)
+    result = cluster(target, features,  metric, args, min_clusters, max_clusters)
     if args is not None:
         features = features[:, args]
     clusters[patient_subset] = result[0].model.fit_predict(features).ravel() + 1
