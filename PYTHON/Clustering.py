@@ -43,7 +43,7 @@ def pdist(x, dist_func):
 
 
 def fisher_exact_test(c_labels, y):
-    if len(set(y)) == 1:
+    if len(np.unique(y)) == 1:
         print('fisher test run with no positive class')
         return 0
     #call fishers test from r
