@@ -642,7 +642,7 @@ function showPatient(materialArray, id, parentDivId, camera = null){
 	var linkMaterial = new THREE.LineBasicMaterial({
 		color: 0x3d3d3d,
 		opacity: 1,
-		linewidth: 10
+		linewidth: 2
 	});
 
 	var tmp_geo = new THREE.Geometry();

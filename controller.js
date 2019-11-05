@@ -175,6 +175,9 @@ var Controller = (function(){
 				if( !d3.selectAll('.doseRect').empty()){
 					d3.selectAll('.doseRect').moveToFront();
 				}
+				d3.selectAll('.doseRect').filter('.meanDose')
+					.attr('fill', data.getClusterColor(selectedPatient))
+					.attr('opacity', 1);
 			}
 		},
 		 

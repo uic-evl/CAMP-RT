@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Mar  8 10:08:52 2019
-
-@author: Andrew
-"""
 from numpy.random import seed
 seed(1)
 from preprocessing import *
@@ -22,8 +16,6 @@ from Metrics import *
 
 from sklearn.manifold import TSNE, MDS
 from sklearn.cluster import KMeans
-
-
 def export(data_set = None,
            patient_data_file = '../data/patient_dataset.json',
            score_file = 'data/scores.csv',
@@ -33,15 +25,15 @@ def export(data_set = None,
         data_set = PatientSet(root = 'data/patients_v*/',
                 use_distances = False)
     if method == 'tsim':
-        estimator = KnnEstimator()
+        estimator = tsim_estimator()
         similarity = tsim_similarity(data_set)
         predicted_doses = tsim_prediction(data_set, similarity)
     else:
         if method != 'tanimoto':
             print('error, unknown prediction method given')
-        estimator = TreeKnnEstimator()
+        estimator = tanimoto_estimator()
         similarity = default_similarity(data_set)
-        predicted_doses = default_rt_prediction(data_set, [similarity])
+        predicted_doses = default_rt_prediction(data_set, similarity)
 
     if clusterer == 'default':
         from sklearn.cluster import KMeans
@@ -128,7 +120,7 @@ def export(data_set = None,
     try:
         json.encoder.FLOAT_REPR = lambda o: format(o, '.2f')
         def default(o):
-            if isinstance(o, np.int32):
+            if isinstance(o, np.int32) or isinstance(o, np.int64):
                 return int(o)
         with open(patient_data_file, 'w+') as f:  # generate JSON
             json.dump( export_data, f, indent=4, default = default)
@@ -173,7 +165,7 @@ def tsim_similarity(db, jobs = 4):
 
 def tsim_prediction(db, sim = None, jobs = 4):
     sim = tsim_similarity(db, jobs) if sim is None else sim
-    return KnnEstimator().predict_doses(sim, db)
+    return tsim_estimator().predict_doses(sim, db)
 
 def default_similarity(db):
     discrete_dists = discretize(-db.tumor_distances)
@@ -181,6 +173,11 @@ def default_similarity(db):
 
 def default_rt_prediction(db, similarity = None):
     similarity = [default_similarity(db)] if similarity is None else similarity
-    estimator = TreeKnnEstimator()
+    estimator = tanimoto_estimator()
     return estimator.predict_doses(similarity, db)
 
+def tanimoto_estimator():
+    return KnnEstimator(match_type = 'clusters')
+    
+def tsim_estimator():
+    return KnnEstimator()
