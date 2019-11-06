@@ -36,7 +36,7 @@ class PatientSet():
         if additional_features:
             self.add_features()
 
-    def read_patient_data(self, root, outliers, use_distances):
+    def read_patient_data(self, root, outliers, use_distances, save_distances = False):
 
         #sorts by size of largest integer string, which is the id for our files
         file_sort = lambda x: sorted(x, key =
@@ -47,7 +47,7 @@ class PatientSet():
         dose_files = file_sort(glob(root + '**/*centroid*.csv'))
         #maps ids to position so I can do that too?
         ids = self.delete_outliers(outliers, distance_files, dose_files)
-        metadata_file = 'data/patient_info.csv'
+        metadata_file = Constants.patient_info_file
         assert(len(distance_files) == len(dose_files))
         #maps a position 0-len(files) to the dummy id for a patient
         num_patients = len(ids)
@@ -98,6 +98,15 @@ class PatientSet():
         self.mean_tumor_distances = np.copy(tumor_distance_matrix)
         self.max_tumor_distances = np.copy(tumor_distance_matrix)
         #putting all the data into a patient object for further objectification
+      
+        if not use_distances:
+            o_dists = self.load_saved_distances()
+            if not isinstance(o_dists, bool):
+                self.organ_distances = o_dists
+                self.all_organ_distances = None
+            else:
+                use_distances = True
+                save_distances = True
 
         for patient_index in range(0, num_patients):
             dataset_version = int(findall('patients_v([0-9])', distance_files[patient_index])[0])
@@ -178,13 +187,15 @@ class PatientSet():
         self.ages = np.nan_to_num(age_vector)
         self.dose_fractions = np.nan_to_num(self.dose_fractions)
 
-
         if use_distances:
             self.all_organ_distances = np.nan_to_num(organ_distance_matrix)
             self.organ_distances = self.all_organ_distances.mean(axis = 2)
-        else:
-            self.organ_distances = self.load_saved_distances()
-            self.all_organ_distances = None
+            if save_distances:
+                try:
+                    self.save_organ_distances()
+                except:
+                    print('error saving organ distances?')
+        
         self.prescribed_doses = np.nan_to_num(prescribed_dose_vector)
         self.centroids = np.nan_to_num(centroid_matrix)
         self.lateralities = np.array(laterality_list)
@@ -257,13 +268,15 @@ class PatientSet():
     def get_num_patients(self):
         return( self.doses.shape[0] )
 
-    def load_saved_distances(self, file = 'data/mean_organ_distances.csv'):
+    def load_saved_distances(self, file = None):
+        if file is None:
+            file = Constants.mean_organ_distance_file
         try:
             distances = pd.read_csv(file, index_col = 0)
             distances = distances.values
         except:
             print('error, no mean-organ distance file found')
-            distances = np.zeros((Constants.num_organs, Constants.num_organs))
+            return False
         return distances
 
     def get_patient_class(self, patient_id, doses):
@@ -362,8 +375,13 @@ class PatientSet():
             for p in range(self.get_num_patients()):
                 self.classes[p] = self.get_default_class(self.ids[p], self.doses[p,:])
 
-    def save_organ_distances(self, file = 'data/mean_organ_distances.csv'):
-        mean_dists = self.organ_distances.mean(axis = 2)
+    def save_organ_distances(self, file = None):
+        if file is None:
+            file = Constants.mean_organ_distance_file
+        if self.organ_distances.ndim > 2:
+            mean_dists = self.organ_distances.mean(axis = 2)
+        else:
+            mean_dists = self.organ_distances
         if np.sum(mean_dists) == 0:
             print('error, trying to save emtpy organ list')
             return
@@ -382,25 +400,30 @@ class PatientSet():
     def denoise_tumor_distances(self):
         #passes tumors through a densoiing autoencoder.
         #will change self.tumor_distance but not self.gtvs
-        distances = self.get_all_tumor_distances()
-        distances = Denoiser(normalize = False, noise = .5).fit_transform(distances, lr = .0001)
-        i = 0
-        #p = 0
-        new_tumor_distances = np.zeros(self.tumor_distances.shape)
-        all_tumor_distances = []
-        for p in range(self.get_num_patients()):
-            p_dists = []
-            count = len(self.gtvs[p])
-            new_dists = np.inf*np.ones((self.tumor_distances.shape[1]))
-            for c in range(count):
-                p_dists.append(distances[i])
-                new_dists = np.minimum(new_dists, distances[i])
-                i += 1
-            new_tumor_distances[p,:] = new_dists
-            all_tumor_distances.append( np.vstack(p_dists))
-        self.tumor_distances = new_tumor_distances
-        self.stack_tumor_distances  = all_tumor_distances
-
+        try:
+            distances = self.get_all_tumor_distances()
+            distances = Denoiser(normalize = False, noise = .5).fit_transform(distances, lr = .0001)
+            i = 0
+            #p = 0
+            new_tumor_distances = np.zeros(self.tumor_distances.shape)
+            all_tumor_distances = []
+            for p in range(self.get_num_patients()):
+                p_dists = []
+                count = len(self.gtvs[p])
+                new_dists = np.inf*np.ones((self.tumor_distances.shape[1]))
+                for c in range(count):
+                    p_dists.append(distances[i])
+                    new_dists = np.minimum(new_dists, distances[i])
+                    i += 1
+                new_tumor_distances[p,:] = new_dists
+                all_tumor_distances.append( np.vstack(p_dists))
+            self.tumor_distances = new_tumor_distances
+            self.stack_tumor_distances  = all_tumor_distances
+        except Exception as e:
+            print("Error denoising values:")
+            print(e)
+            
+            
     def tumorcount_patients(self, min_tumors = 3):
         #gets all patients with more than a given number of tumors
         mtumors = []

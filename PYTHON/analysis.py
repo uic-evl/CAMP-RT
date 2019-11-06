@@ -1,7 +1,7 @@
 from numpy.random import seed
 seed(1)
 from preprocessing import *
-from PatientSet import PatientSet
+from PatientSet import *
 from ErrorChecker import ErrorChecker
 from Constants import Constants
 from Models import *
@@ -22,8 +22,10 @@ def export(data_set = None,
            method = 'tanimoto',
            clusterer=None):
     if data_set is None:
-        data_set = PatientSet(root = 'data/patients_v*/',
-                use_distances = False)
+        data_set = load_patientset(add_features = False)
+           
+        if data_set is False:
+            data_set = PatientSet()
     if method == 'tsim':
         estimator = tsim_estimator()
         similarity = tsim_similarity(data_set)
@@ -168,7 +170,10 @@ def tsim_prediction(db, sim = None, jobs = 4):
     return tsim_estimator().predict_doses(sim, db)
 
 def default_similarity(db):
-    discrete_dists = discretize(-db.tumor_distances)
+    try:
+        discrete_dists = discretize(-db.tumor_distances)
+    except:
+        discrete_dists = minmax_scale(-db.tumor_distances)
     return augmented_sim(discrete_dists, jaccard_distance)
 
 def default_rt_prediction(db, similarity = None):

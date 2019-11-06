@@ -80,6 +80,7 @@ class Constants():
     #names to use for the dataframe when I read a centroid file.  it's cleaner
     centroid_file_names_v2 = ['ROI', 'x', 'y', 'z', 'mean_dose', 'volume', 'min_dose', 'max_dose']
     centroid_file_names_v3 = ['ROI', 'x', 'y', 'z', 'volume', 'min_dose', 'mean_dose', 'max_dose']
+    centroid_file_names_v4 = ['ROI', 'x', 'y', 'z']
     #patients without organs, using their sorted order (12th patient in the sorted list ect)
     missing_organs = {}
     no_tumor = []
@@ -89,3 +90,5 @@ class Constants():
     toxicity_log_file_root = 'data/toxicity_logs/tox_log'
     patient_set_pickle = 'data/patientSetAugmented.p'
     baseline_feature_file = 'data/baselineClustering.csv'
+    patient_info_file = 'data/patient_info.csv'
+    mean_organ_distance_file = 'data/mean_organ_distances.csv'
