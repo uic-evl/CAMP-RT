@@ -30,13 +30,21 @@ def export(data_set = None,
         estimator = tsim_estimator()
         similarity = tsim_similarity(data_set)
         predicted_doses = tsim_prediction(data_set, similarity)
-    else:
-        if method != 'tanimoto':
-            print('error, unknown prediction method given')
+    elif method == 'tanimoto':
         estimator = tanimoto_estimator()
         similarity = default_similarity(data_set)
         predicted_doses = default_rt_prediction(data_set, similarity)
-
+    #if method isn't predefined, needs to be passed a dicitionary of precomputed things
+    else:
+        try:
+            similarity = method['similarity']
+            predicted_doses = method['predicted_doses']
+            if 'estimator' in method:
+                estimator = method['estimator']
+            else: #use a lcuster based matcher by default
+                estimator = KnnEstimator(match_type = 'clusters')
+        except:
+            print('Error, method argument needs to be either tsim, tanimoto, or a dictionary with similarity (pxp matrix), estimator (class instance) and predicted_dose (pxp or px2p matrix)')
     if clusterer == 'default':
         from sklearn.cluster import KMeans
         clusterer = KMeans(n_clusters = 3)
@@ -53,7 +61,7 @@ def export(data_set = None,
         similarity = np.maximum(similarity[:n_patients, :n_patients], similarity[:n_patients, n_patients:])
     similar_patients = estimator.get_matches(similarity, data_set)
     dose_pca = pca(data_set.doses)
-    distance_tsne = TSNE(perplexity = 60, init = 'pca').fit_transform(data_set.tumor_distances)
+    distance_tsne = TSNE(perplexity = 50, init = 'pca').fit_transform(data_set.tumor_distances)
     similarity_embedding = MDS(dissimilarity='precomputed', random_state = 1).fit_transform(disimilarity)
     if clusterer is not None:
         clusters = clusterer.fit_predict(disimilarity).ravel()
